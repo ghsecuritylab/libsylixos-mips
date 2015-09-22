@@ -153,8 +153,8 @@ DRESULT disk_write (BYTE  ucDriver, const BYTE  *ucBuffer, DWORD   dwSectorNumbe
 *********************************************************************************************************/
 DRESULT  disk_ioctl (BYTE  ucDriver, BYTE ucCmd, void  *pvArg)
 {
-    REGISTER INT    iError;
-             ULONG  ulTrimSector[2];
+    REGISTER INT            iError;
+             LW_BLK_RANGE   blkrange;
     
     switch (ucCmd) {                                                    /*  转换命令                    */
     
@@ -175,9 +175,9 @@ DRESULT  disk_ioctl (BYTE  ucDriver, BYTE ucCmd, void  *pvArg)
         
     case CTRL_TRIM:                                                     /*  ATA 释放扇区                */
         ucCmd = FIOTRIM;
-        ulTrimSector[0] = (ULONG)(((DWORD *)pvArg)[0]);
-        ulTrimSector[1] = (ULONG)(((DWORD *)pvArg)[1]);
-        pvArg           = (PVOID)ulTrimSector;
+        blkrange.BLKR_ulStartSector = (ULONG)(((DWORD *)pvArg)[0]);
+        blkrange.BLKR_ulEndSector   = (ULONG)(((DWORD *)pvArg)[1]);
+        pvArg = (PVOID)&blkrange;
         break;
         
     case CTRL_POWER:                                                    /*  电源控制                    */

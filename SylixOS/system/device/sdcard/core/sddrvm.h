@@ -19,6 +19,7 @@
 ** 描        述: sd drv manager layer
 
 ** BUG:
+2015.09.18  增加控制器扩展选项设置, 以适应更多实际应用的场合
 *********************************************************************************************************/
 
 #ifndef __SDDRVM_H
@@ -108,6 +109,20 @@ struct sd_host {
     VOID          (*SDHOST_pfuncDevDetach)(SD_HOST *psdhost);
 };
 
+
+/*********************************************************************************************************
+  sd host 扩展选项,这些选项均仅对指定的一个硬件控制器通道有效
+*********************************************************************************************************/
+
+#define SDHOST_EXTOPT_RESERVE_SECTOR_SET    0
+#define SDHOST_EXTOPT_RESERVE_SECTOR_GET    1
+
+#define SDHOST_EXTOPT_MAXBURST_SECTOR_SET   2
+#define SDHOST_EXTOPT_MAXBURST_SECTOR_GET   3
+
+#define SDHOST_EXTOPT_CACHE_SIZE_SET        4
+#define SDHOST_EXTOPT_CACHE_SIZE_GET        5
+
 /*********************************************************************************************************
   API
 *********************************************************************************************************/
@@ -125,6 +140,15 @@ LW_API INT   API_SdmSdDrvRegister(SD_DRV *psddrv);
 LW_API INT   API_SdmSdDrvUnRegister(SD_DRV *psddrv);
 
 LW_API INT   API_SdmEventNotify(PVOID pvSdmHost, INT iEvtType);
+
+/*********************************************************************************************************
+  扩展选项设置 API
+  API_SdmHostExtOptSet 用于驱动设置控制器的扩展选项
+  API_SdmHostExtOptGet 用于协议层获取控制器的扩展选项
+*********************************************************************************************************/
+
+LW_API INT   API_SdmHostExtOptSet(PVOID pvSdmHost, INT  iOption, LONG  lArg);
+LW_API INT   API_SdmHostExtOptGet(PLW_SDCORE_DEVICE psdcoredev, INT  iOption, LONG  lArg);
 
 #endif                                                              /*  __SDDRVM_H                      */
 /*********************************************************************************************************

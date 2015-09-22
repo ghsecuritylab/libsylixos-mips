@@ -53,6 +53,7 @@
 #define  ERROR_KERNEL_LOCK               315                            /*  内核被锁定了                */
 #define  ERROR_KERNEL_CPU_NULL           316                            /*  指定 CPU 错误               */
 #define  ERROR_KERNEL_HOOK_FULL          317                            /*  hook 表已满                 */
+#define  ERROR_KERNEL_KEY_CONFLICT       318                            /*  key 冲突                    */
 
 /*********************************************************************************************************
   线程错误 500 - 1000

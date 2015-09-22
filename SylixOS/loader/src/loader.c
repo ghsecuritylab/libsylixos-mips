@@ -790,6 +790,9 @@ PVOID  API_ModuleLoadEx (CPCHAR  pcFile,
     }
 
     if (ERROR_NONE != initArrayCall(pmodule)) {                         /*  调用c++初始化代码           */
+        pmodule->EMOD_pfuncExit = LW_NULL;                              /*  init函数失败时不调用exit    */
+        errno = ERROR_LOADER_UNEXPECTED;
+        fprintf(stderr, "function module_init returns not 0!\n");
         API_ModuleUnload(pmodule);
         return  (LW_NULL);
     }

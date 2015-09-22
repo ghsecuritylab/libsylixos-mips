@@ -520,6 +520,8 @@ INT  _IosInit (VOID)
                        DEFAULT_DIR_PERM, LW_NULL);                      /*  管道设备                    */
     API_RootFsMakeNode("/dev/input", LW_ROOTFS_NODE_TYPE_DIR, LW_ROOTFS_NODE_OPT_ROOTFS_TIME,
                        DEFAULT_DIR_PERM, LW_NULL);                      /*  输入设备                    */
+    API_RootFsMakeNode("/dev/blk", LW_ROOTFS_NODE_TYPE_DIR, LW_ROOTFS_NODE_OPT_ROOTFS_TIME,
+                       DEFAULT_DIR_PERM, LW_NULL);                      /*  blk raw 设备                */
     API_RootFsMakeNode("/mnt", LW_ROOTFS_NODE_TYPE_DIR, LW_ROOTFS_NODE_OPT_ROOTFS_TIME, 
                        DEFAULT_DIR_PERM, LW_NULL);                      /*  文件系统挂载目录            */
     API_RootFsMakeNode("/media", LW_ROOTFS_NODE_TYPE_DIR, LW_ROOTFS_NODE_OPT_ROOTFS_TIME, 

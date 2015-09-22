@@ -76,6 +76,13 @@
 #define LW_DISK_PART_TYPE_WIN95_FAT32LBA    0x0c
 #define LW_DISK_PART_TYPE_WIN95_FAT16LBA    0x0e
 #define LW_DISK_PART_TYPE_WIN95_EXTENDED    0x0f
+#define LW_DISK_PART_TYPE_NATIVE_LINUX      0x83
+#define LW_DISK_PART_TYPE_QNX4_1            0x4d
+#define LW_DISK_PART_TYPE_QNX4_2            0x4e
+#define LW_DISK_PART_TYPE_QNX4_3            0x4f
+#define LW_DISK_PART_TYPE_QNX6_1            0xb1
+#define LW_DISK_PART_TYPE_QNX6_2            0xb2
+#define LW_DISK_PART_TYPE_QNX6_3            0xb3
 /*********************************************************************************************************
   单个分区信息
 *********************************************************************************************************/

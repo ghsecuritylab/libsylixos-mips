@@ -38,12 +38,21 @@
 /*********************************************************************************************************
   全局变量
 *********************************************************************************************************/
+#if LW_CFG_CPU_WORD_LENGHT == 64
+static const CHAR   _G_cZoneInfoHdr[] = "\n\
+ZONE     PHYSICAL           SIZE       PAGESIZE       PGD        FREEPAGE  DMA  USED\n\
+---- ---------------- ---------------- -------- ---------------- -------- ----- ----\n";
+static const CHAR   _G_cAreaInfoHdr[] = "\n\
+     VIRTUAL          SIZE        WRITE CACHE\n\
+---------------- ---------------- ----- -----\n";
+#else
 static const CHAR   _G_cZoneInfoHdr[] = "\n\
 ZONE PHYSICAL   SIZE   PAGESIZE    PGD   FREEPAGE  DMA  USED\n\
 ---- -------- -------- -------- -------- -------- ----- ----\n";
 static const CHAR   _G_cAreaInfoHdr[] = "\n\
 VIRTUAL    SIZE   WRITE CACHE\n\
 -------- -------- ----- -----\n";
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
 /*********************************************************************************************************
   全局变量声明
 *********************************************************************************************************/
@@ -82,15 +91,19 @@ VOID  API_VmmPhysicalShow (VOID)
                - (size_t)(_G_vmzonePhysical[i].ZONE_ulFreePage * LW_CFG_VMM_PAGE_SIZE));
         stUsed = (stUsed / (_G_vmzonePhysical[i].ZONE_stSize / 100));   /*  防止溢出                    */
         
+#if LW_CFG_CPU_WORD_LENGHT == 64
+        printf("%4d %16lx %16zx %8zx %16lx %8ld %-5s %3zd%%\n",
+#else
         printf("%4d %08lx %8zx %8zx %08lx %8ld %-5s %3zd%%\n",
-                      i, 
-                      _G_vmzonePhysical[i].ZONE_ulAddr,
-                      _G_vmzonePhysical[i].ZONE_stSize,
-                      (size_t)LW_CFG_VMM_PAGE_SIZE,
-                      (addr_t)pmmuctx->MMUCTX_pgdEntry,
-                      _G_vmzonePhysical[i].ZONE_ulFreePage,
-                      pcDma,
-                      stUsed);
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
+               i, 
+               _G_vmzonePhysical[i].ZONE_ulAddr,
+               _G_vmzonePhysical[i].ZONE_stSize,
+               (size_t)LW_CFG_VMM_PAGE_SIZE,
+               (addr_t)pmmuctx->MMUCTX_pgdEntry,
+               _G_vmzonePhysical[i].ZONE_ulFreePage,
+               pcDma,
+               stUsed);
     }
     __VMM_UNLOCK();
     
@@ -108,13 +121,18 @@ static VOID  __vmmVirtualPrint (PLW_VMM_PAGE  pvmpage)
 {
     addr_t  ulVirtualAddr  = pvmpage->PAGE_ulPageAddr;
     
+#if LW_CFG_CPU_WORD_LENGHT == 64
+    printf("%16lx %16lx ", ulVirtualAddr, (pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+#else
     printf("%08lx %8lx ", ulVirtualAddr, (pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
-                  
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
+
     if (pvmpage->PAGE_ulFlags & LW_VMM_FLAG_WRITABLE) {
         printf("true  ");
     } else {
         printf("false ");
     }
+    
     if (pvmpage->PAGE_ulFlags & LW_VMM_FLAG_CACHEABLE) {
         printf("true\n");
     } else {

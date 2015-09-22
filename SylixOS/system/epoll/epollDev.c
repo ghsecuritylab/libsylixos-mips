@@ -48,8 +48,8 @@ static INT      _epollIoctl(PLW_EPOLL_FILE  pepollfil, INT  iRequest, LONG  lArg
 *********************************************************************************************************/
 INT  _epollDrvInstall (VOID)
 {
-    if (_G_iEpollDrvNum == PX_ERROR) {
-        _G_iEpollDrvNum =  iosDrvInstall(LW_NULL,
+    if (_G_iEpollDrvNum <= 0) {
+        _G_iEpollDrvNum  = iosDrvInstall(LW_NULL,
                                          LW_NULL,
                                          _epollOpen,
                                          _epollClose,
@@ -74,7 +74,7 @@ INT  _epollDrvInstall (VOID)
 *********************************************************************************************************/
 INT  _epollDevCreate (VOID)
 {
-    if (_G_iEpollDrvNum == (PX_ERROR)) {
+    if (_G_iEpollDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

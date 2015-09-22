@@ -69,8 +69,8 @@ static LW_INLINE  ULONG  __timespecToHstick (const struct timespec  *ptv)
 LW_API  
 INT  API_HstimerfdDrvInstall (VOID)
 {
-    if (_G_iHstmrfdDrvNum == PX_ERROR) {
-        _G_iHstmrfdDrvNum =  iosDrvInstall(LW_NULL,
+    if (_G_iHstmrfdDrvNum <= 0) {
+        _G_iHstmrfdDrvNum  = iosDrvInstall(LW_NULL,
                                            LW_NULL,
                                            _hstmrfdOpen,
                                            _hstmrfdClose,
@@ -103,7 +103,7 @@ INT  API_HstimerfdDrvInstall (VOID)
 LW_API  
 INT  API_HstimerfdDevCreate (VOID)
 {
-    if (_G_iHstmrfdDrvNum == (PX_ERROR)) {
+    if (_G_iHstmrfdDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

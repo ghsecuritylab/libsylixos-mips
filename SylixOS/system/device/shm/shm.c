@@ -1244,7 +1244,7 @@ INT  API_ShmDevCreate (VOID)
         return  (ERROR_NONE);
     }
 
-    if (_G_iShmDrvNum == PX_ERROR) {
+    if (_G_iShmDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

@@ -675,9 +675,11 @@ INT  _IosFileClose (PLW_FD_ENTRY   pfdentry)
             pfuncDrvClose = _S_deventryTbl[__LW_FD_MAINDRV].DEVENTRY_pfuncDevClose;
             if (pfuncDrvClose) {
                 PVOID       pvArg = __GET_DRV_ARG(pfdentry);            /*  根据驱动程序版本类型选择参数*/
+                
                 __KERNEL_SPACE_ENTER();
                 iErrCode = pfuncDrvClose(pvArg);
                 __KERNEL_SPACE_EXIT();
+            
             } else {
                 iErrCode = ERROR_NONE;
             }
@@ -725,15 +727,15 @@ INT  _IosFileIoctl (PLW_FD_ENTRY   pfdentry, INT  iCmd, LONG  lArg)
     
     } else {
         PVOID       pvArg = __GET_DRV_ARG(pfdentry);                    /*  根据驱动程序版本类型选择参数*/
+        
         __KERNEL_SPACE_ENTER();
         iErrCode = pfuncDrvIoctl(pvArg, iCmd, lArg);
         __KERNEL_SPACE_EXIT();
+        
         if ((iErrCode != ERROR_NONE) && 
-            ((iErrCode == ENOSYS) ||
-             (errno    == ENOSYS) ||
-             (errno    == ERROR_IO_UNKNOWN_REQUEST))) {
+            ((iErrCode == ENOSYS) || (errno == ENOSYS))) {
+            REGISTER FUNCPTR   pfuncDrvRoutine;
             
-            REGISTER FUNCPTR       pfuncDrvRoutine;
             if (iCmd == FIOSELECT ||
                 iCmd == FIOUNSELECT) {
                 pfuncDrvRoutine = _S_deventryTbl[__LW_FD_MAINDRV].DEVENTRY_pfuncDevSelect;

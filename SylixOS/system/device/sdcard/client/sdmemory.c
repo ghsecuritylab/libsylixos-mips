@@ -27,6 +27,7 @@
 2011.04.03  将 API_SdMemDevShowInfo() 改为 API_SdMemDevShow() 统一 SylxiOS Show 函数.
 2011.04.03  更改 block io 层回调函数的参数.
 2015.03.11  增加卡写保护功能.
+2015.09.18  增加对保留扇区的处理.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -48,11 +49,12 @@ typedef struct __sd_blk_dev {
     LW_BLK_DEV            SDBLKDEV_blkDev;
     PLW_SDCORE_DEVICE     SDBLKDEV_pcoreDev;
     BOOL                  SDBLKDEV_bIsBlockAddr;                        /*  是否是块寻址                */
-
+    ULONG                 SDBLKDEV_ulSectorOff;                         /*  扇区访问偏移                */
+    ULONG                 SDBLKDEV_ulDiskNSector;                       /*  挂载磁盘的实际扇区数量      */
     /*
      * 增加 SDM 后, 为了保持 API 不变, 增加以下成员
      */
-    BOOL                  SDBLKDEV_bCoreDevSelf;                       /*  coredev 是自己创建(非SDM给)  */
+    BOOL                  SDBLKDEV_bCoreDevSelf;                        /*  coredev 是自己创建(非SDM给) */
 } __SD_BLK_DEV, *__PSD_BLK_DEV;
 /*********************************************************************************************************
   内部宏
@@ -134,6 +136,7 @@ LW_API PLW_BLK_DEV API_SdMemDevCreate (INT                       iAdapterType,
     LW_SDDEV_CSD        sddevcsd;
     BOOL                bBlkAddr;
     INT                 iBlkDevFlag;
+    ULONG               ulSectorOff;
     INT                 iError;
 
     /*
@@ -213,19 +216,30 @@ LW_API PLW_BLK_DEV API_SdMemDevCreate (INT                       iAdapterType,
         iBlkDevFlag = O_RDWR;
     }
 
-    psdblkdevice->SDBLKDEV_bIsBlockAddr = bBlkAddr;                     /*  设置寻址方式                */
-    psdblkdevice->SDBLKDEV_pcoreDev     = psdcoredevice;                /*  连接核心设备                */
-    psdblkdevice->SDBLKDEV_bCoreDevSelf = bCoreDevSelf;
+    API_SdmHostExtOptGet(psdcoredevice,
+                         SDHOST_EXTOPT_RESERVE_SECTOR_GET,
+                         (LONG)&ulSectorOff);
+
+    if (sddevcsd.DEVCSD_uiCapacity <= ulSectorOff) {
+        ulSectorOff = 0;
+    }
+
+    psdblkdevice->SDBLKDEV_bIsBlockAddr  = bBlkAddr;                    /*  设置寻址方式                */
+    psdblkdevice->SDBLKDEV_pcoreDev      = psdcoredevice;               /*  连接核心设备                */
+    psdblkdevice->SDBLKDEV_bCoreDevSelf  = bCoreDevSelf;
+    psdblkdevice->SDBLKDEV_ulSectorOff   = ulSectorOff;
+    psdblkdevice->SDBLKDEV_ulDiskNSector = sddevcsd.DEVCSD_uiCapacity - ulSectorOff;
 
     pblkdevice = &psdblkdevice->SDBLKDEV_blkDev;
 
+    pblkdevice->BLKD_pcName            = "SD-MemCard";
     pblkdevice->BLKD_pfuncBlkRd        = __sdMemBlkRd;
     pblkdevice->BLKD_pfuncBlkWrt       = __sdMemBlkWrt;
     pblkdevice->BLKD_pfuncBlkIoctl     = __sdMemIoctl;
     pblkdevice->BLKD_pfuncBlkReset     = __sdMemReset;
     pblkdevice->BLKD_pfuncBlkStatusChk = __sdMemStatus;
 
-    pblkdevice->BLKD_ulNSector         = sddevcsd.DEVCSD_uiCapacity;
+    pblkdevice->BLKD_ulNSector         = psdblkdevice->SDBLKDEV_ulDiskNSector;
 
     pblkdevice->BLKD_ulBytesPerSector  = SD_MEM_DEFAULT_BLKSIZE;
     pblkdevice->BLKD_ulBytesPerBlock   = SD_MEM_DEFAULT_BLKSIZE;
@@ -444,6 +458,14 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
             return  (PX_ERROR);
         }
 
+        /*
+         * 这里保存设备 OCR 信息, 随后会根据此信息判断设备是否真的是
+         * 字节寻址还是块寻址
+         */
+        if (sddevocr & SD_OCR_HCS) {
+            psdcoredevice->COREDEV_iDevSta |= COREDEV_STA_HIGHCAP_OCR;
+        }
+
         API_SdCoreDevTypeSet(psdcoredevice, ucType);                    /*  设置type域                  */
 
         iError = API_SdCoreDevSendAllCID(psdcoredevice, &sddevcid);     /*  cmd2                        */
@@ -548,6 +570,14 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
         if (iError != ERROR_NONE) {
             SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "device don't support the ocr.\r\n");
             return  (PX_ERROR);
+        }
+
+        /*
+         * 这里保存设备 OCR 信息, 随后会根据此信息判断设备是否真的是
+         * 字节寻址还是块寻址
+         */
+        if (sddevocr & SD_OCR_HCS) {
+            psdcoredevice->COREDEV_iDevSta |= COREDEV_STA_HIGHCAP_OCR;
         }
 
         API_SdCoreDevTypeSet(psdcoredevice, ucType);                    /*  设置type域                  */
@@ -897,7 +927,8 @@ static INT __sdMemBlkWrt(__PSD_BLK_DEV   psdblkdevice,
 
     API_SdCoreDevCsdView(psdcoredevice, &sddevcsd);
 
-    if ((ulStartBlk + ulBlkCount) > sddevcsd.DEVCSD_uiCapacity) {
+    ulStartBlk += psdblkdevice->SDBLKDEV_ulSectorOff;
+    if ((ulStartBlk + ulBlkCount) > psdblkdevice->SDBLKDEV_ulDiskNSector) {
         SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "block number out of range.\r\n");
         iError = PX_ERROR;
         goto    __error_handle;
@@ -975,7 +1006,8 @@ static INT __sdMemBlkRd (__PSD_BLK_DEV   psdblkdevice,
 
     API_SdCoreDevCsdView(psdcoredevice, &sddevcsd);
 
-    if ((ulStartBlk + ulBlkCount) > sddevcsd.DEVCSD_uiCapacity) {
+    ulStartBlk += psdblkdevice->SDBLKDEV_ulSectorOff;
+    if ((ulStartBlk + ulBlkCount) > psdblkdevice->SDBLKDEV_ulDiskNSector) {
         SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "block number is out of range.\r\n");
         iError = PX_ERROR;
         goto    __error_handle;
@@ -987,7 +1019,6 @@ static INT __sdMemBlkRd (__PSD_BLK_DEV   psdblkdevice,
     if (!__SDMEM_BLKADDR(psdblkdevice)) {
         ulStartBlk = ulStartBlk << sddevcsd.DEVCSD_ucReadBlkLenBits;
     }
-
 
     if (ulBlkCount <= 1) {
         iError = __sdMemRdSingleBlk(psdcoredevice, (UINT8 *)pvRdBuffer, (UINT32)ulStartBlk);
@@ -1033,7 +1064,10 @@ static INT __sdMemIoctl (__PSD_BLK_DEV    psdblkdevice,
 
     switch (iCmd) {
 
+    case FIOSYNC:
+    case FIODATASYNC:
     case FIOFLUSH:                                                      /*  将缓存回写到磁盘            */
+    case FIOSYNCMETA:
     case FIOUNMOUNT:                                                    /*  卸载卷                      */
     case FIODISKINIT:                                                   /*  初始化设备                  */
     case FIODISKCHANGE:                                                 /*  磁盘媒质发生变化            */

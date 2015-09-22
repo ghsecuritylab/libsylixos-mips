@@ -17,8 +17,10 @@
 ** 文件创建日期: 2014 年 10 月 25 日
 **
 ** 描        述: sd 记忆卡注册到 SDM 模块的驱动源文件
-
+**
 ** BUG:
+2015.09.12  __SDMEM_CACHE_BURST 猝发读写长度减小到 32 个扇区.
+2015.09.18  猝发读写长度和磁盘缓冲大小可由驱动决定.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -36,7 +38,7 @@
   内部宏定义
 *********************************************************************************************************/
 #define __SDMEM_MEDIA          "/media/sdcard"
-#define __SDMEM_CACHE_BOOST    256
+#define __SDMEM_CACHE_BURST    32
 #define __SDMEM_CACHE_SIZE     (128 * LW_CFG_KB_SIZE)
 /*********************************************************************************************************
   sdmem 设备私有数据
@@ -88,6 +90,8 @@ static INT  __sdmemDevCreate (SD_DRV *psddrv, PLW_SDCORE_DEVICE psdcoredev, VOID
     PLW_BLK_DEV       pblkdev;
     PLW_OEMDISK_CB    poemdisk;
     __SDMEM_PRIV     *psdmempriv;
+    LONG              lCacheSize;
+    LONG              lSectorBurst;
 
     psdmempriv= (__SDMEM_PRIV *)__SHEAP_ALLOC(sizeof(__SDMEM_PRIV));
     if (!psdmempriv) {
@@ -104,11 +108,22 @@ static INT  __sdmemDevCreate (SD_DRV *psddrv, PLW_SDCORE_DEVICE psdcoredev, VOID
         goto    __err1;
     }
 
+    API_SdmHostExtOptGet(psdcoredev, SDHOST_EXTOPT_CACHE_SIZE_GET, (LONG)&lCacheSize);
+    API_SdmHostExtOptGet(psdcoredev, SDHOST_EXTOPT_MAXBURST_SECTOR_GET, (LONG)&lSectorBurst);
+
+    if (lCacheSize <= 0) {
+        lCacheSize = __SDMEM_CACHE_SIZE;
+    }
+
+    if (lSectorBurst <= 0) {
+        lSectorBurst = __SDMEM_CACHE_BURST;
+    }
+
     poemdisk = oemDiskMount(__SDMEM_MEDIA,
                             pblkdev,
                             LW_NULL,
-                            __SDMEM_CACHE_SIZE,
-                            __SDMEM_CACHE_BOOST);
+                            lCacheSize,
+                            lSectorBurst);
     if (!poemdisk) {
         printk("\nmount sd memory card failed.\r\n");
         goto    __err2;

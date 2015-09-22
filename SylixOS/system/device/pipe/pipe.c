@@ -52,8 +52,8 @@
 LW_API 
 INT  API_PipeDrvInstall (VOID)
 {
-    if (_G_iPipeDrvNum == PX_ERROR) {
-        _G_iPipeDrvNum =  iosDrvInstall( (LONGFUNCPTR)LW_NULL,          /*  CREATE                      */
+    if (_G_iPipeDrvNum <= 0) {
+        _G_iPipeDrvNum  = iosDrvInstall( (LONGFUNCPTR)LW_NULL,          /*  CREATE                      */
                                          (FUNCPTR)LW_NULL,              /*  DELETE                      */
                                          _PipeOpen,                     /*  OPEN                        */
                                          _PipeClose,                    /*  CLOSE                       */
@@ -93,7 +93,7 @@ INT  API_PipeDevCreate (PCHAR  pcName,
         return  (PX_ERROR);
     }
     
-    if (_G_iPipeDrvNum == (PX_ERROR)) {
+    if (_G_iPipeDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);
@@ -169,7 +169,7 @@ INT  API_PipeDevDelete (PCHAR  pcName, BOOL  bForce)
         return  (PX_ERROR);
     }
     
-    if (_G_iPipeDrvNum == (PX_ERROR)) {
+    if (_G_iPipeDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

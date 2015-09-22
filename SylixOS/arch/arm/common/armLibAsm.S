@@ -20,6 +20,7 @@
 ;**
 ;** BUG:
 ;2014.12.29  由于一些函数需要操作安全模式寄存器, 有些处理器需要做特殊处理, 所以这里改为弱符号.
+;2015.09.07  当支持 CLZ 指令时, archFindLsb 与 archFindMsb 使用汇编实现.
 ;*********************************************************************************************************/
 
 #ifndef ASSEMBLY
@@ -41,6 +42,11 @@
     EXPORT_LABEL(longjmp)
     EXPORT_LABEL(siglongjmp)
     
+#if __SYLIXOS_ARM_ARCH__ >= 5
+    EXPORT_LABEL(archFindLsb)
+    EXPORT_LABEL(archFindMsb)
+#endif
+
     EXPORT_LABEL(archIntDisable)
     EXPORT_LABEL(archIntEnable)
     EXPORT_LABEL(archIntEnableForce)
@@ -78,6 +84,28 @@ FUNC_DEF(archIntEnableForce)
     BX      LR
     FUNC_END()
     
+;/*********************************************************************************************************
+;  ARM 前导零运算
+;*********************************************************************************************************/
+
+#if __SYLIXOS_ARM_ARCH__ >= 5
+FUNC_DEF(archFindLsb)
+    RSB     R1 , R0, #0
+    ANDS    R0 , R1, R0
+    CLZNE   R0 , R0
+    RSBNE   R0 , R0, #32
+    BX      LR
+    FUNC_END()
+
+FUNC_DEF(archFindMsb)
+    CMP     R0 , #0
+    BXEQ    LR
+    CLZNE   R0 , R0
+    RSBNE   R0 , R0, #32
+    BX      LR
+    FUNC_END()
+#endif
+
 ;/*********************************************************************************************************
 ;  页面拷贝 (代码来自 linux/arch/arm/lib)
 ;*********************************************************************************************************/

@@ -93,7 +93,7 @@ LW_API INT          API_PipeDevDelete(PCHAR  pcName, BOOL bForce);
 #ifndef __PIPE_MAIN_FILE
 __PIPE_EXT    INT     _G_iPipeDrvNum;                                   /*  是否装载了管道驱动          */
 #else
-__PIPE_EXT    INT     _G_iPipeDrvNum = (PX_ERROR);
+__PIPE_EXT    INT     _G_iPipeDrvNum = PX_ERROR;
 #endif
 
 #ifndef __PIPE_MAIN_FILE

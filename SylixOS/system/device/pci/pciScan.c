@@ -25,7 +25,6 @@
   ²Ã¼ôºê
 *********************************************************************************************************/
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_PCI_EN > 0)
-#include "pciProc.h"
 /*********************************************************************************************************
   PCI Ö÷¿ØÆ÷
 *********************************************************************************************************/
@@ -96,10 +95,6 @@ INT  API_PciScan (PCI_DEV_DRV_DESC  *p_pdddTable, UINT  uiNum)
         return  (PX_ERROR);
     }
     
-#if LW_CFG_PROCFS_EN > 0
-    __procFsPciInit();
-#endif                                                                  /*  LW_CFG_PROCFS_EN > 0        */
-
     if (!p_pdddTable || !uiNum) {
         _ErrorHandle(EINVAL);
         return  (PX_ERROR);

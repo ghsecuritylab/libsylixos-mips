@@ -56,7 +56,8 @@
 #define NTFS_SB_MAGIC         0x5346544e 
 #define OPENPROM_SUPER_MAGIC  0x9fa1 
 #define PROC_SUPER_MAGIC      0x9fa0 
-#define QNX4_SUPER_MAGIC      0x002f 
+#define QNX4_SUPER_MAGIC      0x002f
+#define QNX6_SUPER_MAGIC      0x68191122
 #define REISERFS_SUPER_MAGIC  0x52654973 
 #define ROMFS_MAGIC           0x7275 
 #define SMB_SUPER_MAGIC       0x517B 

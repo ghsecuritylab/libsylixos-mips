@@ -170,9 +170,16 @@ static VOID  __heapFreePrint (PLW_CLASS_HEAP  pheap, PVOID  pvAddr)
 *********************************************************************************************************/
 static VOID  __heapTracePrintResult (BOOL  bIsNeedDel)
 {
+#if LW_CFG_CPU_WORD_LENGHT == 64
+    static PCHAR            pcHeapTraceHdr = \
+    "     HEAP          THREAD               TIME                 ADDR          SIZE           PURPOSE\n"
+    "-------------- -------------- ------------------------ ---------------- ---------- ----------------------\n";
+#else
     static PCHAR            pcHeapTraceHdr = \
     "     HEAP          THREAD               TIME             ADDR      SIZE           PURPOSE\n"
     "-------------- -------------- ------------------------ -------- ---------- ----------------------\n";
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
+
     INT                     iCount  = 0;
     size_t                  stTotal = 0;
     PLW_LIST_LINE           plineTemp;
@@ -194,7 +201,11 @@ static VOID  __heapTracePrintResult (BOOL  bIsNeedDel)
             *pcN = PX_EOS;                                              /*  È¥µô \n                     */
         }
         
+#if LW_CFG_CPU_WORD_LENGHT == 64
+        printf("%-14s %-14s %-24s %16lx %10zd %s\n",
+#else
         printf("%-14s %-14s %-24s %08lx %10zd %s\n",
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
                phtn->HTN_cHeapName,
                phtn->HTN_cThreadName,
                cTimeBuffer,

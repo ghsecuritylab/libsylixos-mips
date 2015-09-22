@@ -896,9 +896,9 @@ static INT  __tshellSysCmdOpen (INT  iArgC, PCHAR  ppcArgV[])
     struct stat  statBuf;
     
 #if LW_CFG_CPU_WORD_LENGHT == 64
-#define __PRINT_TYPE    "%llx"
-#else
 #define __PRINT_TYPE    "%lx"
+#else
+#define __PRINT_TYPE    "%llx"
 #endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT      */
     
     if (iArgC < 2) {
@@ -907,6 +907,7 @@ static INT  __tshellSysCmdOpen (INT  iArgC, PCHAR  ppcArgV[])
     
     if (iArgC == 3) {
         sscanf(ppcArgV[2], "%d", &iFlag);
+    
     } else if (iArgC > 3) {
         sscanf(ppcArgV[2], "%x", &iFlag);                               /*  16 进制                     */
         sscanf(ppcArgV[3], "%o", &iMode);                               /*  8 进制                      */
@@ -916,8 +917,9 @@ static INT  __tshellSysCmdOpen (INT  iArgC, PCHAR  ppcArgV[])
     if (iFd >= 0) {
         fstat(iFd, &statBuf);
         
-        printf("open file return : %d dev " __PRINT_TYPE " inode " __PRINT_TYPE " size %llx\n", 
+        printf("open file return : %d dev %lx  inode %lx size " __PRINT_TYPE "\n", 
                iFd, statBuf.st_dev, statBuf.st_ino, statBuf.st_size);
+    
     } else {
         printf("open file return : %d error : %s\n", iFd, lib_strerror(errno));
     }

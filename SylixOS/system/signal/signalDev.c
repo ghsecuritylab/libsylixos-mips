@@ -57,8 +57,8 @@ static INT      _sigfdIoctl(PLW_SIGFD_FILE  psigfdfil, INT    iRequest, LONG    
 LW_API  
 INT  API_SignalfdDrvInstall (VOID)
 {
-    if (_G_iSigfdDrvNum == PX_ERROR) {
-        _G_iSigfdDrvNum =  iosDrvInstall(LW_NULL,
+    if (_G_iSigfdDrvNum <= 0) {
+        _G_iSigfdDrvNum  = iosDrvInstall(LW_NULL,
                                          LW_NULL,
                                          _sigfdOpen,
                                          _sigfdClose,
@@ -84,7 +84,7 @@ INT  API_SignalfdDrvInstall (VOID)
 LW_API  
 INT  API_SignalfdDevCreate (VOID)
 {
-    if (_G_iSigfdDrvNum == (PX_ERROR)) {
+    if (_G_iSigfdDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

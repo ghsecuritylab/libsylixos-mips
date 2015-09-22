@@ -124,7 +124,7 @@ LW_API INT          API_SpipeDevDelete(PCHAR  pcName, BOOL bForce);
 #ifndef __SPIPE_MAIN_FILE
 __SPIPE_EXT    INT     _G_iSpipeDrvNum;                                 /*  是否装载了管道驱动          */
 #else
-__SPIPE_EXT    INT     _G_iSpipeDrvNum = (PX_ERROR);
+__SPIPE_EXT    INT     _G_iSpipeDrvNum = PX_ERROR;
 #endif
 
 #ifndef __SPIPE_MAIN_FILE

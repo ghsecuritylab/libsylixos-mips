@@ -35,6 +35,7 @@
 2013.04.02  加入 sys/mount.h 支持.
 2013.06.25  logic 设备 BLKD_pvLink 不能为 NULL.
 2014.05.24  加入对 ramfs 支持.
+2015.08.26  将 mount 修正为 blk raw io 方式操作磁盘.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -45,7 +46,7 @@
 /*********************************************************************************************************
   裁剪宏
 *********************************************************************************************************/
-#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_MOUNT_EN > 0)
+#if (LW_CFG_BLKRAW_EN > 0) && (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_MOUNT_EN > 0)
 #include "sys/mount.h"
 /*********************************************************************************************************
   宏定义
@@ -54,164 +55,26 @@
 #define __LW_MOUNT_NFS_FS           "nfs"                               /*  nfs 挂载                    */
 #define __LW_MOUNT_RAM_FS           "ramfs"                             /*  ram 挂载                    */
 /*********************************************************************************************************
-  默认参数
-*********************************************************************************************************/
-#define __LW_MOUNT_DEFAULT_SECSIZE  512                                 /*  当 dev 不是块设备时扇区大小 */
-/*********************************************************************************************************
   挂载节点
 *********************************************************************************************************/
 typedef struct {
-    LW_BLK_DEV              MN_blkd;                                    /*  SylixOS 第一类块设备        */
+    LW_BLK_RAW              MN_blkraw;                                  /*  BLOCK RAW 设备              */
+#define MN_blkd             MN_blkraw.BLKRAW_blkd
+#define MN_iFd              MN_blkraw.BLKRAW_iFd
+
+    BOOL                    MN_bNeedDelete;                             /*  是否需要删除 BLOCK RAW      */
     LW_LIST_LINE            MN_lineManage;                              /*  管理链表                    */
-    INT                     MN_iFd;                                     /*  第二类块设备文件描述符      */
-    mode_t                  MN_mode;                                    /*  第二类设备类型              */
-    CHAR                    MN_cVolName[1];                             /*  过载卷的名字                */
-} __LW_MOUNT_NODE;
-typedef __LW_MOUNT_NODE    *__PLW_MOUNT_NODE;
+    CHAR                    MN_cVolName[1];                             /*  加载卷的名字                */
+} LW_MOUNT_NODE;
+typedef LW_MOUNT_NODE      *PLW_MOUNT_NODE;
 /*********************************************************************************************************
   挂载点
 *********************************************************************************************************/
 static LW_LIST_LINE_HEADER  _G_plineMountDevHeader = LW_NULL;           /*  没有必要使用 hash 查询      */
-static LW_OBJECT_HANDLE     _G_ulMountLock = 0ul;
+static LW_OBJECT_HANDLE     _G_ulMountLock         = 0ul;
 
 #define __LW_MOUNT_LOCK()   API_SemaphoreMPend(_G_ulMountLock, LW_OPTION_WAIT_INFINITE)
 #define __LW_MOUNT_UNLOCK() API_SemaphoreMPost(_G_ulMountLock)
-/*********************************************************************************************************
-** 函数名称: __mountDevReset
-** 功能描述: 复位块设备.
-** 输　入  : pmnDev             mount 节点
-** 输　出  : 0
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-static INT  __mountDevReset (__PLW_MOUNT_NODE  pmnDev)
-{
-    if (!S_ISBLK(pmnDev->MN_mode)) {
-        return  (ERROR_NONE);
-    }
-    
-    return  (ioctl(pmnDev->MN_iFd, LW_BLKD_CTRL_RESET, 0));
-}
-/*********************************************************************************************************
-** 函数名称: __mountDevStatusChk
-** 功能描述: 检测块设备.
-** 输　入  : pmnDev             mount 节点
-** 输　出  : 0
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-static INT  __mountDevStatusChk (__PLW_MOUNT_NODE  pmnDev)
-{
-    if (!S_ISBLK(pmnDev->MN_mode)) {
-        return  (ERROR_NONE);
-    }
-    
-    return  (ioctl(pmnDev->MN_iFd, LW_BLKD_CTRL_STATUS, 0));
-}
-/*********************************************************************************************************
-** 函数名称: __mountDevIoctl
-** 功能描述: 控制块设备.
-** 输　入  : pmnDev            mount 节点
-**           iCmd              控制命令
-**           lArg              控制参数
-** 输　出  : 0
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-static INT  __mountDevIoctl (__PLW_MOUNT_NODE  pmnDev, INT  iCmd, LONG  lArg)
-{
-    if (iCmd == LW_BLKD_CTRL_GETFD) {
-        if (lArg) {
-            *((INT *)lArg) = pmnDev->MN_iFd;
-        }
-        return  (ERROR_NONE);
-    }
-    
-    if (!S_ISBLK(pmnDev->MN_mode)) {
-        if ((iCmd != FIOFLUSH) && 
-            (iCmd != FIOSYNC) &&
-            (iCmd != FIODATASYNC)) {                                    /*  非 BLK 设备只能执行这些命令 */
-            _ErrorHandle(ENOSYS);
-            return  (PX_ERROR);
-        }
-    }
-    
-    return  (ioctl(pmnDev->MN_iFd, iCmd, lArg));
-}
-/*********************************************************************************************************
-** 函数名称: __mountDevWrt
-** 功能描述: 写块设备.
-** 输　入  : pmnDev            mount 节点
-**           pvBuffer          缓冲区
-**           ulStartSector     起始扇区号
-**           ulSectorCount     扇区数量
-** 输　出  : 0
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-static INT  __mountDevWrt (__PLW_MOUNT_NODE  pmnDev, 
-                           VOID             *pvBuffer, 
-                           ULONG             ulStartSector, 
-                           ULONG             ulSectorCount)
-{
-    LW_BLK_CTL      blkc;
-    
-    if (S_ISBLK(pmnDev->MN_mode)) {
-        blkc.BLKC_bIsRead       = LW_FALSE;
-        blkc.BLKC_pvBuffer      = pvBuffer;
-        blkc.BLKC_ulStartSector = ulStartSector;
-        blkc.BLKC_ulSectorCount = ulSectorCount;
-        return  (ioctl(pmnDev->MN_iFd, LW_BLKD_CTRL_WRITE, &blkc));
-    
-    } else {
-        size_t  stBytes  = (size_t)ulSectorCount * __LW_MOUNT_DEFAULT_SECSIZE;
-        off_t   oftStart = (off_t)ulStartSector * __LW_MOUNT_DEFAULT_SECSIZE;
-        
-        if (pwrite(pmnDev->MN_iFd, pvBuffer, stBytes, oftStart) == stBytes) {
-            return  (ERROR_NONE);
-        }
-    
-        _ErrorHandle(ENOTBLK);
-        return  (PX_ERROR);
-    }
-}
-/*********************************************************************************************************
-** 函数名称: __mountDevRd
-** 功能描述: 读块设备.
-** 输　入  : pmnDev            mount 节点
-**           pvBuffer          缓冲区
-**           ulStartSector     起始扇区号
-**           ulSectorCount     扇区数量
-** 输　出  : 0
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-static INT  __mountDevRd (__PLW_MOUNT_NODE   pmnDev,
-                          VOID              *pvBuffer, 
-                          ULONG              ulStartSector, 
-                          ULONG              ulSectorCount)
-{
-    LW_BLK_CTL      blkc;
-    
-    if (S_ISBLK(pmnDev->MN_mode)) {
-        blkc.BLKC_bIsRead       = LW_TRUE;
-        blkc.BLKC_pvBuffer      = pvBuffer;
-        blkc.BLKC_ulStartSector = ulStartSector;
-        blkc.BLKC_ulSectorCount = ulSectorCount;
-        return  (ioctl(pmnDev->MN_iFd, LW_BLKD_CTRL_READ, &blkc));
-        
-    } else {
-        size_t  stBytes  = (size_t)ulSectorCount * __LW_MOUNT_DEFAULT_SECSIZE;
-        off_t   oftStart = (off_t)ulStartSector * __LW_MOUNT_DEFAULT_SECSIZE;
-    
-        if (pread(pmnDev->MN_iFd, pvBuffer, stBytes, oftStart) == stBytes) {
-            return  (ERROR_NONE);
-        }
-        
-        _ErrorHandle(ENOTBLK);
-        return  (PX_ERROR);
-    }
-}
 /*********************************************************************************************************
 ** 函数名称: __mountInit
 ** 功能描述: 初始化 mount 库.
@@ -249,15 +112,12 @@ static INT  __mount (CPCHAR  pcDevName, CPCHAR  pcVolName, CPCHAR  pcFileSystem,
 #define __LW_MOUNT_OPT_RW   "rw"
 
     REGISTER PCHAR      pcFs;
+    PLW_MOUNT_NODE      pmnDev;
              FUNCPTR    pfuncFsCreate;
-             INT        iFd;
-             INT        iOpenFlag = O_RDWR;
+             BOOL       bRdOnly = LW_FALSE;
+             BOOL       bNeedDelete;
+             CHAR       cVolNameBuffer[MAX_FILENAME_LENGTH];
              size_t     stLen;
-             
-      struct stat       statBuf;
-    __PLW_MOUNT_NODE    pmnDev;
-    
-             CHAR           cVolNameBuffer[MAX_FILENAME_LENGTH];
 
     if (!pcDevName || !pcVolName) {
         _ErrorHandle(EINVAL);
@@ -268,9 +128,10 @@ static INT  __mount (CPCHAR  pcDevName, CPCHAR  pcVolName, CPCHAR  pcFileSystem,
     
     if (pcOption) {                                                     /*  文件系统挂载选项            */
         if (lib_strcasecmp(__LW_MOUNT_OPT_RO, pcOption) == 0) {
-            iOpenFlag = O_RDONLY;
+            bRdOnly = LW_TRUE;
+        
         } else if (lib_strcasecmp(__LW_MOUNT_OPT_RW, pcOption) == 0) {
-            iOpenFlag = O_RDWR;
+            bRdOnly = LW_FALSE;
         }
     }
     
@@ -283,89 +144,52 @@ static INT  __mount (CPCHAR  pcDevName, CPCHAR  pcVolName, CPCHAR  pcFileSystem,
     
     if ((lib_strcmp(pcFs, __LW_MOUNT_NFS_FS) == 0) ||
         (lib_strcmp(pcFs, __LW_MOUNT_RAM_FS) == 0)) {                   /*  NFS 或者 RAM FS             */
-        iFd = -1;                                                       /*  不需要操作设备文件          */
-    
+        bNeedDelete = LW_FALSE;                                         /*  不需要操作 BLK RAW 设备     */
+
     } else {
-        iFd = open(pcDevName, iOpenFlag);                               /*  打开块设备                  */
-        if (iFd < 0) {
-            iOpenFlag = O_RDONLY;
-            iFd = open(pcDevName, iOpenFlag);                           /*  只读方式打开                */
-            if (iFd < 0) {
-                return  (PX_ERROR);
-            }
-        }
-        if (fstat(iFd, &statBuf) < 0) {                                 /*  获得设备属性                */
-            close(iFd);
-            return  (PX_ERROR);
-        }
+        bNeedDelete = LW_TRUE;
     }
     
     _PathGetFull(cVolNameBuffer, MAX_FILENAME_LENGTH, pcVolName);
-    
     pcVolName = cVolNameBuffer;                                         /*  使用绝对路径                */
     
-    stLen = lib_strlen(pcVolName);
-    pmnDev = (__PLW_MOUNT_NODE)__SHEAP_ALLOC(sizeof(__LW_MOUNT_NODE) + stLen);
+    stLen  = lib_strlen(pcVolName);
+    pmnDev = (PLW_MOUNT_NODE)__SHEAP_ALLOC(sizeof(LW_MOUNT_NODE) + stLen);
     if (pmnDev == LW_NULL) {
-        if (iFd >= 0) {
-            close(iFd);
-        }
         _DebugHandle(__ERRORMESSAGE_LEVEL, "system low memory.\r\n");
         _ErrorHandle(ERROR_SYSTEM_LOW_MEMORY);
         return  (PX_ERROR);
     }
-    lib_bzero(pmnDev, sizeof(__LW_MOUNT_NODE));
-    
-    pmnDev->MN_blkd.BLKD_pcName = (PCHAR)__SHEAP_ALLOC(lib_strlen(pcDevName) + 1);
-    if (pmnDev->MN_blkd.BLKD_pcName == LW_NULL) {
-        if (iFd >= 0) {
-            close(iFd);
-        }
-        __SHEAP_FREE(pmnDev);
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "system low memory.\r\n");
-        _ErrorHandle(ERROR_SYSTEM_LOW_MEMORY);
-        return  (PX_ERROR);
-    }
-    lib_strcpy(pmnDev->MN_blkd.BLKD_pcName, pcDevName);                 /*  记录设备名(nfs ram rom 使用)*/
+    lib_bzero(pmnDev, sizeof(LW_MOUNT_NODE));
     lib_strcpy(pmnDev->MN_cVolName, pcVolName);                         /*  保存卷挂载名                */
+    pmnDev->MN_bNeedDelete = bNeedDelete;
     
-    pmnDev->MN_blkd.BLKD_pfuncBlkRd        = __mountDevRd;
-    pmnDev->MN_blkd.BLKD_pfuncBlkWrt       = __mountDevWrt;
-    pmnDev->MN_blkd.BLKD_pfuncBlkIoctl     = __mountDevIoctl;
-    pmnDev->MN_blkd.BLKD_pfuncBlkReset     = __mountDevReset;
-    pmnDev->MN_blkd.BLKD_pfuncBlkStatusChk = __mountDevStatusChk;
+    if (bNeedDelete) {
+        if (API_BlkRawCreate(pcDevName, bRdOnly, 
+                             LW_TRUE, &pmnDev->MN_blkraw) < ERROR_NONE) {
+            __SHEAP_FREE(pmnDev);
+            return  (PX_ERROR);
+        }
     
-    
-    if (S_ISBLK(statBuf.st_mode)) {                                     /*  标准块设备                  */
-        pmnDev->MN_blkd.BLKD_ulNSector        = 0;                      /*  通过 ioctl 获取             */
-        pmnDev->MN_blkd.BLKD_ulBytesPerSector = 0;
-        pmnDev->MN_blkd.BLKD_ulBytesPerBlock  = 0;
-    
-    } else {                                                            /*  非块设备使用默认扇区大小    */
-        pmnDev->MN_blkd.BLKD_ulBytesPerSector = __LW_MOUNT_DEFAULT_SECSIZE;
-        pmnDev->MN_blkd.BLKD_ulNSector        = (ULONG)(statBuf.st_size 
-                                              / __LW_MOUNT_DEFAULT_SECSIZE);
-        pmnDev->MN_blkd.BLKD_ulBytesPerBlock  = __LW_MOUNT_DEFAULT_SECSIZE;
+    } else {
+        pmnDev->MN_blkd.BLKD_pcName = (PCHAR)__SHEAP_ALLOC(lib_strlen(pcDevName) + 1);
+        if (pmnDev->MN_blkd.BLKD_pcName == LW_NULL) {
+            __SHEAP_FREE(pmnDev);
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "system low memory.\r\n");
+            _ErrorHandle(ERROR_SYSTEM_LOW_MEMORY);
+            return  (PX_ERROR);
+        }
+        lib_strcpy(pmnDev->MN_blkd.BLKD_pcName, pcDevName);             /*  记录设备名 (nfs ram 使用)   */
     }
     
-    pmnDev->MN_blkd.BLKD_bRemovable       = LW_TRUE;
-    pmnDev->MN_blkd.BLKD_bDiskChange      = LW_FALSE;
-    pmnDev->MN_blkd.BLKD_iRetry           = 3;                          /*  default 3 times             */
-    pmnDev->MN_blkd.BLKD_iFlag            = iOpenFlag;
-    pmnDev->MN_blkd.BLKD_iLogic           = 1;                          /*  格式化不产生分区表          */
-    pmnDev->MN_blkd.BLKD_pvLink           = (PLW_BLK_DEV)&pmnDev->MN_blkd;
-    /*
-     *  以下参数初始化为 0 
-     */
-    
-    pmnDev->MN_iFd  = iFd;
-    pmnDev->MN_mode = statBuf.st_mode;                                  /*  设备文件类型                */
-    
-    if (pfuncFsCreate(pcVolName, (PLW_BLK_DEV)pmnDev) < 0) {            /*  挂载文件系统                */
-        if (iFd >= 0) {
-            close(iFd);
+    if (pfuncFsCreate(pcVolName, &pmnDev->MN_blkd) < 0) {               /*  挂载文件系统                */
+        if (bNeedDelete) {
+            API_BlkRawDelete(&pmnDev->MN_blkraw);
+        
+        } else {
+            __SHEAP_FREE(pmnDev->MN_blkd.BLKD_pcName);
         }
-        __SHEAP_FREE(pmnDev->MN_blkd.BLKD_pcName);
+        
         __SHEAP_FREE(pmnDev);                                           /*  释放控制块                  */
         return  (PX_ERROR);
     }
@@ -387,10 +211,10 @@ static INT  __mount (CPCHAR  pcDevName, CPCHAR  pcVolName, CPCHAR  pcFileSystem,
 *********************************************************************************************************/
 static INT  __unmount (CPCHAR  pcVolName)
 {
-    INT                 iError;
-    __PLW_MOUNT_NODE    pmnDev;
-    PLW_LIST_LINE       plineTemp;
-    CHAR                cVolNameBuffer[MAX_FILENAME_LENGTH];
+    INT             iError;
+    PLW_MOUNT_NODE  pmnDev;
+    PLW_LIST_LINE   plineTemp;
+    CHAR            cVolNameBuffer[MAX_FILENAME_LENGTH];
     
     __mountInit();
     
@@ -403,11 +227,12 @@ static INT  __unmount (CPCHAR  pcVolName)
          plineTemp != LW_NULL;
          plineTemp  = _list_line_get_next(plineTemp)) {
         
-        pmnDev = _LIST_ENTRY(plineTemp, __LW_MOUNT_NODE, MN_lineManage);
+        pmnDev = _LIST_ENTRY(plineTemp, LW_MOUNT_NODE, MN_lineManage);
         if (lib_strcmp(pmnDev->MN_cVolName, pcVolName) == 0) {
             break;
         }
     }
+    
     if (plineTemp == LW_NULL) {                                         /*  没有找到                    */
         INT iError = PX_ERROR;
         
@@ -429,15 +254,19 @@ static INT  __unmount (CPCHAR  pcVolName)
                 return  (PX_ERROR);                                     /*  卸载失败                    */
             }
         }
-        if (pmnDev->MN_iFd >= 0) {
-            close(pmnDev->MN_iFd);                                      /*  关闭块设备                  */
+        
+        if (pmnDev->MN_bNeedDelete) {
+            API_BlkRawDelete(&pmnDev->MN_blkraw);
+        
+        } else {
+            __SHEAP_FREE(pmnDev->MN_blkd.BLKD_pcName);
         }
+
         _List_Line_Del(&pmnDev->MN_lineManage,
                        &_G_plineMountDevHeader);                        /*  退出挂载链表                */
     }
     __LW_MOUNT_UNLOCK();
     
-    __SHEAP_FREE(pmnDev->MN_blkd.BLKD_pcName);
     __SHEAP_FREE(pmnDev);                                               /*  释放控制块                  */
     
     return  (ERROR_NONE);
@@ -521,13 +350,13 @@ INT  API_Unmount (CPCHAR  pcVolName)
 LW_API 
 VOID  API_MountShow (VOID)
 {
-    PCHAR               pcMountInfoHdr = "       VOLUME                    BLK NAME\n"
-                                         "-------------------- --------------------------------\n";
-    __PLW_MOUNT_NODE    pmnDev;
-    PLW_LIST_LINE       plineTemp;
+    PCHAR           pcMountInfoHdr = "       VOLUME                    BLK NAME\n"
+                                     "-------------------- --------------------------------\n";
+    PLW_MOUNT_NODE  pmnDev;
+    PLW_LIST_LINE   plineTemp;
     
-    CHAR                cBlkNameBuffer[MAX_FILENAME_LENGTH];
-    PCHAR               pcBlkName;
+    CHAR            cBlkNameBuffer[MAX_FILENAME_LENGTH];
+    PCHAR           pcBlkName;
 
     if (LW_CPU_GET_CUR_NESTING()) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "called from ISR.\r\n");
@@ -545,15 +374,18 @@ VOID  API_MountShow (VOID)
          plineTemp != LW_NULL;
          plineTemp  = _list_line_get_next(plineTemp)) {
         
-        pmnDev = _LIST_ENTRY(plineTemp, __LW_MOUNT_NODE, MN_lineManage);
+        pmnDev = _LIST_ENTRY(plineTemp, LW_MOUNT_NODE, MN_lineManage);
         
         if (pmnDev->MN_blkd.BLKD_pcName) {
             pcBlkName = pmnDev->MN_blkd.BLKD_pcName;
+        
         } else {
             INT     iRet;
+            
             __KERNEL_SPACE_ENTER();                                     /*  此文件描述符属于内核        */
             iRet = API_IosFdGetName(pmnDev->MN_iFd, cBlkNameBuffer, MAX_FILENAME_LENGTH);
             __KERNEL_SPACE_EXIT();
+            
             if (iRet < ERROR_NONE) {
                 pcBlkName = "<unknown>";
             } else {
@@ -630,7 +462,8 @@ INT  umount2 (CPCHAR  pcVolName, INT iFlag)
     
     return  (API_Unmount(pcVolName));
 }
-#endif                                                                  /*  LW_CFG_MAX_VOLUMES > 0      */
+#endif                                                                  /*  LW_CFG_BLKRAW_EN > 0        */
+                                                                        /*  LW_CFG_MAX_VOLUMES > 0      */
                                                                         /*  LW_CFG_MOUNT_EN > 0         */
 /*********************************************************************************************************
   END

@@ -98,7 +98,6 @@ typedef struct {
   通用 CACHE 库初始化操作, 如果是 SMP 系统, 则只需要主核在 API_KernelStart 回调中调用即可
 *********************************************************************************************************/
 #ifdef __SYLIXOS_KERNEL
-
 LW_API ULONG        API_CacheLibPrimaryInit(CACHE_MODE  uiInstruction, 
                                             CACHE_MODE  uiData, 
                                             CPCHAR      pcMachineName);

@@ -203,7 +203,7 @@ LW_API VOID                 API_TyMonitorTrapSet(CHAR  cMonitorTrap);
 #ifndef __TYCO_MAIN_FILE
 __TYCO_EXT      INT         _G_iTycoDrvNum;                             /*  是否装载了TY驱动            */
 #else
-__TYCO_EXT      INT         _G_iTycoDrvNum = (PX_ERROR);
+__TYCO_EXT      INT         _G_iTycoDrvNum = PX_ERROR;
 #endif                                                                  /*  __TYCO_MAIN_FILE            */
 #ifndef __TYCO_MAIN_FILE
 __TYCO_EXT      ULONG       _G_ulmutexOptionsTyLib;

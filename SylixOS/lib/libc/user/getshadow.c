@@ -6,6 +6,7 @@
  *  $Id: getshadow.c,v 1.13 2009/09/15 04:18:40 ralf Exp $
  */
  
+#define __SYLIXOS_KERNEL
 #include "stdio.h"
 #include "sys/types.h"
 #include "pwd.h"
@@ -31,7 +32,7 @@ static struct spwd spwdent;
 /*
  * Initialize useable but dummy databases
  */
-static void init_etc_shadow (void)
+void init_etc_shadow (void)
 {
   FILE *fp;
   static char etc_shadow_initted = 0;
@@ -286,6 +287,7 @@ int passwdcheck (const char *name, const char *pass)
 #endif /* LW_CFG_SHELL_PASS_CRYPT_EN > 0 */
       
       if (!strcmp(cCryptBuf, spwd.sp_pwdp)) {
+        errno = EBADMSG;
         ret = 0;
         break;
       }

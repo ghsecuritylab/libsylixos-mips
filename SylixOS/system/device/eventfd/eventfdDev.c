@@ -85,8 +85,8 @@ static INT      _evtfdIoctl(PLW_EVTFD_FILE  pevtfdfil, INT    iRequest, LONG  lA
 LW_API  
 INT  API_EventfdDrvInstall (VOID)
 {
-    if (_G_iEvtfdDrvNum == PX_ERROR) {
-        _G_iEvtfdDrvNum =  iosDrvInstall(LW_NULL,
+    if (_G_iEvtfdDrvNum <= 0) {
+        _G_iEvtfdDrvNum  = iosDrvInstall(LW_NULL,
                                          LW_NULL,
                                          _evtfdOpen,
                                          _evtfdClose,
@@ -119,7 +119,7 @@ INT  API_EventfdDrvInstall (VOID)
 LW_API  
 INT  API_EventfdDevCreate (VOID)
 {
-    if (_G_iEvtfdDrvNum == (PX_ERROR)) {
+    if (_G_iEvtfdDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

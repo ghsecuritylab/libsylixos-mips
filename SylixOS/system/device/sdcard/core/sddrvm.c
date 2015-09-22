@@ -23,6 +23,7 @@
 2015.03.11  增加卡写保护功能支持.
 2015.05.04  host 设备 event 操作参数改为 host 句柄, 提高速度.
             将 host 自旋锁改为 mutex 信号量.
+2015.09.18  增加控制器扩展选项设置, 以适应更多实际应用的场合.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -92,6 +93,13 @@ struct __sdm_host {
     SD_HOST         *SDMHOST_psdhost;
     __SDM_SD_DEV    *SDMHOST_psdmdevAttached;
     BOOL             SDMHOST_bDevIsOrphan;
+
+    /*
+     * 扩展选项
+     */
+    LONG             SDMHSOT_lReserveSector;
+    LONG             SDMHSOT_lMaxBurstSector;
+    LONG             SDMHSOT_lCacheSize;
 };
 /*********************************************************************************************************
   前置声明
@@ -99,6 +107,7 @@ struct __sdm_host {
 static __SDM_HOST *__sdmHostFind(CPCHAR cpcName);
 static VOID        __sdmHostInsert(__SDM_HOST *psdmhost);
 static VOID        __sdmHostDelete(__SDM_HOST *psdmhost);
+static VOID        __sdmHostExtOptInit(__SDM_HOST  *psdmhost);
 static VOID        __sdmDrvInsert(SD_DRV *psddrv);
 static VOID        __sdmDrvDelete(SD_DRV *psddrv);
 
@@ -226,6 +235,8 @@ LW_API PVOID   API_SdmHostRegister (SD_HOST *psdhost)
     psdmhost->SDMHOST_bDevIsOrphan    = LW_FALSE;
 
     psdmhost->SDMHOST_sdmhostchan.SDMHOSTCHAN_pdrvfuncs = &_G_sdmhostdrvfuncs;
+
+    __sdmHostExtOptInit(psdmhost);
 
     __sdmHostInsert(psdmhost);
 
@@ -457,6 +468,101 @@ LW_API INT  API_SdmEventNotify (PVOID pvSdmHost, INT iEvtType)
     }
 
     return  (iError);
+}
+/*********************************************************************************************************
+** 函数名称: API_SdmHostExtOptSet
+** 功能描述: 设置控制器的扩展选项(控制器驱动调用)
+** 输    入: pvSdmHost        控制器句柄
+**           iOption          选项
+**           lArg             参数
+** 输    出: ERROR CODE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+LW_API INT   API_SdmHostExtOptSet (PVOID pvSdmHost, INT  iOption, LONG  lArg)
+{
+    __SDM_HOST  *psdmhost = (__SDM_HOST *)pvSdmHost;
+
+    if (!psdmhost) {
+        return  (PX_ERROR);
+    }
+
+    switch (iOption) {
+    case SDHOST_EXTOPT_RESERVE_SECTOR_SET:
+        if (lArg >= 0) {
+            psdmhost->SDMHSOT_lReserveSector = lArg;
+        } else {
+            return  (PX_ERROR);
+        }
+        break;
+
+    case SDHOST_EXTOPT_MAXBURST_SECTOR_SET:
+        if (lArg >= 0) {
+            psdmhost->SDMHSOT_lMaxBurstSector = lArg;
+        } else {
+            return  (PX_ERROR);
+        }
+        break;
+
+    case SDHOST_EXTOPT_CACHE_SIZE_SET:
+        if (lArg >= 0) {
+            psdmhost->SDMHSOT_lCacheSize = lArg;
+        } else {
+            return  (PX_ERROR);
+        }
+        break;
+
+    default:
+        _ErrorHandle(ENOSYS);
+        return  (PX_ERROR);
+    }
+
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_SdmHostExtOptGet
+** 功能描述: 获取控制器的扩展选项(控制器驱动调用)
+** 输    入: psdcoredev       SD 核心设备对象
+**           iOption          选项
+**           lArg             参数
+** 输    出: ERROR CODE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+LW_API INT   API_SdmHostExtOptGet (PLW_SDCORE_DEVICE psdcoredev, INT  iOption, LONG  lArg)
+{
+    CPCHAR      cpcHostName;
+    __SDM_HOST *psdmhost;
+
+    cpcHostName = API_SdCoreDevAdapterName(psdcoredev);
+    if (!cpcHostName) {
+        return  (PX_ERROR);
+    }
+
+    psdmhost = __sdmHostFind(cpcHostName);
+    if (!psdmhost || !lArg) {
+        return  (PX_ERROR);
+    }
+
+    switch (iOption) {
+    case SDHOST_EXTOPT_RESERVE_SECTOR_GET:
+        *(LONG *)lArg = psdmhost->SDMHSOT_lReserveSector;
+        break;
+
+    case SDHOST_EXTOPT_MAXBURST_SECTOR_GET:
+        *(LONG *)lArg = psdmhost->SDMHSOT_lMaxBurstSector;
+        break;
+
+    case SDHOST_EXTOPT_CACHE_SIZE_GET:
+        *(LONG *)lArg = psdmhost->SDMHSOT_lCacheSize;
+        break;
+
+    default:
+        _ErrorHandle(ENOSYS);
+        return  (PX_ERROR);
+    }
+
+    return  (ERROR_NONE);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdmEventNewDrv
@@ -731,6 +837,20 @@ static VOID  __sdmHostDelete (__SDM_HOST *psdmhost)
     __SDM_HOST_LOCK();
     _List_Line_Del(&psdmhost->SDMHOST_lineManage, &_G_plineSdmhostHeader);
     __SDM_HOST_UNLOCK();
+}
+/*********************************************************************************************************
+** 函数名称: __sdmHostExtOptInit
+** 功能描述: 初始化扩展选项为默认状态
+** 输    入: psdmhost     SDM 管理的控制器对象
+** 输    出: ERROR NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static VOID  __sdmHostExtOptInit (__SDM_HOST  *psdmhost)
+{
+    psdmhost->SDMHSOT_lMaxBurstSector = 0;
+    psdmhost->SDMHSOT_lCacheSize      = 0;
+    psdmhost->SDMHSOT_lReserveSector  = 0;
 }
 /*********************************************************************************************************
 ** 函数名称: __sdmDrvInsert

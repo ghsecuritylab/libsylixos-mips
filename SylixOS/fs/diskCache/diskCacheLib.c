@@ -793,20 +793,21 @@ INT  __diskCacheWrite (PLW_DISKCACHE_CB   pdiskcDiskCache,
 *********************************************************************************************************/
 INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg)
 {
-    REGISTER INT        iError = PX_ERROR;
+    REGISTER INT            iError = PX_ERROR;
+             PLW_BLK_RANGE  pblkrange;
 
     __LW_DISKCACHE_LOCK(pdiskcDiskCache);                               /*  互斥访问                    */
 
     switch (iCmd) {
     
     case LW_BLKD_DISKCACHE_GET_OPT:
-        lArg = (LONG)pdiskcDiskCache->DISKC_iCacheOpt;
+        *(INT *)lArg = pdiskcDiskCache->DISKC_iCacheOpt;
         __LW_DISKCACHE_UNLOCK(pdiskcDiskCache);                         /*  解锁                        */
         return  (ERROR_NONE);
         
     case LW_BLKD_DISKCACHE_SET_OPT:
         if ((pdiskcDiskCache->DISKC_iCacheOpt & LW_DISKCACHE_OPT_ENABLE) &&
-            (!(lArg & LW_DISKCACHE_OPT_ENABLE))) {                      /*  需要回写磁盘                */
+            (!((INT)lArg & LW_DISKCACHE_OPT_ENABLE))) {                 /*  需要回写磁盘                */
             __diskCacheFlushInvalidate(pdiskcDiskCache,
                                        0, (ULONG)PX_ERROR,
                                        LW_TRUE, LW_TRUE);               /*  全部回写并使无效            */
@@ -838,6 +839,15 @@ INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg
                                    LW_TRUE, LW_FALSE);
         break;
     
+    case FIOSYNCMETA:
+        iError    = ERROR_NONE;
+        pblkrange = (PLW_BLK_RANGE)lArg;
+        __diskCacheFlushInvalidate(pdiskcDiskCache,
+                                   pblkrange->BLKR_ulStartSector, 
+                                   pblkrange->BLKR_ulEndSector,
+                                   LW_TRUE, LW_FALSE);                  /*  回写指定范围的数据          */
+        break;
+    
     case FIODISKCHANGE:                                                 /*  磁盘发生改变                */
         pdiskcDiskCache->DISKC_blkdCache.BLKD_bDiskChange = LW_TRUE;
     case FIOCANCEL:                                                     /*  停止 CACHE, 复位内存,不回写 */
@@ -850,13 +860,10 @@ INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg
     __LW_DISKCACHE_UNLOCK(pdiskcDiskCache);                             /*  解锁                        */
     
     if (iError == ERROR_NONE) {
-        __LW_DISKCACHE_DISK_IOCTL(pdiskcDiskCache)(pdiskcDiskCache->DISKC_pblkdDisk, 
-                                                   iCmd,
-                                                   lArg);
+        __LW_DISKCACHE_DISK_IOCTL(pdiskcDiskCache)(pdiskcDiskCache->DISKC_pblkdDisk, iCmd, lArg);
+    
     } else {
-        iError = __LW_DISKCACHE_DISK_IOCTL(pdiskcDiskCache)(pdiskcDiskCache->DISKC_pblkdDisk, 
-                                                            iCmd,
-                                                            lArg);
+        iError = __LW_DISKCACHE_DISK_IOCTL(pdiskcDiskCache)(pdiskcDiskCache->DISKC_pblkdDisk, iCmd, lArg);
     }
     
     if (iCmd == FIODISKINIT) {                                          /*  需要确定磁盘的最后一个扇区  */

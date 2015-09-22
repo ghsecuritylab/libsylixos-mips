@@ -344,8 +344,7 @@ INT     pselect (INT                     iWidth,
                       iWidth, FIOUNSELECT, &selwunNode,
                       LW_FALSE);                                        /*  释放节点                    */
         
-        if ((ulError == ERROR_IO_UNKNOWN_REQUEST) ||
-            (ulError == ENOSYS)) {
+        if (ulError == ENOSYS) {
             _ErrorHandle(ERROR_IO_SELECT_UNSUPPORT_IN_DRIVER);          /*  驱动程序不支持              */
         }
         

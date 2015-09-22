@@ -319,13 +319,13 @@ INT     archFpuUndHandle(VOID);
 VOID    bspIntInit(VOID);
 VOID    bspIntHandle(VOID);
 
-VOID    bspIntVecterEnable(ULONG  ulVector);
-VOID    bspIntVecterDisable(ULONG  ulVector);
-BOOL    bspIntVecterIsEnable(ULONG  ulVector);
+VOID    bspIntVectorEnable(ULONG  ulVector);
+VOID    bspIntVectorDisable(ULONG  ulVector);
+BOOL    bspIntVectorIsEnable(ULONG  ulVector);
 
-#define __ARCH_INT_VECTOR_ENABLE    bspIntVecterEnable
-#define __ARCH_INT_VECTOR_DISABLE   bspIntVecterDisable
-#define __ARCH_INT_VECTOR_ISENABLE  bspIntVecterIsEnable
+#define __ARCH_INT_VECTOR_ENABLE    bspIntVectorEnable
+#define __ARCH_INT_VECTOR_DISABLE   bspIntVectorDisable
+#define __ARCH_INT_VECTOR_ISENABLE  bspIntVectorIsEnable
 
 /*********************************************************************************************************
   CPU ¶¨Ê±Æ÷Ê±ÖÓ

@@ -1044,7 +1044,7 @@ INT  API_CanDevRemove (PCHAR     pcName, BOOL  bForce)
         return  (PX_ERROR);
     }
 
-    if (_G_iCanDrvNum == (PX_ERROR)) {
+    if (_G_iCanDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

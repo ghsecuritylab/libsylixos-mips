@@ -79,9 +79,15 @@ VOID          __moduleTraverseKernelSymHook(BOOL (*pfuncCb)(PVOID, PLW_SYMBOL), 
   全局变量
 *********************************************************************************************************/
 #if LW_CFG_SHELL_EN > 0
+#if LW_CFG_CPU_WORD_LENGHT == 64
+static const CHAR               _G_cModuleInfoHdr[] = "\n\
+            NAME                    HANDLE       TYPE  GLB       BASE         SIZE    SYMCNT\n\
+------------------------------ ---------------- ------ --- ---------------- -------- --------\n";
+#else
 static const CHAR               _G_cModuleInfoHdr[] = "\n\
             NAME                HANDLE   TYPE  GLB   BASE     SIZE    SYMCNT\n\
 ------------------------------ -------- ------ --- -------- -------- --------\n";
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
 static const CHAR               _G_cVProcInfoHdr[] = "\n\
       NAME             FATHER        PID   GRP    MEMORY    UID   GID   USER\n\
 ----------------- ----------------- ----- ----- ---------- ----- ----- ------\n";
@@ -491,6 +497,12 @@ static INT  __tshellModuleUnreg (INT  iArgC, PCHAR  *ppcArgV)
     CHAR                cModule[MAX_FILENAME_LENGTH];
     INT                 iError;
 
+    BOOL                bStart;
+
+    LW_LIST_RING       *pringTemp;
+    LW_LD_VPROC        *pvproc;
+    LW_LD_EXEC_MODULE  *pmodTemp;
+
     if (iArgC < 2) {
         fprintf(stderr, "argments error!\n");
         return  (-ERROR_TSHELL_EPARAM);
@@ -502,7 +514,25 @@ static INT  __tshellModuleUnreg (INT  iArgC, PCHAR  *ppcArgV)
     }
     
     pmod = (LW_LD_EXEC_MODULE *)ulModule;
-    if (!pmod || (pmod->EMOD_ulMagic != __LW_LD_EXEC_MODULE_MAGIC)) {
+
+    /*
+     *  判断参数是否为有效的内核模块句柄
+     */
+    pvproc = _LIST_ENTRY(_G_plineVProcHeader, LW_LD_VPROC, VP_lineManage);
+    LW_VP_LOCK(pvproc);
+    for (pringTemp  = pvproc->VP_ringModules, bStart = LW_TRUE;
+         pringTemp && (pringTemp != pvproc->VP_ringModules || bStart);
+         pringTemp  = _list_ring_get_next(pringTemp), bStart = LW_FALSE) {
+        pmodTemp = _LIST_ENTRY(pringTemp, LW_LD_EXEC_MODULE, EMOD_ringModules);
+        if (pmod == pmodTemp) {
+            break;
+        }
+    }
+    LW_VP_UNLOCK(pvproc);
+
+    if (pmod == LW_NULL  ||
+        pmod != pmodTemp ||
+        (pmod->EMOD_ulMagic != __LW_LD_EXEC_MODULE_MAGIC)) {
         fprintf(stderr, "argments error!\n");
         return  (-ERROR_TSHELL_EPARAM);
     }
@@ -679,7 +709,11 @@ static INT  __tshellModuleShow (INT  iArgC, PCHAR  *ppcArgV)
 
             _PathLastName(pmodTemp->EMOD_pcModulePath, &pcModuleName);
 
+#if LW_CFG_CPU_WORD_LENGHT == 64
+            printf("+ %-28s %16lx %-6s %-3s %16lx %8lx %8ld\n",
+#else
             printf("+ %-28s %08lx %-6s %-3s %08lx %8lx %8ld\n",
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
                    pcModuleName,
                    (addr_t)pmodTemp,
                    (((pmodTemp->EMOD_bIsGlobal) && (pmodTemp->EMOD_pcSymSection)) ? "KERNEL" : "USER"),

@@ -54,6 +54,7 @@ static INT      iCacheStatus = 0;
 extern VOID     armDCacheV7Disable(VOID);
 extern VOID     armDCacheV7FlushAll(VOID);
 extern VOID     armDCacheV7ClearAll(VOID);
+extern UINT32   armCacheV7CCSIDR(VOID);
 /*********************************************************************************************************
   CACHE 参数
 *********************************************************************************************************/
@@ -451,26 +452,36 @@ VOID  armCacheV7Init (LW_CACHE_OP *pcacheop,
                       CACHE_MODE   uiData, 
                       CPCHAR       pcMachineName)
 {
+    UINT32  uiCCSIDR;
+
+#define ARMv7_CCSIDR_LINESIZE_MASK      0x7
+#define ARMv7_CCSIDR_LINESIZE(x)        ((x) & ARMv7_CCSIDR_LINESIZE_MASK)
+#define ARMv7_CACHE_LINESIZE(x)         (16 << ARMv7_CCSIDR_LINESIZE(x))
+
 #if LW_CFG_ARM_CACHE_L2 > 0
     armL2Init(uiInstruction, uiData, pcMachineName);
 #endif                                                                  /*  LW_CFG_ARM_CACHE_L2 > 0     */
+
+    uiCCSIDR                     = armCacheV7CCSIDR();
+    pcacheop->CACHEOP_iCacheLine = ARMv7_CACHE_LINESIZE(uiCCSIDR);
+    uiArmV7CacheLineSize         = (UINT32)pcacheop->CACHEOP_iCacheLine;
+
+    _DebugFormat(__LOGMESSAGE_LEVEL, "ARMv7 Cache line size = %d byte.\r\n",
+                 pcacheop->CACHEOP_iCacheLine);
 
     if ((lib_strcmp(pcMachineName, ARM_MACHINE_A5) == 0) ||
         (lib_strcmp(pcMachineName, ARM_MACHINE_A7) == 0)) {
         pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIPT;
         pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_PIPT;
-        pcacheop->CACHEOP_iCacheLine = 32;
         
     } else if (lib_strcmp(pcMachineName, ARM_MACHINE_A9) == 0) {
         pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIPT;
         pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_PIPT;
-        pcacheop->CACHEOP_iCacheLine = 32;
         armAuxControlFeatureEnable(AUX_CTRL_A9_L1_PREFETCH);            /*  Cortex-A9 使能 L1 预取      */
     
     } else if (lib_strcmp(pcMachineName, ARM_MACHINE_A8) == 0) {
         pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIPT;
         pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_PIPT;
-        pcacheop->CACHEOP_iCacheLine = 64;
         armAuxControlFeatureEnable(AUX_CTRL_A8_FORCE_ETM_CLK |
                                    AUX_CTRL_A8_FORCE_MAIN_CLK |
                                    AUX_CTRL_A8_L1NEON |
@@ -480,12 +491,15 @@ VOID  armCacheV7Init (LW_CACHE_OP *pcacheop,
     } else if (lib_strcmp(pcMachineName, ARM_MACHINE_A15) == 0) {
         pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_PIPT;
         pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_PIPT;
-        pcacheop->CACHEOP_iCacheLine = 64;
         armAuxControlFeatureEnable(AUX_CTRL_A15_FORCE_MAIN_CLK |
                                    AUX_CTRL_A15_FORCE_NEON_CLK);
+   
+    } else if ((lib_strcmp(pcMachineName, ARM_MACHINE_A53)     == 0) ||
+               (lib_strcmp(pcMachineName, ARM_MACHINE_A57)     == 0) ||
+               (lib_strcmp(pcMachineName, ARM_MACHINE_FT1500A) == 0)) { /*  ARMv8 32 位模式             */
+        pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_PIPT;
+        pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_PIPT;
     }
-    
-    uiArmV7CacheLineSize = (UINT32)pcacheop->CACHEOP_iCacheLine;
     
     pcacheop->CACHEOP_pfuncEnable  = armCacheV7Enable;
     pcacheop->CACHEOP_pfuncDisable = armCacheV7Disable;

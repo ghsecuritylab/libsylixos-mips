@@ -80,8 +80,8 @@ static INT      _hotplugIoctl(PLW_HOTPLUG_FILE  photplugfil,
 *********************************************************************************************************/
 INT  _hotplugDrvInstall (VOID)
 {
-    if (_G_iHotplugDrvNum == PX_ERROR) {
-        _G_iHotplugDrvNum =  iosDrvInstall(_hotplugOpen,
+    if (_G_iHotplugDrvNum <= 0) {
+        _G_iHotplugDrvNum  = iosDrvInstall(_hotplugOpen,
                                            LW_NULL,
                                            _hotplugOpen,
                                            _hotplugClose,
@@ -106,7 +106,7 @@ INT  _hotplugDrvInstall (VOID)
 *********************************************************************************************************/
 INT  _hotplugDevCreate (VOID)
 {
-    if (_G_iHotplugDrvNum == (PX_ERROR)) {
+    if (_G_iHotplugDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

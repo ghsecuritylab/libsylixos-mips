@@ -155,7 +155,7 @@ typedef FAT_FILE_HIS   *PFAT_FILE_HIS;
 /*********************************************************************************************************
   FAT 主设备号与文件系统类型
 *********************************************************************************************************/
-static INT              _G_iFatDrvNum      = 0;
+static INT              _G_iFatDrvNum      = PX_ERROR;
 static PCHAR            _G_pcFat12FsString = "FAT12 FileSystem";
 static PCHAR            _G_pcFat16FsString = "FAT16 FileSystem";
 static PCHAR            _G_pcFat32FsString = "FAT32 FileSystem";

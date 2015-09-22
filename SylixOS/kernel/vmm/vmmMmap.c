@@ -971,10 +971,16 @@ INT  API_VmmMsync (PVOID  pvAddr, size_t  stLen, INT  iInval)
 LW_API  
 VOID  API_VmmMmapShow (VOID)
 {
+#if LW_CFG_CPU_WORD_LENGHT == 64
+    const CHAR          cMmapInfoHdr[] = 
+    "      ADDR             SIZE            OFFSET      WRITE SHARE  PID   FD\n"
+    "---------------- ---------------- ---------------- ----- ----- ----- ----\n";
+#else
     const CHAR          cMmapInfoHdr[] = 
     "  ADDR     SIZE        OFFSET      WRITE SHARE  PID   FD\n"
     "-------- -------- ---------------- ----- ----- ----- ----\n";
-    
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
+
     PLW_VMM_MAP_NODE    pmapn;
     PLW_LIST_LINE       plineTemp;
     PCHAR               pcWrite;
@@ -1001,7 +1007,11 @@ VOID  API_VmmMmapShow (VOID)
             pcShare = "false";
         }
         
-        printf("%08lx %8lx %16llx %s %s %5d %4d\n", 
+#if LW_CFG_CPU_WORD_LENGHT == 64
+        printf("%16lx %16lx %16lx %s %s %5d %4d\n",
+#else
+        printf("%08lx %8lx %16llx %s %s %5d %4d\n",
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
                (addr_t)pmapn->MAPN_pvAddr,
                (ULONG)pmapn->MAPN_stLen,
                pmapn->MAPN_off,

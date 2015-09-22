@@ -47,6 +47,9 @@
 #define Lw_Object_GetNode                       API_ObjectGetNode
 #define Lw_Object_GetIndex                      API_ObjectGetIndex
 #define Lw_Object_IsGlobal                      API_ObjectIsGlobal
+#define Lw_Object_ShareAdd                      API_ObjectShareAdd
+#define Lw_Object_ShareDelete                   API_ObjectShareDelete
+#define Lw_Object_ShareFind                     API_ObjectShareFind
 
 /*********************************************************************************************************
   THREAD
@@ -376,7 +379,7 @@
 
 #define Lw_Time_Sleep                           API_TimeSleep
 #define Lw_Time_SleepEx                         API_TimeSleepEx
-#define Lw_Time_Delay                           API_TimeSleep
+#define Lw_Time_SleepUntil                      API_TimeSleepUntil
 
 #define Lw_Time_SSleep                          API_TimeSSleep
 #define Lw_Time_SDelay                          API_TimeSSleep

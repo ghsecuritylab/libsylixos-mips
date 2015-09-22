@@ -208,7 +208,6 @@ void lib_lcong48 (unsigned short p[7])
 *********************************************************************************************************/
 double lib_erand48 (unsigned short xseed[3])
 {
-#if 0 /* Ryan.xin TODO */
 	__CPU_DOUBLE u;
 
 	if (!xseed) {
@@ -224,10 +223,6 @@ double lib_erand48 (unsigned short xseed[3])
 	u.dblfield.fracl = (((unsigned int)xseed[1] & 0x0fff) << 20)
 				| ((unsigned int)xseed[0] << 4);
 	return (u.dbl - 1);
-#else
-	return (double)0;
-#endif
-
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: lib_drand48

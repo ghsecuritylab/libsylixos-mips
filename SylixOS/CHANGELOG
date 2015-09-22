@@ -4,51 +4,97 @@ HISTORY
 
 ++ New features:
 
+    2015-09-20: han.hui
+    加入标准网卡配置文件识别器, /etc/ifparam.ini.
+
+    2015-09-19: han.hui
+    加入内核对象共享注册与查询接口, 方便内核程序与应用程序通信.
+    
+    2015-09-18: han.hui
+    加入用户与组增加、更改、删除、查询接口.
+
+    2015-09-08: han.hui
+    加入内核工作队列接口.
+
+    2015-09-01: han.hui
+    加入 video 摄像头驱动程序接口.
+
+    2015-08-27: han.hui
+    加入标准设备驱动程序.
+
+    2015-08-27: han.hui
+    加入 BLOCK RAW I/O 功能, 此类设备支持直接操作硬盘扇区.
+
+    2015-08-26: han.hui
+    支持自定义模式 PCI 控制器驱动接口.
+
     2015-08-20: Jiao.Jinxing
     加入 ARMv8 体系结构支持, 测试处理器为 FT1500A 16 Core SMP ARMv8 Processor.
-    
-    2015-06-23: han.hui
-    加入 SYLIXOS LITE 裁剪支持, 主要面向 ARM Cortex-M 系列微控制器.
     
     2015-07-12: han.hui
     可以通过 LW_CFG_VP_HEAP_ALGORITHM 宏选择 vpmpdm 进程补丁内存管理算法.
     支持首次适应立即聚合、TLSF 时间复杂度为 O(1) 内存管理算法、DLmalloc 内存管理算法.
     
+    2015-06-23: han.hui
+    加入 SYLIXOS LITE 裁剪支持, 主要面向 ARM Cortex-M 系列微控制器.
+    
 ++ Bugfixes:
+
+    2015-08-26: han.hui
+    修正 bspIntVecter* 拼写错误.
+
+    2015-08-21: han.hui
+    修正 cache 无效操作结束地址判断错误.
+
+    2015-08-17: han.hui
+    修正 deamon 需要通知父进程.
+    
+    2015-07-24: han.hui
+    修正 mq_send 优先级为 0 的错误.
+    修正 fcntl F_DUPFD 的错误.
 
     2015-06-26: han.hui
     修正 HOOK 调用顺序.
     
     2015-07-24: han.hui
-    修正 mq_send 优先级为 0 的错误.
-    
-    2015-07-24: han.hui
     修正 fcntl F_DUPFD 的错误.
-    
-    2015-08-17: han.hui
-    修正 deamon 需要通知父进程.
-
-    2015-08-21: han.hui
-    修正 cache 无效操作结束地址判断错误.
     
 (STABLE-1.1.1)
 
 ++ New features:
+    
+    2015-05-25: han.hui
+    加入 _SC_PHYS_PAGES 与 _SC_AVPHYS_PAGES 支持.
+
+    2015-04-18: han.hui
+    系统 tick 频率等其他时间参数不再通过宏配置, 而是通过 bsp 传入的内核参数确定.
+    
+    2015-04-17: han.hui
+    加入 sched_rms 高精度单调周期接口, 可支持纳秒级精度周期控制.
 
     2015-04-05: han.hui
     加入高分辨率时钟获取接口.
     
-    2015-04-17: han.hui
-    加入 sched_rms 高精度单调周期接口, 可支持纳秒级精度周期控制.
-    
-    2015-04-18: han.hui
-    系统 tick 频率等其他时间参数不再通过宏配置, 而是通过 bsp 传入的内核参数确定.
-    
-    2015-05-25: han.hui
-    加入 _SC_PHYS_PAGES 与 _SC_AVPHYS_PAGES 支持.
-    
 ++ Bugfixes:
 
+    2015-05-25: han.hui
+    修正 AF_PACKET 接口接收超时错误.
+
+    2015-05-16: han.hui
+    重新设计回调系统.
+    
+    2015-05-15: han.hui
+    posix spin lock 不在使用内核 spin lock 实现.
+    
+    2015-05-14: han.hui
+    修正多核初始化死锁问题.
+    
+    2015-04-24: han.hui
+    修正多核调度就绪表问题.
+    
+    2015-04-17: han.hui
+    修正重定向文件描述符回收错误.
+    
     2015-04-07: han.hui
     修正 ARM 中断嵌套接口, 提高中断响应速度.
     
@@ -57,24 +103,6 @@ HISTORY
     
     2015-04-05: han.hui
     修正 SD 中断处理错误.
-
-    2015-04-17: han.hui
-    修正重定向文件描述符回收错误.
-    
-    2015-04-24: han.hui
-    修正多核调度就绪表问题.
-    
-    2015-05-14: han.hui
-    修正多核初始化死锁问题.
-    
-    2015-05-15: han.hui
-    posix spin lock 不在使用内核 spin lock 实现.
-    
-    2015-05-16: han.hui
-    重新设计回调系统.
-    
-    2015-05-25: han.hui
-    修正 AF_PACKET 接口接收超时错误.
     
 (STABLE-1.0.0)
 

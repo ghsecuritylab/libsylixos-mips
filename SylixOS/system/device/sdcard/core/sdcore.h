@@ -23,6 +23,7 @@
 2011.02.21  增加 API_SdCoreSpiSendIfCond 函数.该函数只能用于 SPI 模式下.
 2011.02.21  增 SPI 下设备寄存器的读取函数: API_SdCoreSpiRegisterRead().
 2011.03.25  修改 API_SdCoreDevCreate(), 用于底层驱动安装上层的回调.
+2015.09.15  修改 SD_OPCOND_DELAY_CONTS 由100改为5000, 使卡识别阶段具有更好的兼容性.
 *********************************************************************************************************/
 
 #ifndef __SDCORE_H
@@ -36,7 +37,7 @@
 #define SDADAPTER_TYPE_SPI        1
 
 #define SD_CMD_GEN_RETRY          4
-#define SD_OPCOND_DELAY_CONTS     100
+#define SD_OPCOND_DELAY_CONTS     5000
 
 #define SD_DELAYMS(ms)                                      \
         do {                                                \
@@ -58,6 +59,8 @@ typedef struct lw_sdcore_device {
 #define COREDEV_STA_HIGHSPEED_EN        (1 << 0)
 #define COREDEV_HIGHSPEED_SET(pcdev)    (pcdev->COREDEV_iDevSta |= COREDEV_STA_HIGHSPEED_EN)
 #define COREDEV_IS_HIGHSPEED(pcdev)     (pcdev->COREDEV_iDevSta & COREDEV_STA_HIGHSPEED_EN)
+
+#define COREDEV_STA_HIGHCAP_OCR         (1 << 1)                        /*  设备 OCR 包含高容量信息     */
 
     spinlock_t COREDEV_slLock;
 

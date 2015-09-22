@@ -277,9 +277,7 @@ GUI_SRCS = \
 SylixOS/gui/input_device/input_device.c
 
 #*********************************************************************************************************
-# kernel source 
-# Delete SylixOS/kernel/interface/WorkQueue.c  # By Ryan.xin 20150901
-# Delete SylixOS/system/device/block/blockRaw.c # By Ryan.xin 20150901
+# kernel source
 #*********************************************************************************************************
 KERN_SRCS = \
 SylixOS/kernel/cache/cache.c \
@@ -515,6 +513,7 @@ SylixOS/kernel/interface/TimerStatus.c \
 SylixOS/kernel/interface/TimeSleep.c \
 SylixOS/kernel/interface/TimeTod.c \
 SylixOS/kernel/interface/ugid.c \
+SylixOS/kernel/interface/WorkQueue.c \
 SylixOS/kernel/list/listEvent.c \
 SylixOS/kernel/list/listEventSet.c \
 SylixOS/kernel/list/listHeap.c \
@@ -708,6 +707,7 @@ SylixOS/lib/libc/time/lib_time.c \
 SylixOS/lib/libc/time/lib_tzset.c \
 SylixOS/lib/libc/user/getpwent.c \
 SylixOS/lib/libc/user/getshadow.c \
+SylixOS/lib/libc/user/userdb.c \
 SylixOS/lib/libc/wchar/wchar.c \
 SylixOS/lib/libc/wchar/wcscasecmp.c \
 SylixOS/lib/libc/wchar/wcscat.c \
@@ -787,6 +787,7 @@ SylixOS/net/libc/inet_ntop.c \
 SylixOS/net/libc/inet_pton.c \
 SylixOS/net/lwip/lwip_fix.c \
 SylixOS/net/lwip/lwip_if.c \
+SylixOS/net/lwip/lwip_ifparam.c \
 SylixOS/net/lwip/lwip_jobqueue.c \
 SylixOS/net/lwip/lwip_netifnum.c \
 SylixOS/net/lwip/lwip_netstat.c \
@@ -1017,6 +1018,7 @@ SylixOS/system/bus/busSystem.c \
 SylixOS/system/device/ata/ata.c \
 SylixOS/system/device/ata/ataLib.c \
 SylixOS/system/device/block/blockIo.c \
+SylixOS/system/device/block/blockRaw.c \
 SylixOS/system/device/block/ramDisk.c \
 SylixOS/system/device/can/can.c \
 SylixOS/system/device/dma/dma.c \
@@ -1124,7 +1126,7 @@ SylixOS/cplusplus/cppRtLib/cppSupLib.cpp
 SRCS  = $(APPL_SRCS)
 SRCS += $(ARCH_SRCS)
 SRCS += $(DEBUG_SRCS)
-# SRCS += $(DRV_SRCS) # Modify Ryan.xin 20150901
+SRCS += $(DRV_SRCS)
 SRCS += $(FS_SRCS)
 SRCS += $(GUI_SRCS)
 SRCS += $(KERN_SRCS)
@@ -1228,7 +1230,7 @@ SYMBOL_TARGET_H = $(OUTPATH)/symbol.h
 OBJS_APPL    = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(APPL_SRCS))))
 OBJS_ARCH    = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(ARCH_SRCS))))
 OBJS_DEBUG   = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(DEBUG_SRCS))))
-# OBJS_DRV     = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(DRV_SRCS)))) # Modify Ryan.xin 20150901
+OBJS_DRV     = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(DRV_SRCS))))
 OBJS_FS      = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(FS_SRCS))))
 OBJS_GUI     = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(GUI_SRCS))))
 OBJS_KERN    = $(addprefix $(OBJPATH)/, $(addsuffix .o, $(basename $(KERN_SRCS))))
@@ -1343,7 +1345,7 @@ endif
 #*********************************************************************************************************
 ifneq ($(MAKECMDGOALS), clean)
 ifneq ($(MAKECMDGOALS), clean_project)
-# sinclude $(DEPS) # Modify Ryan.xin 20150901
+sinclude $(DEPS)
 endif
 endif
 
@@ -1402,7 +1404,7 @@ $(TARGET): $(OBJS)
 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_APPL)
 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_ARCH)
 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_DEBUG)
-# 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_DRV) # Modify Ryan.xin 20150901
+		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_DRV)
 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_FS)
 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_GUI)
 		$(AR) $(ARFLAGS) $(TARGET) $(OBJS_KERN)

@@ -70,9 +70,15 @@ static LW_PROCFS_NODE           _G_pfsnSymbol[] =
 /*********************************************************************************************************
   symbol 打印头
 *********************************************************************************************************/
-static const CHAR               _G_cSymbolInfoHdr[] = "\n\
+#if LW_CFG_CPU_WORD_LENGHT == 64
+static const CHAR   _G_cSymbolInfoHdr[] = "\n\
+         SYMBOL NAME                 ADDR         TYPE\n\
+------------------------------ ---------------- --------\n";
+#else
+static const CHAR   _G_cSymbolInfoHdr[] = "\n\
          SYMBOL NAME             ADDR     TYPE\n\
 ------------------------------ -------- --------\n";
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
 /*********************************************************************************************************
 ** 函数名称: __procFsSymbolPrint
 ** 功能描述: 打印所有 symbol 信息
@@ -110,7 +116,11 @@ static size_t  __procFsSymbolPrint (PCHAR  pcBuffer, size_t  stMaxBytes)
             }
             
             stRealSize = bnprintf(pcBuffer, stMaxBytes, stRealSize, 
+#if LW_CFG_CPU_WORD_LENGHT == 64
+                                  "%-30s %16lx %-8s\n",
+#else
                                   "%-30s %08lx %-8s\n",
+#endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
                                   psymbol->SYM_pcName,
                                   (addr_t)psymbol->SYM_pcAddr,
                                   cType);

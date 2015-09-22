@@ -33,11 +33,7 @@
 
 int  lib_isnan (double  dX) 
 {
-#if 0 /* Ryan.xin TODO*/
     return  (__ARCH_DOUBLE_ISNAN(dX));
-#else
-    return 0;
-#endif
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: lib_isinf
@@ -49,11 +45,7 @@ int  lib_isnan (double  dX)
 *********************************************************************************************************/
 int  lib_isinf (double  dX) 
 {
-#if 0 /* Ryan.xin TODO*/
     return  (__ARCH_DOUBLE_ISINF(dX));
-#else
-    return 0;
-#endif
 }
 
 #endif                                                                  /*  LW_CFG_FIO_FLOATING_P...    */

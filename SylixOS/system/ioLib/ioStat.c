@@ -65,6 +65,11 @@ LW_API time_t  API_RootFsTime(time_t  *time);
 
     INT     iErrCode;
 
+    if (iFd < 0) {
+        errno = EBADF;
+        return  (PX_ERROR);
+    }
+    
     if (!pstat) {
         errno = EINVAL;
         return  (PX_ERROR);
@@ -76,10 +81,8 @@ LW_API time_t  API_RootFsTime(time_t  *time);
     }
     
     iErrCode = ioctl(iFd, FIOFSTATGET, (LONG)pstat);
-    if ((iFd >= 0) &&
-        ((iErrCode < ERROR_NONE) || (iErrCode == ENOSYS)) &&
-        ((errno == ERROR_IO_UNKNOWN_REQUEST) || (errno == ENOSYS))) {
-        
+    if ((iErrCode != ERROR_NONE) && 
+        ((iErrCode == ENOSYS) || (errno == ENOSYS))) {
         PLW_FD_ENTRY  pfdentry = _IosFileGet(iFd, LW_FALSE);
         
         if (pfdentry) {

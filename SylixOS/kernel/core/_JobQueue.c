@@ -122,6 +122,30 @@ VOID  _jobQueueFinit (PLW_JOB_QUEUE pjobq)
     }
 }
 /*********************************************************************************************************
+** 函数名称: _JobQueueFlush
+** 功能描述: 清空工作队列
+** 输　入  : pjobq         工作队列控制块
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _JobQueueFlush (PLW_JOB_QUEUE pjobq)
+{
+    INTREG   iregInterLevel;
+    
+    if (pjobq->JOBQ_ulSync) {
+        API_SemaphoreBClear(pjobq->JOBQ_ulSync);
+    }
+    
+    LW_SPIN_LOCK_QUICK(&pjobq->JOBQ_slLock, &iregInterLevel);
+    
+    pjobq->JOBQ_uiIn  = 0;
+    pjobq->JOBQ_uiOut = 0;
+    pjobq->JOBQ_uiCnt = 0;
+    
+    LW_SPIN_UNLOCK_QUICK(&pjobq->JOBQ_slLock, iregInterLevel);
+}
+/*********************************************************************************************************
 ** 函数名称: _JobQueueAdd
 ** 功能描述: 添加一个工作到工作队列
 ** 输　入  : pjobq         工作队列控制块

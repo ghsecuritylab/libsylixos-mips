@@ -59,8 +59,8 @@
 LW_API 
 INT  API_SpipeDrvInstall (VOID)
 {
-    if (_G_iSpipeDrvNum == PX_ERROR) {
-        _G_iSpipeDrvNum = iosDrvInstall(LW_NULL,                        /*  CREATE                      */
+    if (_G_iSpipeDrvNum <= 0) {
+        _G_iSpipeDrvNum  = iosDrvInstall(LW_NULL,                       /*  CREATE                      */
                                         _SpipeRemove,                   /*  DELETE                      */
                                         _SpipeOpen,                     /*  OPEN                        */
                                         _SpipeClose,                    /*  CLOSE                       */
@@ -103,7 +103,7 @@ INT  API_SpipeDevCreate (PCHAR  pcName, size_t  stBufferByteSize)
         return  (PX_ERROR);
     }
     
-    if (_G_iSpipeDrvNum == (PX_ERROR)) {
+    if (_G_iSpipeDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);
@@ -201,7 +201,7 @@ INT  API_SpipeDevDelete (PCHAR  pcName, BOOL  bForce)
         return  (PX_ERROR);
     }
     
-    if (_G_iSpipeDrvNum == (PX_ERROR)) {
+    if (_G_iSpipeDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

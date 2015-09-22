@@ -62,9 +62,96 @@
 #define CP1_IR       $0                                                 /* implementation/revision reg  */
 #define CP1_STATUS   $31                                                /* control/status reg           */
 
+/*********************************************************************************************************
+  float 格式 (使用 union 类型作为中间转换, 避免 GCC 3.x.x strict aliasing warning)
+*********************************************************************************************************/
+
+#define __ARCH_FLOAT_EXP_NAN           255                              /*  NaN 或者无穷大的 Exp 值     */
+
+typedef struct __cpu_float_field {
+    unsigned int        frac : 23;
+    unsigned int        exp  :  8;
+    unsigned int        sig  :  1;
+} __CPU_FLOAT_FIELD;
+
 typedef union __cpu_float {
+    __CPU_FLOAT_FIELD   fltfield;                                       /*  float 位域字段              */
     float               flt;                                            /*  float 占位                  */
 } __CPU_FLOAT;
+
+static LW_INLINE INT  __ARCH_FLOAT_ISNAN (float  x)
+{
+    __CPU_FLOAT     cpuflt;
+
+    cpuflt.flt = x;
+
+    return  ((cpuflt.fltfield.exp == __ARCH_FLOAT_EXP_NAN) && (cpuflt.fltfield.frac != 0));
+}
+
+static LW_INLINE INT  __ARCH_FLOAT_ISINF (float  x)
+{
+    __CPU_FLOAT     cpuflt;
+
+    cpuflt.flt = x;
+
+    return  ((cpuflt.fltfield.exp == __ARCH_FLOAT_EXP_NAN) && (cpuflt.fltfield.frac == 0));
+}
+
+/*********************************************************************************************************
+  double 格式
+*********************************************************************************************************/
+
+#define __ARCH_DOUBLE_EXP_NAN           2047                            /*  NaN 或者无穷大的 Exp 值     */
+#define __ARCH_DOUBLE_INC_FLOAT_H          0                            /*  是否引用编译器 float.h 文件 */
+
+/*********************************************************************************************************
+  arm-none-eabi-gcc ... GNU
+*********************************************************************************************************/
+
+#if LW_CFG_DOUBLE_MIX_ENDIAN > 0
+typedef struct __cpu_double_field {                                     /*  old mixed-endian            */
+    unsigned int        frach : 20;
+    unsigned int        exp   : 11;
+    unsigned int        sig   :  1;
+
+    unsigned int        fracl : 32;                                     /*  低 32 位放入高地址          */
+} __CPU_DOUBLE_FIELD;
+#else
+typedef struct __cpu_double_field {                                     /*  native-endian               */
+    unsigned int        fracl : 32;                                     /*  低 32 位放入低地址          */
+
+    unsigned int        frach : 20;
+    unsigned int        exp   : 11;
+    unsigned int        sig   :  1;
+} __CPU_DOUBLE_FIELD;
+#endif                                                                  /*  __ARCH_DOUBLE_MIX_ENDIAN    */
+
+typedef union __cpu_double {
+    __CPU_DOUBLE_FIELD  dblfield;                                       /*  float 位域字段              */
+    double              dbl;                                            /*  float 占位                  */
+} __CPU_DOUBLE;
+
+static LW_INLINE INT  __ARCH_DOUBLE_ISNAN (double  x)
+{
+    __CPU_DOUBLE     dblflt;
+
+    dblflt.dbl = x;
+
+    return  ((dblflt.dblfield.exp == __ARCH_DOUBLE_EXP_NAN) &&
+             ((dblflt.dblfield.fracl != 0) &&
+              (dblflt.dblfield.frach != 0)));
+}
+
+static LW_INLINE INT  __ARCH_DOUBLE_ISINF (double  x)
+{
+    __CPU_DOUBLE     dblflt;
+
+    dblflt.dbl = x;
+
+    return  ((dblflt.dblfield.exp == __ARCH_DOUBLE_EXP_NAN) &&
+             ((dblflt.dblfield.fracl == 0) ||
+              (dblflt.dblfield.frach == 0)));
+}
 
 #endif                                                                  /*  __MIPS_ARCH_FLOAT_H         */
 /*********************************************************************************************************

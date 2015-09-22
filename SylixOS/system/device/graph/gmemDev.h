@@ -105,18 +105,18 @@ typedef LW_GM_PHYINFO  *PLW_GM_PHYINFO;
 /*********************************************************************************************************
   标准屏幕命令 ioctl
 *********************************************************************************************************/
-#define LW_GM_GET_VARINFO               200                             /*  获得显示规格                */
-#define LW_GM_SET_VARINFO               201                             /*  设置显示规格                */
-#define LW_GM_GET_SCRINFO               202                             /*  获得显示属性                */
-#define LW_GM_GET_PHYINFO               203                             /*  获得显示物理特征            */
+#define LW_GM_GET_VARINFO   LW_OSIOR('g', 200, LW_GM_VARINFO)           /*  获得显示规格                */
+#define LW_GM_SET_VARINFO   LW_OSIOW('g', 201, LW_GM_VARINFO)           /*  设置显示规格                */
+#define LW_GM_GET_SCRINFO   LW_OSIOR('g', 202, LW_GM_SCRINFO)           /*  获得显示属性                */
+#define LW_GM_GET_PHYINFO   LW_OSIOR('g', 203, LW_GM_PHYINFO)           /*  获得显示物理特征            */
 
 /*********************************************************************************************************
   显示模式
 *********************************************************************************************************/
-#define LW_GM_MODE_PALETTE              0x80000000                      /*  调色板模式掩码              */
+#define LW_GM_MODE_PALETTE  0x80000000                                  /*  调色板模式掩码              */
 
-#define LW_GM_GET_MODE                  204                             /*  获取显示模式                */
-#define LW_GM_SET_MODE                  205                             /*  设置显示模式                */
+#define LW_GM_GET_MODE      LW_OSIOR('g', 204, ULONG)                   /*  获取显示模式                */
+#define LW_GM_SET_MODE      LW_OSIOD('g', 205, ULONG)                   /*  设置显示模式                */
 
 /*********************************************************************************************************
   图形设备 file_operations

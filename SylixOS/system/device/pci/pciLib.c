@@ -17,6 +17,9 @@
 ** 文件创建日期: 2013 年 09 月 28 日
 **
 ** 描        述: PCI 总线驱动模型.
+**
+** BUG:
+2015.08.26  支持 PCI_MECHANISM_0 模式.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -25,25 +28,42 @@
   裁剪宏
 *********************************************************************************************************/
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_PCI_EN > 0)
+#include "pciProc.h"
 /*********************************************************************************************************
   PCI 主控器
 *********************************************************************************************************/
-PCI_CONFIG                             *_G_p_pciConfig;
+PCI_CONFIG      *_G_p_pciConfig;
 /*********************************************************************************************************
-  PCI 主控器配置地址
+  PCI 主控器配置 IO 操作 PCI_MECHANISM_0
 *********************************************************************************************************/
-#define PCI_CONFIG_ADDR0()              _G_p_pciConfig->PCIC_ulConfigAddr
-#define PCI_CONFIG_ADDR1()              _G_p_pciConfig->PCIC_ulConfigData
-#define PCI_CONFIG_ADDR2()              _G_p_pciConfig->PCIC_ulConfigBase
+#define PCI_CFG_READ(iBus, iSlot, iFunc, iOft, iLen, pvRet)     \
+        _G_p_pciConfig->PCIC_pDrvFuncs0->cfgRead(iBus, iSlot, iFunc, iOft, iLen, pvRet)
+#define PCI_CFG_WRITE(iBus, iSlot, iFunc, iOft, iLen, uiData)   \
+        _G_p_pciConfig->PCIC_pDrvFuncs0->cfgWrite(iBus, iSlot, iFunc, iOft, iLen, uiData)
+#define PCI_CFG_SPCL(iBus, uiMsg)                               \
+        _G_p_pciConfig->PCIC_pDrvFuncs0->cfgSpcl(iBus, uiMsg)
+#define PCI_CFG_SPCL_IS_EN()                                    \
+        _G_p_pciConfig->PCIC_pDrvFuncs0->cfgSpcl
 /*********************************************************************************************************
-  PCI 主控器配置 IO 操作
+  PCI 主控器配置地址 PCI_MECHANISM_1 2
 *********************************************************************************************************/
-#define PCI_IN_BYTE(addr)               _G_p_pciConfig->PCIC_pDrvFuncs->ioInByte((addr))
-#define PCI_IN_WORD(addr)               _G_p_pciConfig->PCIC_pDrvFuncs->ioInWord((addr))
-#define PCI_IN_DWORD(addr)              _G_p_pciConfig->PCIC_pDrvFuncs->ioInDword((addr))
-#define PCI_OUT_BYTE(addr, data)        _G_p_pciConfig->PCIC_pDrvFuncs->ioOutByte((addr),  (UINT8)(data))
-#define PCI_OUT_WORD(addr, data)        _G_p_pciConfig->PCIC_pDrvFuncs->ioOutWord((addr),  (UINT16)(data))
-#define PCI_OUT_DWORD(addr, data)       _G_p_pciConfig->PCIC_pDrvFuncs->ioOutDword((addr), (UINT32)(data))
+#define PCI_CONFIG_ADDR0()          _G_p_pciConfig->PCIC_ulConfigAddr
+#define PCI_CONFIG_ADDR1()          _G_p_pciConfig->PCIC_ulConfigData
+#define PCI_CONFIG_ADDR2()          _G_p_pciConfig->PCIC_ulConfigBase
+/*********************************************************************************************************
+  PCI 主控器配置 IO 操作 PCI_MECHANISM_1 2
+*********************************************************************************************************/
+#define PCI_IN_BYTE(addr)           _G_p_pciConfig->PCIC_pDrvFuncs12->ioInByte((addr))
+#define PCI_IN_WORD(addr)           _G_p_pciConfig->PCIC_pDrvFuncs12->ioInWord((addr))
+#define PCI_IN_DWORD(addr)          _G_p_pciConfig->PCIC_pDrvFuncs12->ioInDword((addr))
+#define PCI_OUT_BYTE(addr, data)    _G_p_pciConfig->PCIC_pDrvFuncs12->ioOutByte((UINT8)(data), (addr))
+#define PCI_OUT_WORD(addr, data)    _G_p_pciConfig->PCIC_pDrvFuncs12->ioOutWord((UINT16)(data), (addr))
+#define PCI_OUT_DWORD(addr, data)   _G_p_pciConfig->PCIC_pDrvFuncs12->ioOutDword((UINT32)(data), (addr))
+/*********************************************************************************************************
+  PCI 是否为无效 VENDOR_ID
+*********************************************************************************************************/
+#define PCI_VENDOR_ID_IS_INVALIDATE(vendor)     \
+        (((vendor) == 0xffff) || ((vendor) == 0x0000))
 /*********************************************************************************************************
 ** 函数名称: API_PciConfigInit
 ** 功能描述: 安装 pci 主控器驱动程序
@@ -58,6 +78,10 @@ INT  API_PciConfigInit (PCI_CONFIG *p_pcicfg)
 {
     if (_G_p_pciConfig == LW_NULL) {
         _G_p_pciConfig =  p_pcicfg;
+        
+#if LW_CFG_PROCFS_EN > 0
+        __procFsPciInit();
+#endif                                                                  /*  LW_CFG_PROCFS_EN > 0        */
     }
     
     if (_G_p_pciConfig->PCIC_ulLock == LW_OBJECT_HANDLE_INVALID) {
@@ -147,32 +171,50 @@ INT  API_PciUnlock (VOID)
 LW_API 
 INT  API_PciConfigInByte (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 *pucValue)
 {
+    INTREG  iregInterLevel;
     UINT8   ucRet = 0;
+    UINT32  uiDword;
+    INT     iRetVal = PX_ERROR;
+    
+    iregInterLevel = KN_INT_DISABLE();
     
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
+    
+    case PCI_MECHANISM_0:
+        if (PCI_CFG_READ(iBus, iSlot, iFunc, iOft, 1, (PVOID)&ucRet) < 0) {
+            ucRet = 0xff;
+        } else {
+            iRetVal = ERROR_NONE;
+        }
+        break;
     
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | (iOft & 0xfc) | 0x80000000));
         ucRet = PCI_IN_BYTE(PCI_CONFIG_ADDR1() + (iOft & 0x3));
+        iRetVal = ERROR_NONE;
         break;
         
     case PCI_MECHANISM_2:
         PCI_OUT_BYTE(PCI_CONFIG_ADDR0(), 0xf0 | (iFunc << 1));
         PCI_OUT_BYTE(PCI_CONFIG_ADDR1(), iBus);
-        ucRet = PCI_IN_DWORD(PCI_CONFIG_ADDR2() | ((iSlot & 0x000f) << 8) | (iOft & 0xfc));
+        uiDword = PCI_IN_DWORD(PCI_CONFIG_ADDR2() | ((iSlot & 0x000f) << 8) | (iOft & 0xfc));
         PCI_OUT_BYTE(PCI_CONFIG_ADDR0(), 0);
-        ucRet >>= (iOft & 0x03) * 8;
+        uiDword >>= (iOft & 0x03) * 8;
+        ucRet   = (UINT8)(uiDword & 0xff);
+        iRetVal = ERROR_NONE;
         break;
         
     default:
-        return  (PX_ERROR);
+        break;
     }
+    
+    KN_INT_ENABLE(iregInterLevel);
 
     if (pucValue) {
         *pucValue = ucRet;
     }
 
-    return  (ERROR_NONE);
+    return  (iRetVal);
 }
 /*********************************************************************************************************
 ** 函数名称: API_PciConfigInWord
@@ -190,36 +232,54 @@ INT  API_PciConfigInByte (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 *pucVa
 LW_API 
 INT  API_PciConfigInWord (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 *pusValue)
 {
+    INTREG  iregInterLevel;
     UINT16  usRet = 0;
+    UINT32  uiDword;
+    INT     iRetVal = PX_ERROR;
     
     if (iOft & 0x01) {
         return  (PX_ERROR);
     }
 
+    iregInterLevel = KN_INT_DISABLE();
+
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
+    
+    case PCI_MECHANISM_0:
+        if (PCI_CFG_READ(iBus, iSlot, iFunc, iOft, 2, (PVOID)&usRet) < 0) {
+            usRet = 0xffff;
+        } else {
+            iRetVal = ERROR_NONE;
+        }
+        break;
 
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | (iOft & 0xfc) | 0x80000000));
         usRet = PCI_IN_WORD(PCI_CONFIG_ADDR1() + (iOft & 0x2));
+        iRetVal = ERROR_NONE;
         break;
 
     case PCI_MECHANISM_2:
         PCI_OUT_BYTE(PCI_CONFIG_ADDR0(), 0xf0 | (iFunc << 1));
         PCI_OUT_BYTE(PCI_CONFIG_ADDR1(), iBus);
-        usRet = PCI_IN_DWORD(PCI_CONFIG_ADDR2() | ((iSlot & 0x000f) << 8) | (iOft & 0xfc));
+        uiDword = PCI_IN_DWORD(PCI_CONFIG_ADDR2() | ((iSlot & 0x000f) << 8) | (iOft & 0xfc));
         PCI_OUT_BYTE(PCI_CONFIG_ADDR0(), 0);
-        usRet >>= (iOft & 0x02) * 8;
+        uiDword >>= (iOft & 0x02) * 8;
+        usRet   = (UINT16)(uiDword & 0xffff);
+        iRetVal = ERROR_NONE;
         break;
 
     default:
-        return  (PX_ERROR);
+        break;
     }
+    
+    KN_INT_ENABLE(iregInterLevel);
 
     if (pusValue) {
         *pusValue = usRet;
     }
 
-    return  (ERROR_NONE);
+    return  (iRetVal);
 }
 /*********************************************************************************************************
 ** 函数名称: API_PciConfigInDword
@@ -237,17 +297,30 @@ INT  API_PciConfigInWord (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 *pusV
 LW_API 
 INT  API_PciConfigInDword (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 *puiValue)
 {
-    UINT32  uiRet = 0;
+    INTREG  iregInterLevel;
+    UINT32  uiRet   = 0;
+    INT     iRetVal = PX_ERROR;
     
     if (iOft & 0x03) {
         return  (PX_ERROR);
     }
+    
+    iregInterLevel = KN_INT_DISABLE();
 
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
+    
+    case PCI_MECHANISM_0:
+        if (PCI_CFG_READ(iBus, iSlot, iFunc, iOft, 4, (PVOID)&uiRet) < 0) {
+            uiRet = 0xffffffff;
+        } else {
+            iRetVal = ERROR_NONE;
+        }
+        break;
 
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | (iOft & 0xfc) | 0x80000000));
         uiRet = PCI_IN_DWORD(PCI_CONFIG_ADDR1());
+        iRetVal = ERROR_NONE;
         break;
 
     case PCI_MECHANISM_2:
@@ -255,17 +328,20 @@ INT  API_PciConfigInDword (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 *pui
         PCI_OUT_BYTE(PCI_CONFIG_ADDR1(), iBus);
         uiRet = PCI_IN_DWORD(PCI_CONFIG_ADDR2() | ((iSlot & 0x000f) << 8) | (iOft & 0xfc));
         PCI_OUT_BYTE(PCI_CONFIG_ADDR0(), 0);
+        iRetVal = ERROR_NONE;
         break;
 
     default:
-        return  (PX_ERROR);
+        break;
     }
+    
+    KN_INT_ENABLE(iregInterLevel);
 
     if (puiValue) {
         *puiValue = uiRet;
     }
 
-    return  (ERROR_NONE);
+    return  (iRetVal);
 }
 /*********************************************************************************************************
 ** 函数名称: API_PciConfigOutByte
@@ -283,10 +359,17 @@ INT  API_PciConfigInDword (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 *pui
 LW_API 
 INT  API_PciConfigOutByte (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 ucValue)
 {
+    INTREG  iregInterLevel;
     UINT32  uiRet;
     UINT32  uiMask = 0x000000ff;
+    
+    iregInterLevel = KN_INT_DISABLE();
 
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
+    
+    case PCI_MECHANISM_0:
+        PCI_CFG_WRITE(iBus, iSlot, iFunc, iOft, 1, ucValue);
+        break;
 
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | (iOft & 0xfc) | 0x80000000));
@@ -305,8 +388,10 @@ INT  API_PciConfigOutByte (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 ucVal
         break;
 
     default:
-        return  (PX_ERROR);
+        break;
     }
+    
+    KN_INT_ENABLE(iregInterLevel);
 
     return  (ERROR_NONE);
 }
@@ -326,14 +411,21 @@ INT  API_PciConfigOutByte (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 ucVal
 LW_API 
 INT  API_PciConfigOutWord (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 usValue)
 {
+    INTREG  iregInterLevel;
     UINT32  uiRet;
     UINT32  uiMask = 0x0000ffff;
     
     if (iOft & 0x01) {
         return  (PX_ERROR);
     }
+    
+    iregInterLevel = KN_INT_DISABLE();
 
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
+    
+    case PCI_MECHANISM_0:
+        PCI_CFG_WRITE(iBus, iSlot, iFunc, iOft, 2, usValue);
+        break;
 
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | (iOft & 0xfc) | 0x80000000));
@@ -352,8 +444,10 @@ INT  API_PciConfigOutWord (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 usVa
         break;
 
     default:
-        return  (PX_ERROR);
+        break;
     }
+    
+    KN_INT_ENABLE(iregInterLevel);
 
     return  (ERROR_NONE);
 }
@@ -373,11 +467,19 @@ INT  API_PciConfigOutWord (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 usVa
 LW_API 
 INT  API_PciConfigOutDword (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 uiValue)
 {
+    INTREG  iregInterLevel;
+    
     if (iOft & 0x03) {
         return  (PX_ERROR);
     }
     
+    iregInterLevel = KN_INT_DISABLE();
+    
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
+    
+    case PCI_MECHANISM_0:
+        PCI_CFG_WRITE(iBus, iSlot, iFunc, iOft, 4, uiValue);
+        break;
 
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | (iOft & 0xfc) | 0x80000000));
@@ -392,8 +494,10 @@ INT  API_PciConfigOutDword (INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 uiV
         break;
 
     default:
-        return  (PX_ERROR);
+        break;
     }
+    
+    KN_INT_ENABLE(iregInterLevel);
 
     return  (ERROR_NONE);
 }
@@ -523,6 +627,12 @@ INT  API_PciSpecialCycle (INT iBus, UINT32 uiMsg)
     
     switch (_G_p_pciConfig->PCIC_ucMechanism) {
     
+    case PCI_MECHANISM_0:
+        if (PCI_CFG_SPCL_IS_EN()) {
+            PCI_CFG_SPCL(iBus, uiMsg);
+        }
+        break;
+    
     case PCI_MECHANISM_1:
         PCI_OUT_DWORD(PCI_CONFIG_ADDR0(), (PCI_PACKET(iBus, iSlot, iFunc) | 0x80000000));
         PCI_OUT_DWORD(PCI_CONFIG_ADDR1(), uiMsg);
@@ -581,13 +691,13 @@ INT  API_PciFindDev (UINT16  usVendorId,
     }
     
     for (iBus = 0; iBus < PCI_MAX_BUS; iBus++) {
-        for (iSlot = 0; iSlot < (PCI_MAX_SLOTS - 1); iSlot++) {
-            for (iFunc = 0; iFunc < (PCI_MAX_FUNCTIONS - 1); iFunc++) {
+        for (iSlot = 0; iSlot < PCI_MAX_SLOTS; iSlot++) {
+            for (iFunc = 0; iFunc < PCI_MAX_FUNCTIONS; iFunc++) {
             
                 API_PciConfigInWord(iBus, iSlot, iFunc, PCI_VENDOR_ID, &usVendorTemp);
                 API_PciConfigInWord(iBus, iSlot, iFunc, PCI_DEVICE_ID, &usDeviceTemp);
                 
-                if (usVendorTemp == 0xffff) {                           /*  没有设备存在                */
+                if (PCI_VENDOR_ID_IS_INVALIDATE(usVendorTemp)) {        /*  没有设备存在                */
                     if (iFunc == 0) {
                         break;
                     }
@@ -662,12 +772,12 @@ INT  API_PciFindClass (UINT16  usClassCode,
     }
     
     for (iBus = 0; iBus < PCI_MAX_BUS; iBus++) {
-        for (iSlot = 0; iSlot < (PCI_MAX_SLOTS - 1); iSlot++) {
-            for (iFunc = 0; iFunc < (PCI_MAX_FUNCTIONS - 1); iFunc++) {
+        for (iSlot = 0; iSlot < PCI_MAX_SLOTS; iSlot++) {
+            for (iFunc = 0; iFunc < PCI_MAX_FUNCTIONS; iFunc++) {
             
                 API_PciConfigInWord(iBus, iSlot, iFunc, PCI_VENDOR_ID, &usVendorTemp);
                 
-                if (usVendorTemp == 0xffff) {                           /*  没有设备存在                */
+                if (PCI_VENDOR_ID_IS_INVALIDATE(usVendorTemp)) {        /*  没有设备存在                */
                     if (iFunc == 0) {
                         break;
                     }
@@ -736,12 +846,12 @@ INT  API_PciTraversal (INT (*pfuncCall)(), PVOID pvArg, INT iMaxBusNum)
     iMaxBusNum = (iMaxBusNum > (PCI_MAX_BUS - 1)) ? (PCI_MAX_BUS - 1) : iMaxBusNum;
     
     for (iBus = 0; iBus <= iMaxBusNum; iBus++) {
-        for (iSlot = 0; iSlot < (PCI_MAX_SLOTS - 1); iSlot++) {
-            for (iFunc = 0; iFunc < (PCI_MAX_FUNCTIONS - 1); iFunc++) {
+        for (iSlot = 0; iSlot < PCI_MAX_SLOTS; iSlot++) {
+            for (iFunc = 0; iFunc < PCI_MAX_FUNCTIONS; iFunc++) {
             
                 API_PciConfigInWord(iBus, iSlot, iFunc, PCI_VENDOR_ID, &usVendorTemp);
                 
-                if (usVendorTemp == 0xffff) {                           /*  没有设备存在                */
+                if (PCI_VENDOR_ID_IS_INVALIDATE(usVendorTemp)) {        /*  没有设备存在                */
                     if (iFunc == 0) {
                         break;                                          /*  next slot                   */
                     }
@@ -802,12 +912,12 @@ INT  API_PciTraversalDev (INT   iBusStart,
     
     iBus = iBusStart;
     
-    for (iSlot = 0; iSlot < (PCI_MAX_SLOTS - 1); iSlot++) {
-        for (iFunc = 0; iFunc < (PCI_MAX_FUNCTIONS - 1); iFunc++) {
+    for (iSlot = 0; iSlot < PCI_MAX_SLOTS; iSlot++) {
+        for (iFunc = 0; iFunc < PCI_MAX_FUNCTIONS; iFunc++) {
             
             API_PciConfigInWord(iBus, iSlot, iFunc, PCI_VENDOR_ID, &usVendorId);
             
-            if (usVendorId == 0xffff) {
+            if (PCI_VENDOR_ID_IS_INVALIDATE(usVendorId)) {
                 if (iFunc == 0) {
                     break;                                              /*  next slot                   */
                 }
@@ -863,8 +973,8 @@ INT  API_PciTraversalDev (INT   iBusStart,
 ** 输　入  : iBus      总线号
 **           iSlot     插槽
 **           iFunc     功能
-**           uiIoBase  IO 基地址
-**           uiMemBase 内存基地址
+**           ulIoBase  IO 基地址
+**           ulMemBase 内存基地址
 **           ucLatency 延迟时间 (PCI clocks max 255) 
 **           uiCommand 命令
 ** 输　出  : ERROR or OK
@@ -873,34 +983,74 @@ INT  API_PciTraversalDev (INT   iBusStart,
 **                                            API 函数
 *********************************************************************************************************/
 LW_API 
-INT  API_PciConfigDev (INT      iBus, 
-                       INT      iSlot, 
-                       INT      iFunc, 
-                       UINT32   uiIoBase, 
-                       UINT32   uiMemBase, 
-                       UINT8    ucLatency,
-                       UINT32   uiCommand)
+INT  API_PciConfigDev (INT          iBus, 
+                       INT          iSlot, 
+                       INT          iFunc, 
+                       ULONG        ulIoBase, 
+                       pci_addr_t   ulMemBase, 
+                       UINT8        ucLatency,
+                       UINT32       uiCommand)
 {
-    INT     i;
-    UINT32  uiTemp;
-    UINT8   ucCacheLine;
+    INT         iBar;
+    INT         iFoundMem64;
+    pci_addr_t  ulBarValue;
+    pci_size_t  ulBarSize;
+    UINT32      uiBarResponse;
+    UINT8       ucCacheLine;
+    UINT8       ucPin;
+    UINT32      uiOldCommand;
 
     API_PciConfigOutDword(iBus, iSlot, iFunc, PCI_COMMAND, 0x0);        /*  清除设备当前命令            */
     
-    for (i = PCI_BASE_ADDRESS_0; i <= PCI_BASE_ADDRESS_5; i += 4) {
+    for (iBar = PCI_BASE_ADDRESS_0; iBar <= PCI_BASE_ADDRESS_5; iBar += 4) {
+    
+        API_PciConfigOutDword(iBus, iSlot, iFunc, iBar, 0xffffffff);
+        API_PciConfigInDword(iBus, iSlot, iFunc, iBar, &uiBarResponse);
         
-        API_PciConfigOutDword(iBus, iSlot, iFunc, i, 0xffffffff);
-        API_PciConfigInDword(iBus, iSlot, iFunc, i, &uiTemp);
-        
-        if (uiTemp == 0) {
-            break;
+        if (uiBarResponse == 0) {
+            continue;
         }
         
-        if (uiTemp & 0x1) {
-            API_PciConfigOutDword(iBus, iSlot, iFunc, i, uiIoBase | 0x1);
+        iFoundMem64 = 0;
         
+        if (uiBarResponse & PCI_BASE_ADDRESS_SPACE) {
+            ulBarSize  = ~(uiBarResponse & PCI_BASE_ADDRESS_IO_MASK) + 1;
+            ulIoBase   = ((ulIoBase - 1) | (ulBarSize - 1)) + 1;
+            ulBarValue = ulIoBase;
+            ulIoBase   = ulIoBase + ulBarSize;
+            
         } else {
-            API_PciConfigOutDword(iBus, iSlot, iFunc, i, uiMemBase & ~0x1);
+            if ((uiBarResponse & PCI_BASE_ADDRESS_MEM_TYPE_MASK) ==
+				 PCI_BASE_ADDRESS_MEM_TYPE_64) {
+                UINT32  uiBarResponseUpper;
+                UINT64  ullBar64;
+                
+                API_PciConfigOutDword(iBus, iSlot, iFunc, iBar + 4, 0xffffffff);
+				API_PciConfigInDword(iBus, iSlot, iFunc, iBar + 4, &uiBarResponseUpper);
+				
+				ullBar64  = ((UINT64)uiBarResponseUpper << 32) | uiBarResponse;
+				ulBarSize = ~(ullBar64 & PCI_BASE_ADDRESS_MEM_MASK) + 1;
+				
+                iFoundMem64 = 1;
+            
+            } else {
+                ulBarSize = (UINT32)(~(uiBarResponse & PCI_BASE_ADDRESS_MEM_MASK) + 1);
+            }
+            
+            ulMemBase  = ((ulMemBase - 1) | (ulBarSize - 1)) + 1;
+            ulBarValue = ulMemBase;
+            ulMemBase  = ulMemBase + ulBarSize;
+        }
+
+        API_PciConfigOutDword(iBus, iSlot, iFunc, iBar, (UINT32)ulBarValue);
+        
+        if (iFoundMem64) {
+            iBar += 4;
+#if LW_CFG_PCI_64 > 0
+            API_PciConfigOutDword(iBus, iSlot, iFunc, iBar, (UINT32)(ulBarValue >> 32));
+#else
+            API_PciConfigOutDword(iBus, iSlot, iFunc, iBar, 0x00000000);
+#endif
         }
     }
     
@@ -911,10 +1061,18 @@ INT  API_PciConfigDev (INT      iBus,
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
     
     API_PciConfigOutByte(iBus, iSlot, iFunc, PCI_CACHE_LINE_SIZE, ucCacheLine);
-    
     API_PciConfigOutByte(iBus, iSlot, iFunc, PCI_LATENCY_TIMER, ucLatency);
     
-    API_PciConfigModifyDword(iBus, iSlot, iFunc, PCI_COMMAND, (0xffff0000 | uiCommand), uiCommand);
+    /* 
+     * Disable interrupt line, if device says it wants to use interrupts
+     */
+    API_PciConfigInByte(iBus, iSlot, iFunc, PCI_INTERRUPT_PIN, &ucPin);
+    if (ucPin != 0) {
+        API_PciConfigOutByte(iBus, iSlot, iFunc, PCI_INTERRUPT_LINE, 0xff);
+    }
+    
+    API_PciConfigInDword(iBus, iSlot, iFunc, PCI_COMMAND, &uiOldCommand);
+    API_PciConfigOutDword(iBus, iSlot, iFunc, PCI_COMMAND, (uiOldCommand & 0xffff0000) | uiCommand);
     
     return  (ERROR_NONE);
 }

@@ -214,6 +214,7 @@ PCHAR  lib_strerror (INT  iNum)
     case ERROR_KERNEL_LOCK:             return  ("Kernel locked");
     case ERROR_KERNEL_CPU_NULL:         return  ("Invalid cpu");
     case ERROR_KERNEL_HOOK_FULL:        return  ("Hook table full");
+    case ERROR_KERNEL_KEY_CONFLICT:     return  ("Key conflict");
 
     /*
      *  thread 

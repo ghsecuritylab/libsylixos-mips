@@ -32,6 +32,18 @@
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_PCI_EN > 0)
 
 /*********************************************************************************************************
+  PCI 配置
+*********************************************************************************************************/
+
+#if LW_CFG_PCI_64 > 0
+typedef UINT64          pci_addr_t;
+typedef UINT64          pci_size_t;
+#else
+typedef UINT32          pci_addr_t;
+typedef UINT32          pci_size_t;
+#endif                                                                  /*  LW_CFG_PCI_64 > 0           */
+
+/*********************************************************************************************************
    PCI 硬件连接结构例图
    
                       +-------+
@@ -246,14 +258,20 @@ typedef struct {
   PCI I/O Drv
 *********************************************************************************************************/
 
-typedef struct pci_drv_funcs {
+typedef struct pci_drv_funcs0 {
+    INT     (*cfgRead)(INT iBus, INT iSlot, INT iFunc, INT iOft, INT iLen, PVOID pvRet);
+    INT     (*cfgWrite)(INT iBus, INT iSlot, INT iFunc, INT iOft, INT iLen, UINT32 uiData);
+    INT     (*cfgSpcl)(INT iBus, UINT32 uiMsg);
+} PCI_DRV_FUNCS0;                                                       /*  PCI_MECHANISM_0             */
+
+typedef struct pci_drv_funcs12 {
     UINT8   (*ioInByte)(addr_t ulAddr);
     UINT16  (*ioInWord)(addr_t ulAddr);
     UINT32  (*ioInDword)(addr_t ulAddr);
-    VOID    (*ioOutByte)(addr_t ulAddr, UINT8 ucValue);
-    VOID    (*ioOutWord)(addr_t ulAddr, UINT16 usValue);
-    VOID    (*ioOutDword)(addr_t ulAddr, UINT32 uiValue);
-} PCI_DRV_FUNCS;
+    VOID    (*ioOutByte)(UINT8 ucValue, addr_t ulAddr);
+    VOID    (*ioOutWord)(UINT16 usValue, addr_t ulAddr);
+    VOID    (*ioOutDword)(UINT32 uiValue, addr_t ulAddr);
+} PCI_DRV_FUNCS12;                                                      /*  PCI_MECHANISM_1 , 2         */
 
 /*********************************************************************************************************
   The PCI interface treats multi-function devices as independent
@@ -304,12 +322,21 @@ typedef struct pci_drv_funcs {
 *********************************************************************************************************/
 
 typedef struct {
-    PCI_DRV_FUNCS              *PCIC_pDrvFuncs;
+    union {
+        PCI_DRV_FUNCS0         *PCICF_pDrvFuncs0;
+        PCI_DRV_FUNCS12        *PCICF_pDrvFuncs12;
+    } f;
+#define PCIC_pDrvFuncs0         f.PCICF_pDrvFuncs0
+#define PCIC_pDrvFuncs12        f.PCICF_pDrvFuncs12
     
+#define PCI_MECHANISM_0         0
 #define PCI_MECHANISM_1         1
 #define PCI_MECHANISM_2         2
     UINT8                       PCIC_ucMechanism;
     
+    /*
+     * 下面地址仅适用于 PCI_MECHANISM_1 与 PCI_MECHANISM_2
+     */
     addr_t                      PCIC_ulConfigAddr;
     addr_t                      PCIC_ulConfigData;
     addr_t                      PCIC_ulConfigBase;                      /* only for PCI_MECHANISM_2     */
@@ -354,7 +381,8 @@ LW_API INT      API_PciTraversal(INT (*pfuncCall)(), PVOID pvArg, INT iMaxBusNum
 LW_API INT      API_PciTraversalDev(INT iBusStart, BOOL bSubBus, INT (*pfuncCall)(), PVOID pvArg);
                                  
 LW_API INT      API_PciConfigDev(INT iBus, INT iSlot, INT iFunc, 
-                                 UINT32 uiIoBase, UINT32 uiMemBase, UINT8 ucLatency,UINT32 uiCommand);
+                                 ULONG ulIoBase, pci_addr_t ulMemBase, 
+                                 UINT8 ucLatency, UINT32 uiCommand);
 LW_API INT      API_PciFuncDisable(INT iBus, INT iSlot, INT iFunc);
                                  
 LW_API INT      API_PciInterConnect(ULONG ulVector, PINT_SVR_ROUTINE pfuncIsr, 

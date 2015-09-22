@@ -168,7 +168,7 @@ __wait_again:
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
-    } 
+    }
     
     ptcbOwner = (PLW_CLASS_TCB)pevent->EVENT_pvTcbOwn;                  /*  获得拥有者 TCB              */
     if (LW_PRIO_IS_HIGH(ptcbCur->TCB_ucPriority, 

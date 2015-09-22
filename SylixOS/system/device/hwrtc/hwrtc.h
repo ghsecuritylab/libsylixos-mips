@@ -30,6 +30,8 @@
 /*********************************************************************************************************
   rtc 驱动硬件函数接口
 *********************************************************************************************************/
+#ifdef __SYLIXOS_KERNEL
+
 typedef struct {
     VOIDFUNCPTR             RTC_pfuncInit;                              /*  初始化 RTC                  */
     FUNCPTR                 RTC_pfuncSet;                               /*  设置硬件 RTC 时间           */
@@ -45,6 +47,7 @@ typedef LW_RTC_FUNCS       *PLW_RTC_FUNCS;
 LW_API INT          API_RtcDrvInstall(VOID);
 LW_API INT          API_RtcDevCreate(PLW_RTC_FUNCS    prtcfuncs);
 
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 
 LW_API INT          API_RtcSet(time_t  time);
 LW_API INT          API_RtcGet(time_t  *ptime);

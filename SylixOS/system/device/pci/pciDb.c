@@ -52,17 +52,18 @@ typedef struct {
 *********************************************************************************************************/
 static PCI_CLASS_CODE   _G_ccPciClassTable[] = {
     {PCI_CLASS_NOT_DEFINED,             "Pre 2.0",              LW_NULL,    1},
-    {PCI_BASE_CLASS_STORAGE,            "Storage",              LW_NULL,    5},
+    {PCI_BASE_CLASS_STORAGE,            "Storage",              LW_NULL,    7},
     {PCI_BASE_CLASS_NETWORK,            "Network",              LW_NULL,    4},
     {PCI_BASE_CLASS_DISPLAY,            "Display",              LW_NULL,    3},
     {PCI_BASE_CLASS_MULTIMEDIA,         "Multimedia",           LW_NULL,    3},
     {PCI_BASE_CLASS_MEMORY,             "Memory",               LW_NULL,    2},
     {PCI_BASE_CLASS_BRIDGE,             "Bridge",               LW_NULL,    9},
     {PCI_BASE_CLASS_COMMUNICATION,      "Communication",        LW_NULL,    4},
-    {PCI_BASE_CLASS_SYSTEM,             "System",               LW_NULL,    5},
+    {PCI_BASE_CLASS_SYSTEM,             "System",               LW_NULL,    6},
     {PCI_BASE_CLASS_INPUT,              "Input",                LW_NULL,    5},
     {PCI_BASE_CLASS_DOCKING,            "Docking",              LW_NULL,    1},
     {PCI_BASE_CLASS_PROCESSOR,          "Processor",            LW_NULL,    7},
+    {PCI_BASE_CLASS_WIRELESS,           "Wireless",             LW_NULL,    1},
     {PCI_BASE_CLASS_SERIAL,             "Serial",               LW_NULL,    5},
     {PCI_BASE_CLASS_INTELLIGENT,        "Intelligent",          LW_NULL,    1},
     {PCI_BASE_CLASS_SATELLITE,          "Satellite",            LW_NULL,    4},
@@ -80,27 +81,24 @@ static PCI_CLASS_SUB    _G_ccPciSubClassTable[] = {
     {PCI_CLASS_STORAGE_FLOPPY,  "FLOPPY",  LW_NULL, 0},
     {PCI_CLASS_STORAGE_IPI,     "IPI",     LW_NULL, 0},
     {PCI_CLASS_STORAGE_RAID,    "RAID",    LW_NULL, 0},
-
+    {PCI_CLASS_STORAGE_SATA,    "SATA",    LW_NULL, 0},
+    {PCI_CLASS_STORAGE_SAS,     "SAS",     LW_NULL, 0},
 
     {PCI_CLASS_NETWORK_ETHERNET,    "ETHERNET",     LW_NULL, 0},
     {PCI_CLASS_NETWORK_TOKEN_RING,  "TOKEN_RING",   LW_NULL, 0},
     {PCI_CLASS_NETWORK_FDDI,        "FDDI",         LW_NULL, 0},
     {PCI_CLASS_NETWORK_ATM,         "ATM",          LW_NULL, 0},
 
-
     {PCI_CLASS_DISPLAY_VGA,     "VGA",      LW_NULL, 2},
     {PCI_CLASS_DISPLAY_XGA,     "XGA",      LW_NULL, 0},
     {PCI_CLASS_DISPLAY_3D,      "3D",       LW_NULL, 0},
-
 
     {PCI_CLASS_MULTIMEDIA_VIDEO,    "VIDEO",    LW_NULL, 0},
     {PCI_CLASS_MULTIMEDIA_AUDIO,    "AUDIO",    LW_NULL, 0},
     {PCI_CLASS_MULTIMEDIA_PHONE,    "PHONE",    LW_NULL, 0},
 
-
     {PCI_CLASS_MEMORY_RAM,      "RAM",      LW_NULL, 0},
     {PCI_CLASS_MEMORY_FLASH,    "FLASH",    LW_NULL, 0},
-
 
     {PCI_CLASS_BRIDGE_HOST,     "Host/PCI",             LW_NULL, 0},
     {PCI_CLASS_BRIDGE_ISA,      "PCI/ISA",              LW_NULL, 0},
@@ -112,19 +110,17 @@ static PCI_CLASS_SUB    _G_ccPciSubClassTable[] = {
     {PCI_CLASS_BRIDGE_CARDBUS,  "PCI/CardBus",          LW_NULL, 0},
     {PCI_CLASS_BRIDGE_RACEWAY,  "PCI/RaceWay",          LW_NULL, 0},
 
-
     {PCI_CLASS_COMMUNICATION_SERIAL,        "SERIAL",       LW_NULL, 3},
     {PCI_CLASS_COMMUNICATION_PARALLEL,      "PARALLEL",     LW_NULL, 3},
     {PCI_CLASS_COMMUNICATION_MULTISERIAL,   "MULTISERIAL",  LW_NULL, 0},
     {PCI_CLASS_COMMUNICATION_MODEM,         "MODEM",        LW_NULL, 0},
-
 
     {PCI_CLASS_SYSTEM_PIC,          "PIC",      LW_NULL, 3},
     {PCI_CLASS_SYSTEM_DMA,          "DMA",      LW_NULL, 3},
     {PCI_CLASS_SYSTEM_TIMER,        "TIMER",    LW_NULL, 3},
     {PCI_CLASS_SYSTEM_RTC,          "RTC",      LW_NULL, 2},
     {PCI_CLASS_SYSTEM_PCI_HOTPLUG,  "HOTPLUG",  LW_NULL, 0},
-
+    {PCI_CLASS_SYSTEM_SDHCI,        "SDHCI",    LW_NULL, 0},
 
     {PCI_CLASS_INPUT_KEYBOARD,  "KEYBOARD", LW_NULL, 0},
     {PCI_CLASS_INPUT_PEN,       "PEN",      LW_NULL, 0},
@@ -132,9 +128,7 @@ static PCI_CLASS_SUB    _G_ccPciSubClassTable[] = {
     {PCI_CLASS_INPUT_SCANNER,   "SCANNER",  LW_NULL, 0},
     {PCI_CLASS_INPUT_GAMEPORT,  "GAMEPORT", LW_NULL, 0},
 
-
     {PCI_CLASS_DOCKING_GENERIC, "GENERIC",  LW_NULL, 0},
-
 
     {PCI_CLASS_PROCESSOR_386,       "386",          LW_NULL, 0},
     {PCI_CLASS_PROCESSOR_486,       "486",          LW_NULL, 0},
@@ -144,6 +138,7 @@ static PCI_CLASS_SUB    _G_ccPciSubClassTable[] = {
     {PCI_CLASS_PROCESSOR_MIPS,      "MIPS",         LW_NULL, 0},
     {PCI_CLASS_PROCESSOR_CO,        "Co-Processor", LW_NULL, 0},
 
+    {PCI_CLASS_WIRELESS_RF_CONTROLLER, "Wireless-RF",  LW_NULL, 0},
 
     {PCI_CLASS_SERIAL_FIREWIRE, "Firewire (IEEE 1394)",                 LW_NULL, 0},
     {PCI_CLASS_SERIAL_ACCESS,   "ACCESS bus",                           LW_NULL, 0},
@@ -151,19 +146,15 @@ static PCI_CLASS_SUB    _G_ccPciSubClassTable[] = {
     {PCI_CLASS_SERIAL_USB,      "USB",                                  LW_NULL, 0},
     {PCI_CLASS_SERIAL_FIBER,    "FIBER",                                LW_NULL, 0},
 
-
     {PCI_CLASS_INTELLIGENT_I2O, "I2O",      LW_NULL, 0},
-
 
     {PCI_CLASS_SATELLITE_TV,    "TV",       LW_NULL, 0},
     {PCI_CLASS_SATELLITE_AUDIO, "AUDIO",    LW_NULL, 0},
     {PCI_CLASS_SATELLITE_VOICE, "VOICE",    LW_NULL, 0},
     {PCI_CLASS_SATELLITE_DATA,  "DATA",     LW_NULL, 0},
 
-
     {PCI_CLASS_CRYPT_NETWORK,       "NETWORK",          LW_NULL, 0},
     {PCI_CLASS_CRYPT_ENTERTAINMENT, "ENTERTAINMENT",    LW_NULL, 0},
-
 
     {PCI_CLASS_SP_DPIO, "SP-DPIO",  LW_NULL, 0},
 };

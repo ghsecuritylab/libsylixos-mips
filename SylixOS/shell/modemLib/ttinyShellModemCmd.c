@@ -349,9 +349,10 @@ __re_select:
          */
         sstWriteNum = write(iFile, &ucTemp[3], __LW_XMODEM_DATA_LEN);
         if (sstWriteNum != __LW_XMODEM_DATA_LEN) {
+            INT     iErrNo = errno;
             __LW_XMODEM_SEND_CMD(__LW_XMODEM_CAN);                      /*  Ω· ¯Õ®–≈                    */
             API_ThreadCleanupPop(LW_TRUE);
-            fprintf(stderr, "write file error %s!\n", lib_strerror(errno));
+            fprintf(stderr, "write file error %s!\n", lib_strerror(iErrNo));
             return  (PX_ERROR);
         }
         

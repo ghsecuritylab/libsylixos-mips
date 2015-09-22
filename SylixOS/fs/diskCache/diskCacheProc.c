@@ -76,13 +76,14 @@ static LW_PROCFS_NODE           _G_pfsnDiskCache[] =
 static size_t  __procFsDiskCachePrint (PCHAR  pcBuffer, size_t  stMaxBytes)
 {
     size_t              stRealSize;
+    PCHAR               pcName;
     PLW_LIST_LINE       plineTemp;
     PLW_DISKCACHE_CB    pdiskcDiskCache;
     
     stRealSize = bnprintf(pcBuffer, stMaxBytes, 0, "DO NOT INCLUDE NAND READ CACHE INFO.\n\n");
     stRealSize = bnprintf(pcBuffer, stMaxBytes, stRealSize,
-                          "    SIZE     OPT  END-SECTOR  DIRTY-NODE BURST  HASH\n"
-                          "------------ --- ------------ ---------- ----- ------\n");
+                          "       NAME           SIZE     OPT  END-SECTOR  DIRTY-NODE BURST  HASH\n"
+                          "----------------- ------------ --- ------------ ---------- ----- ------\n");
                            
     __LW_DISKCACHE_LIST_LOCK();
     for (plineTemp  = _G_plineDiskCacheHeader;
@@ -92,8 +93,18 @@ static size_t  __procFsDiskCachePrint (PCHAR  pcBuffer, size_t  stMaxBytes)
         pdiskcDiskCache = _LIST_ENTRY(plineTemp, 
                                       LW_DISKCACHE_CB, 
                                       DISKC_lineManage);
+                                      
+        if ((pdiskcDiskCache->DISKC_blkdCache.BLKD_pcName) &&
+            (pdiskcDiskCache->DISKC_blkdCache.BLKD_pcName[0] != PX_EOS)) {
+            pcName = pdiskcDiskCache->DISKC_blkdCache.BLKD_pcName;
+        
+        } else {
+            pcName = "<unkown>";
+        }
+                                      
         stRealSize = bnprintf(pcBuffer, stMaxBytes, stRealSize,
-                              "%12lu %3d %12lu %10lu %5d %6d\n",
+                              "%-17s %12lu %3d %12lu %10lu %5d %6d\n",
+                              pcName,
                               (pdiskcDiskCache->DISKC_ulNCacheNode * 
                                pdiskcDiskCache->DISKC_ulBytesPerSector),
                               pdiskcDiskCache->DISKC_iCacheOpt,

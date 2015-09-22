@@ -83,7 +83,7 @@
   内部全局变量
 *********************************************************************************************************/
 static LW_OBJECT_HANDLE _G_hYaffsOpLock;
-static INT              _G_iYaffsDrvNum = 0;
+static INT              _G_iYaffsDrvNum = PX_ERROR;
 static BOOL             _G_bIsCreateDev = LW_FALSE;
 /*********************************************************************************************************
   内部结构

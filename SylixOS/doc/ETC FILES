@@ -30,6 +30,8 @@ ppp/config.ini
 
 网络配置
 netcfg.ini
+ifparam.ini
+resolv.conf
 
 网络libc相关 (请查阅相关UNIX文档)
 hosts.equiv

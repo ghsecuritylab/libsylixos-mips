@@ -64,7 +64,6 @@
   注 意: 如果使能地址对齐检查, GCC 编译必须加入 -mno-unaligned-access 选项 (不生成非对齐访问指令)
 *********************************************************************************************************/
 #define MMU_ALIGNFAULT_EN   0                                           /*  是否是能地址对齐检查        */
-#define MMU_TTBR_SELECT     0                                           /*  TTBR0 or TTBR1 XXX          */
 /*********************************************************************************************************
   全局变量
 *********************************************************************************************************/
@@ -395,11 +394,8 @@ static INT  armMmuGlobalInit (CPCHAR  pcMachineName)
 
     armControlFeatureDisable(CP15_CONTROL_TEXREMAP);                    /*  Disable TEX remapping       */
 
-#if MMU_TTBR_SELECT > 0
-    armMmuV7SetTTBCR((1 << 31) | 1);                                    /*  XXX Use TTBR1               */
-#else
-    armMmuV7SetTTBCR(0);                                                /*  Use TTBR0                   */
-#endif
+    armMmuV7SetTTBCR(0);                                                /*  Use the 32-bit translation  */
+                                                                        /*  system, Always use TTBR0    */
 
     return  (ERROR_NONE);
 }
@@ -838,10 +834,10 @@ static VOID  armMmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
          */
         p_pgdentry = (LW_PGD_TRANSENTRY *)((ULONG)pmmuctx->MMUCTX_pgdEntry
                    | (1 << 6)
-                   | (0 << 5)
+                   | ((!VMSA_S) << 5)
                    | (1 << 3)
                    | (0 << 2)
-                   | (1 << 1)
+                   | (VMSA_S << 1)
                    | (0 << 0));
     } else {
         /*
@@ -856,10 +852,10 @@ static VOID  armMmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
          *  0     - C           0x1 (Inner cacheable)
          */
         p_pgdentry = (LW_PGD_TRANSENTRY *)((ULONG)pmmuctx->MMUCTX_pgdEntry
-                   | (1 << 5)
+                   | ((!VMSA_S) << 5)
                    | (1 << 3)
                    | (0 << 2)
-                   | (0 << 1)
+                   | (VMSA_S << 1)
                    | (1 << 0));
     }
     

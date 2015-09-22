@@ -135,6 +135,14 @@ LW_API ULONG            API_ObjectGetNode(LW_OBJECT_HANDLE  ulId);      /*  获得
 
 LW_API ULONG            API_ObjectGetIndex(LW_OBJECT_HANDLE  ulId);     /*  获得对象缓冲区内地址        */
 
+#if LW_CFG_OBJECT_SHARE_EN > 0
+LW_API ULONG            API_ObjectShareAdd(LW_OBJECT_HANDLE  ulId, UINT64  u64Key);
+
+LW_API ULONG            API_ObjectShareDelete(UINT64  u64Key);
+
+LW_API LW_OBJECT_HANDLE API_ObjectShareFind(UINT64  u64Key);
+#endif                                                                  /*  LW_CFG_OBJECT_SHARE_EN > 0  */
+
 /*********************************************************************************************************
   THREAD
 *********************************************************************************************************/
@@ -228,9 +236,9 @@ LW_API ULONG            API_ThreadRestartEx(LW_OBJECT_HANDLE       ulId,
 
 LW_API LW_OBJECT_HANDLE API_ThreadIdSelf(VOID);                         /*  获得线程自己的句柄          */
 
+#ifdef __SYLIXOS_KERNEL
 LW_API PLW_CLASS_TCB    API_ThreadTcbSelf(VOID);                        /*  获得线程自己的 TCB          */
 
-#ifdef __SYLIXOS_KERNEL
 LW_API LW_OBJECT_HANDLE API_ThreadIdInter(VOID);                        /*  获得被中断线程 ID           */
 
 LW_API PLW_CLASS_TCB    API_ThreadTcbInter(VOID);                       /*  获得被中断线程 TCB          */
@@ -696,6 +704,10 @@ LW_API VOID             API_TimeSleep(ULONG    ulTick);                 /*  当前
 
 LW_API ULONG            API_TimeSleepEx(ULONG   ulTick, BOOL  bSigRet); /*  当前线程睡眠                */
 
+LW_API ULONG            API_TimeSleepUntil(clockid_t  clockid, 
+                                           const struct timespec  *tv, 
+                                           BOOL  bSigRet);              /*  当前线程睡眠直到指定的时间  */
+
 LW_API VOID             API_TimeMSleep(ULONG   ulMSeconds);             /*  以毫秒为单位睡眠            */
 
 LW_API VOID             API_TimeSSleep(ULONG   ulSeconds);              /*  以秒为单位睡眠              */
@@ -965,11 +977,44 @@ LW_API ULONG            API_SetLastErrorEx(LW_OBJECT_HANDLE  ulId,
                                            ULONG  ulError);             /*  设置指定任务的最后一次错误  */
 
 /*********************************************************************************************************
+  WORK QUEUE
+*********************************************************************************************************/
+
+#ifdef __SYLIXOS_KERNEL
+#if LW_CFG_WORKQUEUE_EN > 0
+LW_API PVOID            API_WorkQueueCreate(CPCHAR                  pcName,
+                                            UINT                    uiQSize, 
+                                            BOOL                    bDelayEn, 
+                                            ULONG                   ulScanPeriod, 
+                                            PLW_CLASS_THREADATTR    pthreadattr);
+                                                                        /*  创建一个工作队列            */
+LW_API ULONG            API_WorkQueueDelete(PVOID  pvWQ);               /*  删除一个工作队列            */
+
+LW_API ULONG            API_WorkQueueInsert(PVOID           pvWQ, 
+                                            ULONG           ulDelay,
+                                            VOIDFUNCPTR     pfunc, 
+                                            PVOID           pvArg0,
+                                            PVOID           pvArg1,
+                                            PVOID           pvArg2,
+                                            PVOID           pvArg3,
+                                            PVOID           pvArg4,
+                                            PVOID           pvArg5);    /*  将一个工作插入到工作队列    */
+                                            
+LW_API ULONG            API_WorkQueueFlush(PVOID  pvWQ);                /*  清空工作队列                */
+                                            
+LW_API ULONG            API_WorkQueueStatus(PVOID  pvWQ, UINT  *puiCount);
+                                                                        /*  获得工作队列状态            */
+
+#endif                                                                  /*  LW_CFG_WORKQUEUE_EN > 0     */
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
+
+/*********************************************************************************************************
   KERNEL
 *********************************************************************************************************/
 
 LW_API VOID             API_KernelNop(CPCHAR  pcArg, LONG  lArg);       /*  内核空操作                  */
 
+#ifdef __SYLIXOS_KERNEL
 #if LW_CFG_CPU_FPU_EN > 0
 LW_API VOID             API_KernelFpuPrimaryInit(CPCHAR  pcMachineName, 
                                                  CPCHAR  pcFpuName);    /*  初始化浮点运算器            */
@@ -981,6 +1026,7 @@ LW_API VOID             API_KernelFpuSecondaryInit(CPCHAR  pcMachineName,
                                                    CPCHAR  pcFpuName);
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 
 LW_API VOID             API_KernelReboot(INT  iRebootType);             /*  系统重新启动                */
 

@@ -670,7 +670,7 @@ static INT  __tshellFsCmdCmp (INT  iArgC, PCHAR  ppcArgV[])
              off_t      oftSize;
 
     if (iArgC != 3) {
-        fprintf(stderr, "param error!\n");
+        fprintf(stderr, "parameter error!\n");
         return  (-1);
     }
     if (lib_strcmp(ppcArgV[1], ppcArgV[2]) == 0) {                      /*  文件相同                    */
@@ -801,18 +801,24 @@ static VOID __buildDstFileName (CPCHAR  pcSrc, CPCHAR  pcDstDir, PCHAR  pcBuffer
 *********************************************************************************************************/
 static INT  __tshellFsCmdCp (INT  iArgC, PCHAR  ppcArgV[])
 {
+#define __LW_CP_BUF_SZ  (128 * LW_CFG_KB_SIZE)
+
              INT        iError = PX_ERROR;
     REGISTER INT        iFdSrc;
     REGISTER INT        iFdDst = PX_ERROR;
     
              CHAR       cDstFile[MAX_FILENAME_LENGTH] = "\0";
+             PCHAR      pcDest;
+             PCHAR      pcSrc;
+             BOOL       bForce = LW_FALSE;
 
     REGISTER ssize_t    sstRdNum;
     REGISTER ssize_t    sstWrNum;
             
              CHAR       cTemp[128];
-             PCHAR      pcBuffer;
-             size_t     stBuffer;
+             PCHAR      pcBuffer = cTemp;
+             size_t     stBuffer = sizeof(cTemp);
+             size_t     stOptim;
              
     struct   stat       statFile;
     struct   stat       statDst;
@@ -821,16 +827,32 @@ static INT  __tshellFsCmdCp (INT  iArgC, PCHAR  ppcArgV[])
              time_t     timeEnd;
              time_t     timeDiff;
 
-    if (iArgC != 3) {
-        fprintf(stderr, "param error!\n");
-        return  (-1);
-    }
-    if (lib_strcmp(ppcArgV[1], ppcArgV[2]) == 0) {                      /*  文件重复                    */
-        fprintf(stderr, "param error!\n");
+    if (iArgC == 3) {
+        pcDest = ppcArgV[2];
+        pcSrc  = ppcArgV[1];
+    
+    } else if (iArgC == 4) {
+        if (ppcArgV[1][0] != '-') {
+            fprintf(stderr, "option error!\n");
+            return  (-1);
+        }
+        if (lib_strchr(ppcArgV[1], 'f')) {                              /*  强行复制                    */
+            bForce = LW_TRUE;
+        }
+        pcDest = ppcArgV[3];
+        pcSrc  = ppcArgV[2];
+        
+    } else {
+        fprintf(stderr, "parameter error!\n");
         return  (-1);
     }
     
-    iFdSrc = open(ppcArgV[1], O_RDONLY, 0);                             /*  打开源文件                  */
+    if (lib_strcmp(pcSrc, pcDest) == 0) {                               /*  文件重复                    */
+        fprintf(stderr, "parameter error!\n");
+        return  (-1);
+    }
+    
+    iFdSrc = open(pcSrc, O_RDONLY, 0);                                  /*  打开源文件                  */
     if (iFdSrc < 0) {
         fprintf(stderr, "can not open source file!\n");
         return  (-1);
@@ -841,34 +863,35 @@ static INT  __tshellFsCmdCp (INT  iArgC, PCHAR  ppcArgV[])
         goto    __error_handle;
     }
     if (S_ISDIR(statFile.st_mode)) {                                    /*  不能复制目录文件            */
-        fprintf(stderr, "can not copy dir file!\n");
+        fprintf(stderr, "can not copy directory!\n");
         errno  = EISDIR;
         iError = PX_ERROR;
         goto    __error_handle;
     }
     
-    iError = stat(ppcArgV[2], &statDst);
+    iError = stat(pcDest, &statDst);
     if (iError == ERROR_NONE) {
         if (S_ISDIR(statDst.st_mode)) {
-            __buildDstFileName(ppcArgV[1], ppcArgV[2], cDstFile);       /*  生成目标文件路径            */
+            __buildDstFileName(pcSrc, pcDest, cDstFile);                /*  生成目标文件路径            */
         }
     }
     if (cDstFile[0] == PX_EOS) {
-        lib_strlcpy(cDstFile, ppcArgV[2], MAX_FILENAME_LENGTH);
+        lib_strlcpy(cDstFile, pcDest, MAX_FILENAME_LENGTH);
     }
 
-    iError = access(cDstFile, 0);                                       /*  检测目标文件是否存在        */
-    if (iError == ERROR_NONE) {
+    if (!bForce) {
+        iError = access(cDstFile, 0);                                   /*  检测目标文件是否存在        */
+        if (iError == ERROR_NONE) {
 __re_select:
-        printf("destination file is exist, overwrite? (Y/N)\n");
-        read(0, cTemp, 128);
-        if ((cTemp[0] == 'N') ||
-            (cTemp[0] == 'n')) {                                        /*  不覆盖                      */
-            iError = PX_ERROR;
-            goto    __error_handle;
-        } else if ((cTemp[0] != 'Y') &&
-                   (cTemp[0] != 'y')) {                                 /*  选择错误                    */
-            goto    __re_select;
+            printf("destination file is exist, overwrite? (Y/N)\n");
+            read(0, cTemp, 128);
+            if ((cTemp[0] == 'N') || (cTemp[0] == 'n')) {               /*  不覆盖                      */
+                iError = PX_ERROR;
+                goto    __error_handle;
+            
+            } else if ((cTemp[0] != 'Y') && (cTemp[0] != 'y')) {        /*  选择错误                    */
+                goto    __re_select;
+            }
         }
     }
                                                                         /*  创建目标文件                */
@@ -879,14 +902,15 @@ __re_select:
         return  (-1);
     }
     
-    stBuffer = (UINT)__MIN((64 * LW_CFG_KB_SIZE), statFile.st_size);    /*  计算缓冲区                  */
-    if (stBuffer < 1) {
-        stBuffer = 128;                                                 /*  至少为 128 字节             */
-    }
-    pcBuffer = (PCHAR)__SHEAP_ALLOC(stBuffer);
-    if (pcBuffer == LW_NULL) {                                          /*  分配内存是否失败            */
-        pcBuffer =  cTemp;                                              /*  使用临时内存                */
-        stBuffer =  128;
+    stOptim = (UINT)__MIN(__LW_CP_BUF_SZ, statFile.st_size);            /*  计算缓冲区                  */
+    if (stOptim > 128) {
+        pcBuffer = (PCHAR)__SHEAP_ALLOC(stOptim);                       /*  分配缓冲区                  */
+        if (pcBuffer == LW_NULL) {
+            pcBuffer =  cTemp;                                          /*  使用局部变量缓冲            */
+        
+        } else {
+            stBuffer =  stOptim;
+        }
     }
     
     lib_time(&timeStart);                                               /*  记录起始时间                */
@@ -903,6 +927,7 @@ __re_select:
         } else if (sstRdNum == 0) {                                     /*  拷贝完毕                    */
             iError = ERROR_NONE;
             break;
+        
         } else {
             iError = PX_ERROR;                                          /*  读取数据错误                */
             break;
@@ -931,15 +956,12 @@ __error_handle:
     }
     
     if (iError == ERROR_NONE) {                                         /*  拷贝完成                    */
-        /*
-         *  修改复制后文件的时间信息
-         */
         struct utimbuf  utimbDst;
         
-        utimbDst.actime  = statFile.st_atime;
+        utimbDst.actime  = statFile.st_atime;                           /*  修改复制后文件的时间信息    */
         utimbDst.modtime = statFile.st_mtime;
         
-        (VOID)utime(cDstFile, &utimbDst);                               /*  设置文件时间                */
+        utime(cDstFile, &utimbDst);                                     /*  设置文件时间                */
     }
     
     return  (iError);
@@ -1885,9 +1907,10 @@ VOID  __tshellFsCmdInit (VOID)
     API_TShellKeywordAdd("mount", __tshellFsCmdMount);
     API_TShellFormatAdd("mount", " [-t fstype] [-o option] [blk dev] [mount path]");
     API_TShellHelpAdd("mount",  "mount a volume.\n"
-                                "eg. mount /dev/sda1 /mnt/usb\n"
-                                "    mount -t vfat /dev/sda1 /mnt/usb\n"
-                                "    mount -t romfs /dev/rom0 /mnt/rom0\n"
+                                "eg. mount /dev/blk/sata0 /mnt/hdd0\n"
+                                "    mount -t vfat /dev/blk/sata0 /mnt/hdd0\n"
+                                "    mount -t romfs /dev/blk/rom0 /mnt/rom0\n"
+                                "    mount -t romfs /root/romfile /mnt/rom1\n"
                                 "    mount -t ramfs 100000 /mnt/ram\n"
                                 "    mount -t nfs -o ro 192.168.0.123:/nfstest /mnt/nfs\n"
                                 "-o \n"

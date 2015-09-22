@@ -170,6 +170,7 @@ static VOID  __signalExitHandle (INT  iSigNo, struct siginfo *psiginfo)
     case SIGSEGV:
         if (psiginfo->si_code == SEGV_MAPERR) {
             pcSigMsg = "SIGSEGV (map error)";
+        
         } else {
             pcSigMsg = "SIGSEGV (access error)";
         }
@@ -188,12 +189,14 @@ static VOID  __signalExitHandle (INT  iSigNo, struct siginfo *psiginfo)
     }
 #endif                                                                  /*  LW_CFG_LOG_LIB_EN > 0       */
     
-    if ((iSigNo == SIGSEGV) || 
+    if ((iSigNo == SIGBUS)  ||
+        (iSigNo == SIGSEGV) || 
         (iSigNo == SIGILL)) {
         __LW_FATAL_ERROR_HOOK(pid, API_ThreadIdSelf(), psiginfo);
     }
                                                                         /*  Ç¿ÖÆÐÅºÅ                    */
-    if ((iSigNo == SIGSEGV) || 
+    if ((iSigNo == SIGBUS)  ||
+        (iSigNo == SIGSEGV) || 
         (iSigNo == SIGILL)  ||
         (iSigNo == SIGABRT) || 
         (iSigNo == SIGKILL)) {

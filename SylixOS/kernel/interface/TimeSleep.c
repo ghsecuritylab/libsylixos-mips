@@ -41,6 +41,10 @@
 #define __THREAD_CANCEL_POINT()
 #endif                                                                  /*  LW_CFG_THREAD_CANCEL_EN     */
 /*********************************************************************************************************
+  函数声明
+*********************************************************************************************************/
+INT  nanosleep(const struct timespec  *rqtp, struct timespec  *rmtp);
+/*********************************************************************************************************
 ** 函数名称: API_TimeSleep
 ** 功能描述: 线程睡眠函数 (此 API 不能被信号唤醒)
 ** 输　入  : ulTick            睡眠的时间
@@ -146,6 +150,45 @@ __wait_again:
     }
     
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_TimeSleepUntil
+** 功能描述: 线程睡眠直到一个指定的时间 (与当前时钟差值不得超过 ULONG_MAX 个 tick)
+** 输　入  : clockid           时钟类型 CLOCK_REALTIME or CLOCK_MONOTONIC
+**           tv                指定的时间
+**           bSigRet           是否允许信号唤醒
+** 输　出  : ERROR_NONE or EINTR
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+                                           
+                                       (不得在中断中调用)
+*********************************************************************************************************/
+LW_API
+ULONG  API_TimeSleepUntil (clockid_t  clockid, const struct timespec  *tv, BOOL  bSigRet)
+{
+    struct timespec  tvNow;
+    struct timespec  tvTemp;
+    
+    if ((clockid != CLOCK_REALTIME) && (clockid != CLOCK_REALTIME)) {
+        _ErrorHandle(EINVAL);
+        return  (EINVAL);
+    }
+    
+    lib_clock_gettime(clockid, &tvNow);
+    if (!__timespecLeftTime(&tvNow, tv)) {
+        return  (ERROR_NONE);
+    }
+    
+    tvTemp = *tv;
+    __timespecSub(&tvTemp, &tvNow);
+    
+    if (nanosleep(&tvTemp, LW_NULL)) {
+        return  (API_GetLastError());
+    
+    } else {
+        return  (ERROR_NONE);
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: API_TimeSSleep

@@ -97,8 +97,8 @@ static INT      _nevtIoctl(PLW_NEVT_FILE  pnevtfil,
 *********************************************************************************************************/
 INT  _netEventInit (VOID)
 {
-    if (_G_iNevtDrvNum == PX_ERROR) {
-        _G_iNevtDrvNum =  iosDrvInstall(_nevtOpen,
+    if (_G_iNevtDrvNum <= 0) {
+        _G_iNevtDrvNum  = iosDrvInstall(_nevtOpen,
                                         LW_NULL,
                                         _nevtOpen,
                                         _nevtClose,
@@ -123,7 +123,7 @@ INT  _netEventInit (VOID)
 *********************************************************************************************************/
 INT  _netEventDevCreate (VOID)
 {
-    if (_G_iNevtDrvNum == (PX_ERROR)) {
+    if (_G_iNevtDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

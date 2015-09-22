@@ -88,11 +88,12 @@
 #include "../SylixOS/system/device/ty/tty.h"                            /*  terminal device             */
 #include "../SylixOS/system/device/pty/pty.h"                           /*  pseudo terminal             */
 #include "../SylixOS/system/device/block/blockIo.h"                     /*  block device                */
-#include "../SylixOS/system/device/block/ramDisk.h"                     /*  RAM disk                    */
 #include "../SylixOS/system/device/can/can.h"                           /*  CAN bus device              */
 #include "../SylixOS/system/device/graph/gmemDev.h"                     /*  graph memory device         */
 
 #ifdef   __SYLIXOS_KERNEL
+#include "../SylixOS/system/device/block/blockRaw.h"                    /*  block raw device            */
+#include "../SylixOS/system/device/block/ramDisk.h"                     /*  RAM disk                    */
 #include "../SylixOS/system/device/ata/ata.h"                           /*  ATA device                  */
 #include "../SylixOS/system/device/dma/dma.h"                           /*  DMA device                  */
 #include "../SylixOS/system/device/dma/dmaLib.h"

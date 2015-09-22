@@ -3,22 +3,15 @@
 /**
    @file    iniparser.h
    @author  N. Devillard
-   @date    Sep 2007
-   @version 3.0
    @brief   Parser for ini files.
 */
 /*--------------------------------------------------------------------------*/
-
-/*
-	$Id: iniparser.h,v 1.26 2011-03-02 20:15:13 ndevilla Exp $
-	$Revision: 1.26 $
-*/
 
 #ifndef _INIPARSER_H_
 #define _INIPARSER_H_
 
 /*---------------------------------------------------------------------------
-   								Includes
+                                Includes
  ---------------------------------------------------------------------------*/
 
 #include <stdio.h>
@@ -33,6 +26,10 @@
 /* #include <unistd.h> */
 
 #include "dictionary.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -53,7 +50,7 @@
  */
 /*--------------------------------------------------------------------------*/
 
-int iniparser_getnsec(dictionary * d);
+int iniparser_getnsec(const dictionary * d);
 
 
 /*-------------------------------------------------------------------------*/
@@ -71,7 +68,7 @@ int iniparser_getnsec(dictionary * d);
  */
 /*--------------------------------------------------------------------------*/
 
-char * iniparser_getsecname(dictionary * d, int n);
+const char * iniparser_getsecname(const dictionary * d, int n);
 
 
 /*-------------------------------------------------------------------------*/
@@ -86,7 +83,22 @@ char * iniparser_getsecname(dictionary * d, int n);
  */
 /*--------------------------------------------------------------------------*/
 
-void iniparser_dump_ini(dictionary * d, FILE * f);
+void iniparser_dump_ini(const dictionary * d, FILE * f);
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Save a dictionary section to a loadable ini file
+  @param    d   Dictionary to dump
+  @param    s   Section name of dictionary to dump
+  @param    f   Opened file pointer to dump to
+  @return   void
+
+  This function dumps a given section of a given dictionary into a loadable ini
+  file.  It is Ok to specify @c stderr or @c stdout as output files.
+ */
+/*--------------------------------------------------------------------------*/
+
+void iniparser_dumpsection_ini(const dictionary * d, const char * s, FILE * f);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -101,7 +113,36 @@ void iniparser_dump_ini(dictionary * d, FILE * f);
   purposes mostly.
  */
 /*--------------------------------------------------------------------------*/
-void iniparser_dump(dictionary * d, FILE * f);
+void iniparser_dump(const dictionary * d, FILE * f);
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Get the number of keys in a section of a dictionary.
+  @param    d   Dictionary to examine
+  @param    s   Section name of dictionary to examine
+  @return   Number of keys in section
+ */
+/*--------------------------------------------------------------------------*/
+int iniparser_getsecnkeys(const dictionary * d, const char * s);
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    Get the number of keys in a section of a dictionary.
+  @param    d    Dictionary to examine
+  @param    s    Section name of dictionary to examine
+  @param    keys Already allocated array to store the keys in
+  @return   The pointer passed as `keys` argument or NULL in case of error
+
+  This function queries a dictionary and finds all keys in a given section.
+  The keys argument should be an array of pointers which size has been
+  determined by calling `iniparser_getsecnkeys` function prior to this one.
+
+  Each pointer in the returned char pointer-to-pointer is pointing to
+  a string allocated in the dictionary; do not free or modify them.
+ */
+/*--------------------------------------------------------------------------*/
+const char ** iniparser_getseckeys(const dictionary * d, const char * s, const char ** keys);
+
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -118,7 +159,7 @@ void iniparser_dump(dictionary * d, FILE * f);
   the dictionary, do not free or modify it.
  */
 /*--------------------------------------------------------------------------*/
-char * iniparser_getstring(dictionary * d, char * key, char * def);
+const char * iniparser_getstring(const dictionary * d, const char * key, const char * def);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -147,7 +188,7 @@ char * iniparser_getstring(dictionary * d, char * key, char * def);
   Credits: Thanks to A. Becker for suggesting strtol()
  */
 /*--------------------------------------------------------------------------*/
-int iniparser_getint(dictionary * d, char * key, int notfound);
+int iniparser_getint(const dictionary * d, const char * key, int notfound);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -162,7 +203,7 @@ int iniparser_getint(dictionary * d, char * key, int notfound);
   the notfound value is returned.
  */
 /*--------------------------------------------------------------------------*/
-double iniparser_getdouble(dictionary * d, char * key, double notfound);
+double iniparser_getdouble(const dictionary * d, const char * key, double notfound);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -196,7 +237,7 @@ double iniparser_getdouble(dictionary * d, char * key, double notfound);
   necessarily have to be 0 or 1.
  */
 /*--------------------------------------------------------------------------*/
-int iniparser_getboolean(dictionary * d, char * key, int notfound);
+int iniparser_getboolean(const dictionary * d, const char * key, int notfound);
 
 
 /*-------------------------------------------------------------------------*/
@@ -205,14 +246,14 @@ int iniparser_getboolean(dictionary * d, char * key, int notfound);
   @param    ini     Dictionary to modify.
   @param    entry   Entry to modify (entry name)
   @param    val     New value to associate to the entry.
-  @return   int 0 if Ok, -1 otherwise.
+  @return   int     0 if Ok, -1 otherwise.
 
   If the given entry can be found in the dictionary, it is modified to
-  contain the provided value. If it cannot be found, -1 is returned.
+  contain the provided value. If it cannot be found, the entry is created.
   It is Ok to set val to NULL.
  */
 /*--------------------------------------------------------------------------*/
-int iniparser_set(dictionary * ini, char * entry, char * val);
+int iniparser_set(dictionary * ini, const char * entry, const char * val);
 
 
 /*-------------------------------------------------------------------------*/
@@ -225,7 +266,7 @@ int iniparser_set(dictionary * ini, char * entry, char * val);
   If the given entry can be found, it is deleted from the dictionary.
  */
 /*--------------------------------------------------------------------------*/
-void iniparser_unset(dictionary * ini, char * entry);
+void iniparser_unset(dictionary * ini, const char * entry);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -239,7 +280,7 @@ void iniparser_unset(dictionary * ini, char * entry);
   of querying for the presence of sections in a dictionary.
  */
 /*--------------------------------------------------------------------------*/
-int iniparser_find_entry(dictionary * ini, char * entry) ;
+int iniparser_find_entry(const dictionary * ini, const char * entry) ;
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -255,7 +296,7 @@ int iniparser_find_entry(dictionary * ini, char * entry) ;
   The returned dictionary must be freed using iniparser_freedict().
  */
 /*--------------------------------------------------------------------------*/
-dictionary * iniparser_load(char * ininame);
+dictionary * iniparser_load(const char * ininame);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -269,5 +310,9 @@ dictionary * iniparser_load(char * ininame);
  */
 /*--------------------------------------------------------------------------*/
 void iniparser_freedict(dictionary * d);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

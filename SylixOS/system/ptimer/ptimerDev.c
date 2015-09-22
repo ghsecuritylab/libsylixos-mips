@@ -50,8 +50,8 @@ static INT      _tmrfdIoctl(PLW_TMRFD_FILE  ptmrfdfil, INT    iRequest, LONG    
 LW_API  
 INT  API_TimerfdDrvInstall (VOID)
 {
-    if (_G_iTmrfdDrvNum == PX_ERROR) {
-        _G_iTmrfdDrvNum =  iosDrvInstall(LW_NULL,
+    if (_G_iTmrfdDrvNum <= 0) {
+        _G_iTmrfdDrvNum  = iosDrvInstall(LW_NULL,
                                          LW_NULL,
                                          _tmrfdOpen,
                                          _tmrfdClose,
@@ -84,7 +84,7 @@ INT  API_TimerfdDrvInstall (VOID)
 LW_API  
 INT  API_TimerfdDevCreate (VOID)
 {
-    if (_G_iTmrfdDrvNum == (PX_ERROR)) {
+    if (_G_iTmrfdDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

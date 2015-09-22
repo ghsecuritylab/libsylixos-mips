@@ -104,7 +104,7 @@ INT  API_RtcDevCreate (PLW_RTC_FUNCS    prtcfuncs)
         return  (PX_ERROR);
     }
     
-    if (_G_iRtcDrvNum == (PX_ERROR)) {
+    if (_G_iRtcDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

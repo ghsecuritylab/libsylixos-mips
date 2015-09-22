@@ -61,6 +61,7 @@ typedef ULONG             LW_ERROR;                                     /*  系统
 /*********************************************************************************************************
   系统定时参数组
 *********************************************************************************************************/
+#ifdef __SYLIXOS_KERNEL
 
 typedef struct {
     ULONG                TIMING_ulTickHz;                               /*  系统 tick 频率              */
@@ -337,6 +338,7 @@ typedef struct {
 } LW_CLASS_THREADVAR;
 typedef LW_CLASS_THREADVAR *PLW_CLASS_THREADVAR;
 
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 /*********************************************************************************************************
   线程属性块
 *********************************************************************************************************/
@@ -356,6 +358,7 @@ typedef LW_CLASS_THREADATTR     *PLW_CLASS_THREADATTR;
   线程扩展控制块
 *********************************************************************************************************/
 
+#ifdef __SYLIXOS_KERNEL
 typedef struct {
     LW_LIST_MONO          CUR_monoNext;                                 /*  单链表下一个节点            */
     VOIDFUNCPTR           CUR_pfuncClean;                               /*  清除函数                    */
@@ -364,21 +367,23 @@ typedef struct {
 typedef __LW_CLEANUP_ROUTINE    *__PLW_CLEANUP_ROUTINE;
 
 typedef struct {
+    LW_OBJECT_HANDLE      TEX_ulMutex;                                  /*  互斥量                      */
+    PLW_LIST_MONO         TEX_pmonoCurHeader;                           /*  cleanup node header         */
+} __LW_THREAD_EXT;
+typedef __LW_THREAD_EXT  *__PLW_THREAD_EXT;
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
+
+typedef struct {
     LW_OBJECT_HANDLE      TCD_ulSignal;                                 /*  等待信号量句柄              */
     LW_OBJECT_HANDLE      TCD_ulMutxe;                                  /*  互斥信号量                  */
     ULONG                 TCD_ulCounter;                                /*  引用计数器                  */
 } LW_THREAD_COND;
 typedef LW_THREAD_COND   *PLW_THREAD_COND;
 
-typedef struct {
-    LW_OBJECT_HANDLE      TEX_ulMutex;                                  /*  互斥量                      */
-    PLW_LIST_MONO         TEX_pmonoCurHeader;                           /*  cleanup node header         */
-} __LW_THREAD_EXT;
-typedef __LW_THREAD_EXT  *__PLW_THREAD_EXT;
-
 /*********************************************************************************************************
   浮点运算器上下文
 *********************************************************************************************************/
+#ifdef __SYLIXOS_KERNEL
 
 #if LW_CFG_CPU_FPU_EN > 0
 typedef struct {
@@ -668,6 +673,7 @@ typedef struct __lw_tcb {
 } LW_CLASS_TCB;
 typedef LW_CLASS_TCB     *PLW_CLASS_TCB;
 
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 /*********************************************************************************************************
   线程信息
 *********************************************************************************************************/
@@ -754,6 +760,7 @@ typedef LW_CLASS_TCB_DESC   *PLW_CLASS_TCB_DESC;
 /*********************************************************************************************************
   位图表
 *********************************************************************************************************/
+#ifdef __SYLIXOS_KERNEL
 
 typedef struct {
     volatile UINT32       BMAP_uiMap;                                   /*  主位图掩码                  */
@@ -850,6 +857,7 @@ typedef struct {                                                        /*  堆操
 } LW_CLASS_HEAP;
 typedef LW_CLASS_HEAP   *PLW_CLASS_HEAP;
 
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 /*********************************************************************************************************
   堆内分段类型, 注意: 由于是否使用标志和空闲队列复用free list, 所以为了使对齐内存释放时准确判断, 
                       判断是否空闲的标志必须在分段信息的最后一个元素.
@@ -866,6 +874,7 @@ typedef LW_CLASS_SEGMENT    *PLW_CLASS_SEGMENT;
 /*********************************************************************************************************
   候选运行表结构
 *********************************************************************************************************/
+#ifdef __SYLIXOS_KERNEL
 
 typedef struct {
     volatile PLW_CLASS_TCB  CAND_ptcbCand;                              /*  候选运行线程                */
@@ -873,6 +882,7 @@ typedef struct {
 } LW_CLASS_CAND;
 typedef LW_CLASS_CAND  *PLW_CLASS_CAND;
 
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 #endif                                                                  /*  __K_CLASS_H                 */
 /*********************************************************************************************************
   END

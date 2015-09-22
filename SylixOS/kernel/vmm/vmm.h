@@ -324,6 +324,7 @@ static LW_INLINE PVOID        API_VmmIoRemapNocache(PVOID  pvPhysicalAddr,
   API_VmmAbortIsr() 为异常处理函数, 只允许 ARCH 代码使用. 
   没有使能 VMM SylixOS 依然可以处理异常情况
 *********************************************************************************************************/
+#ifdef __SYLIXOS_KERNEL
 
 #define LW_VMM_ABORT_TYPE_TERMINAL          1                           /*  体系结构相关严重错误        */
 #define LW_VMM_ABORT_TYPE_MAP               2                           /*  页表映射错误 (MMU 报告)     */
@@ -339,7 +340,8 @@ LW_API VOID         API_VmmAbortIsr(addr_t          ulRetAddr,
                                     addr_t          ulAbortAddr, 
                                     ULONG           ulAbortType,
                                     PLW_CLASS_TCB   ptcb);              /*  异常中断服务函数            */
-                                    
+
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
 /*********************************************************************************************************
   vmm api macro
 *********************************************************************************************************/

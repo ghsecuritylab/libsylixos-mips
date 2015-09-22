@@ -26,22 +26,22 @@
   serial device I/O controls
 *********************************************************************************************************/
 
-#define SIO_BAUD_SET                          0x1003
-#define SIO_BAUD_GET                          0x1004
+#define SIO_BAUD_SET                          LW_OSIOD('s', 0x1003, LONG)
+#define SIO_BAUD_GET                          LW_OSIOR('s', 0x1004, LONG)
 
-#define SIO_HW_OPTS_SET                       0x1005
-#define SIO_HW_OPTS_GET                       0x1006
+#define SIO_HW_OPTS_SET                       LW_OSIOD('s', 0x1005, INT)
+#define SIO_HW_OPTS_GET                       LW_OSIOR('s', 0x1006, INT)
 
-#define SIO_MODE_SET                          0x1007
-#define SIO_MODE_GET                          0x1008
-#define SIO_AVAIL_MODES_GET                   0x1009
+#define SIO_MODE_SET                          LW_OSIOD('s', 0x1007, INT)
+#define SIO_MODE_GET                          LW_OSIOR('s', 0x1008, INT)
+#define SIO_AVAIL_MODES_GET                   LW_OSIOR('s', 0x1009, INT)
 
 /*********************************************************************************************************
   These are used to communicate open/close between layers
 *********************************************************************************************************/
 
-#define SIO_OPEN                              0x100A 
-#define SIO_HUP                               0x100B
+#define SIO_OPEN                              LW_OSIO('s', 0x100A)
+#define SIO_HUP                               LW_OSIO('s', 0x100B)
 
 /*********************************************************************************************************
   The ioctl commands listed below provide a way for reading and
@@ -54,25 +54,72 @@
   * SIO_MCTRL_OSIG_MASK: returns mask of all output(writable) modem signals.
 *********************************************************************************************************/
 
-#define SIO_MSTAT_GET                         0x100C                    /* get modem status lines       */
-#define SIO_MCTRL_BITS_SET                    0x100D                    /* set selected modem lines     */
-#define SIO_MCTRL_BITS_CLR                    0x100E                    /* clear selected modem lines   */
-#define SIO_MCTRL_ISIG_MASK                   0x100F                    /* mask of lines that can be rd */
-#define SIO_MCTRL_OSIG_MASK                   0x1010                    /* mask of lines that can be set*/
+#define SIO_MSTAT_GET                         LW_OSIO( 's', 0x100C)     /* get modem status lines       */
+#define SIO_MCTRL_BITS_SET                    LW_OSIOD('s', 0x100D, INT)/* set selected modem lines     */
+#define SIO_MCTRL_BITS_CLR                    LW_OSIOD('s', 0x100E, INT)/* clear selected modem lines   */
+#define SIO_MCTRL_ISIG_MASK                   LW_OSIOR('s', 0x100F, INT)/* mask of lines that can be rd */
+#define SIO_MCTRL_OSIG_MASK                   LW_OSIOR('s', 0x1010, INT)/* mask of lines that can be set*/
 
 /*********************************************************************************************************
   Ioctl cmds for reading/setting keyboard mode
 *********************************************************************************************************/
 
-#define SIO_KYBD_MODE_SET                     0x1011
-#define SIO_KYBD_MODE_GET                     0x1012
+#define SIO_KYBD_MODE_SET                     LW_OSIOD('s', 0x1011, INT)
+#define SIO_KYBD_MODE_GET                     LW_OSIOR('s', 0x1012, INT)
+
+/*********************************************************************************************************
+  options to SIO_KYBD_MODE_SET 
+ 
+  * These macros are used as arguments by the keyboard ioctl comands.
+  * When used with SIO_KYBD_MODE_SET they mean the following:
+  * 
+  * SIO_KYBD_MODE_SYLIXOS
+  *    Requests the keyboard driver to return keyboard.h format.
+  *
+  * SIO_KYBD_MODE_RAW:
+  *    Requests the keyboard driver to return raw key values as read
+  *    by the keyboard controller.
+  * 
+  * SIO_KYBD_MODE_ASCII:
+  *    Requests the keyboard driver to return ASCII codes read from a
+  *    known table that maps raw key values to ASCII.
+  *
+  * SIO_KYBD_MODE_UNICODE:
+  *    Requests the keyboard driver to return 16 bit UNICODE values for
+  *    multiple languages support.
+*********************************************************************************************************/
+
+#define SIO_KYBD_MODE_SYLIXOS                      0
+#define SIO_KYBD_MODE_RAW                          1
+#define SIO_KYBD_MODE_ASCII                        2
+#define SIO_KYBD_MODE_UNICODE                      3
 
 /*********************************************************************************************************
   Ioctl cmds for reading/setting keyboard led state
 *********************************************************************************************************/
 
-#define SIO_KYBD_LED_SET                      0x1013
-#define SIO_KYBD_LED_GET                      0x1014
+#define SIO_KYBD_LED_SET                      LW_OSIOD('s', 0x1013, INT)
+#define SIO_KYBD_LED_GET                      LW_OSIOR('s', 0x1014, INT)
+
+/*********************************************************************************************************
+  options to SIO_KYBD_LED_SET
+ 
+  * These macros are used as arguments by the keyboard ioctl comands.
+  * When used with SIO_KYBD_LED_SET they mean the following:
+  * 
+  * SIO_KYBD_LED_NUM:
+  *    Sets the Num Lock LED on the keyboard - bit 1
+  * 
+  * SIO_KYBD_LED_CAP:
+  *    Sets the Caps Lock LED on the keyboard - bit 2
+  *
+  * SIO_KYBD_LED_SRC:
+  *    Sets the Scroll Lock LED on the keyboard - bit 4
+*********************************************************************************************************/
+
+#define SIO_KYBD_LED_NUM                           1
+#define SIO_KYBD_LED_CAP                           2
+#define SIO_KYBD_LED_SCR                           4
 
 /*********************************************************************************************************
   callback type codes
@@ -158,49 +205,6 @@
 #define SIO_MODEM_CD                            0x08                    /* carrier detect               */
 #define SIO_MODEM_RI                            0x10                    /* ring                         */
 #define SIO_MODEM_DSR                           0x20                    /* data set ready               */
-
-/*********************************************************************************************************
-  options to SIO_KYBD_MODE_SET 
- 
-  * These macros are used as arguments by the keyboard ioctl comands.
-  * When used with SIO_KYBD_MODE_SET they mean the following:
-  * 
-  * SIO_KYBD_MODE_RAW:
-  *    Requests the keyboard driver to return raw key values as read
-  *    by the keyboard controller.
-  * 
-  * SIO_KYBD_MODE_ASCII:
-  *    Requests the keyboard driver to return ASCII codes read from a
-  *    known table that maps raw key values to ASCII.
-  *
-  * SIO_KYBD_MODE_UNICODE:
-  *    Requests the keyboard driver to return 16 bit UNICODE values for
-  *    multiple languages support.
-*********************************************************************************************************/
-
-#define SIO_KYBD_MODE_RAW                          1
-#define SIO_KYBD_MODE_ASCII                        2
-#define SIO_KYBD_MODE_UNICODE                      3
-
-/*********************************************************************************************************
-  options to SIO_KYBD_LED_SET
- 
-  * These macros are used as arguments by the keyboard ioctl comands.
-  * When used with SIO_KYBD_LED_SET they mean the following:
-  * 
-  * SIO_KYBD_LED_NUM:
-  *    Sets the Num Lock LED on the keyboard - bit 1
-  * 
-  * SIO_KYBD_LED_CAP:
-  *    Sets the Caps Lock LED on the keyboard - bit 2
-  *
-  * SIO_KYBD_LED_SRC:
-  *    Sets the Scroll Lock LED on the keyboard - bit 4
-*********************************************************************************************************/
-
-#define SIO_KYBD_LED_NUM                           1
-#define SIO_KYBD_LED_CAP                           2
-#define SIO_KYBD_LED_SCR                           4
 
 /*********************************************************************************************************
   CALL BACK

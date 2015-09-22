@@ -75,7 +75,7 @@ INT  API_RandDevCreate (VOID)
 {
     PLW_RAND_DEV    pranddev[2];                                        /*  要创建两个设备              */
 
-    if (_G_iRandDrvNum == PX_ERROR) {
+    if (_G_iRandDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);

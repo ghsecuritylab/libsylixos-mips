@@ -128,6 +128,7 @@ typedef LW_CLASS_SIGCTLMSG  *PLW_CLASS_SIGCTLMSG;
                                      __sigmask(SIGABRT) |       \
                                      __sigmask(SIGSTOP) |       \
                                      __sigmask(SIGILL)  |       \
+                                     __sigmask(SIGBUS)  |       \
                                      __sigmask(SIGSEGV))
                                      
 /*********************************************************************************************************
@@ -138,6 +139,7 @@ typedef LW_CLASS_SIGCTLMSG  *PLW_CLASS_SIGCTLMSG;
                                      __sigmask(SIGTERM) |       \
                                      __sigmask(SIGABRT) |       \
                                      __sigmask(SIGILL)  |       \
+                                     __sigmask(SIGBUS)  |       \
                                      __sigmask(SIGSEGV))
                                      
 /*********************************************************************************************************

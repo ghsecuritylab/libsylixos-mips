@@ -152,7 +152,7 @@ INT  API_INetVpnClientCreate (CPCHAR          cpcCACrtFile,
     if (iVerifyOpt != SSL_VERIFY_NONE) {
         if ((cpcCACrtFile == LW_NULL) ||
             (cpcPrivateCrtFile == LW_NULL)) {                           /*  缺少证书文件                */
-            _DebugHandle(__ERRORMESSAGE_LEVEL, "param error.\r\n");
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "parameter error.\r\n");
             _ErrorHandle(EINVAL);
             return  (PX_ERROR);
         }

@@ -39,7 +39,7 @@ typedef struct {
 typedef LW_JOB_MSG         *PLW_JOB_MSG;
 
 typedef struct {
-    PLW_JOB_MSG             JOBQ_pjobmsgQueue;                          /*  工作队列消                  */
+    PLW_JOB_MSG             JOBQ_pjobmsgQueue;                          /*  工作队列消息                */
     UINT                    JOBQ_uiIn;
     UINT                    JOBQ_uiOut;
     UINT                    JOBQ_uiCnt;
@@ -51,6 +51,12 @@ typedef struct {
 typedef LW_JOB_QUEUE       *PLW_JOB_QUEUE;
 
 /*********************************************************************************************************
+  工作队列 NOP 
+*********************************************************************************************************/
+
+#define LW_JOB_NOPFUNC      ((VOIDFUNCPTR)0)
+
+/*********************************************************************************************************
   操作函数
 *********************************************************************************************************/
 
@@ -59,6 +65,7 @@ VOID             _jobQueueDelete(PLW_JOB_QUEUE pjobq);
 ULONG            _jobQueueInit(PLW_JOB_QUEUE pjobq, PLW_JOB_MSG  pjobmsg, 
                                UINT uiQueueSize, BOOL bNonBlock);
 VOID             _jobQueueFinit(PLW_JOB_QUEUE pjobq);
+VOID             _JobQueueFlush(PLW_JOB_QUEUE pjobq);
 ULONG            _jobQueueAdd(PLW_JOB_QUEUE pjobq,
                               VOIDFUNCPTR   pfunc,
                               PVOID         pvArg0,

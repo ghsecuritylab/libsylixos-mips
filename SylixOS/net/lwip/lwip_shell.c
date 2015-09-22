@@ -239,6 +239,30 @@ __show:
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
+** 函数名称: __netIfSpeed
+** 功能描述: 显示指定的网络接口信息 (ip v4)
+** 输　入  : pcIfName      网络接口名
+**           netifShow     网络接口结构
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static VOID  __netIfSpeed (struct netif  *netif, PCHAR  pcSpeedStr, size_t  stSize)
+{
+    if (netif->link_speed == 0) {
+        lib_strlcpy(pcSpeedStr, "AUTO", stSize);
+        
+    } else if (netif->link_speed < 1000) {
+        snprintf(pcSpeedStr, stSize, "%d(bps)", netif->link_speed);
+    
+    } else if (netif->link_speed < 5000000) {
+        snprintf(pcSpeedStr, stSize, "%d(Kbps)", netif->link_speed / 1000);
+    
+    } else {
+        snprintf(pcSpeedStr, stSize, "%d(Mbps)", netif->link_speed / 1000000);
+    }
+}
+/*********************************************************************************************************
 ** 函数名称: __netIfShow
 ** 功能描述: 显示指定的网络接口信息 (ip v4)
 ** 输　入  : pcIfName      网络接口名
@@ -250,6 +274,7 @@ __show:
 static VOID  __netIfShow (CPCHAR  pcIfName, const struct netif  *netifShow)
 {
     struct netif    *netif;
+    CHAR             cSpeed[32];
     ip_addr_t        ipaddrBroadcast;
     INT              i;
 
@@ -299,13 +324,14 @@ static VOID  __netIfShow (CPCHAR  pcIfName, const struct netif  *netifShow)
         printf("type: General\n");                                      /*  通用网络接口                */
     }
     
+    __netIfSpeed(netif, cSpeed, sizeof(cSpeed));
+    
 #if LWIP_DHCP
-    printf("          DHCP: %s(%s) speed: %d(bps)\n", 
+    printf("          DHCP: %s(%s) speed: %s\n", 
                                 (netif->flags2 & NETIF_FLAG2_DHCP) ? "Enable" : "Disable",
-                                (netif->dhcp) ? "On" : "Off",
-                                netif->link_speed);
+                                (netif->dhcp) ? "On" : "Off", cSpeed);
 #else
-    printf("          speed: %d(bps)\n", netif->link_speed);            /*  打印链接速度                */
+    printf("          speed: %s\n", cSpeed);                            /*  打印链接速度                */
 #endif                                                                  /*  LWIP_DHCP                   */
                                                                         
     /*

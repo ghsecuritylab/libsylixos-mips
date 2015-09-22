@@ -252,8 +252,8 @@ INT   API_GMemDevAdd (CPCHAR  cpcName, PLW_GM_DEVICE  pgmdev)
 {
     static   INT    iGMemDrvNum = PX_ERROR;
     
-    if (iGMemDrvNum == PX_ERROR) {
-        iGMemDrvNum =  iosDrvInstallEx(&_G_foGMemDrv);                  /*  安装驱动                    */
+    if (iGMemDrvNum <= 0) {
+        iGMemDrvNum  = iosDrvInstallEx(&_G_foGMemDrv);                  /*  安装驱动                    */
         if (iGMemDrvNum > 0) {
             DRIVER_LICENSE(iGMemDrvNum,     "Dual BSD/GPL->Ver 1.0");
             DRIVER_AUTHOR(iGMemDrvNum,      "Han.hui");

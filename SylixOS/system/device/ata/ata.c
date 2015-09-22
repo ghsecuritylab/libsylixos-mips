@@ -74,7 +74,7 @@ static INT         __ataBlkWrt(__PATA_DEV  patadev,
                                ULONG       ulNBlks);
 static INT         __ataIoctl(__PATA_DEV patadev,
                               INT        iCmd,
-                              INT        iArg);
+                              LONG       lArg);
 static INT         __ataStatus(__PATA_DEV  patadev);
 static INT         __ataReset(__PATA_DEV  patadev);
 /*********************************************************************************************************
@@ -589,14 +589,14 @@ static INT __ataBlkWrt (__PATA_DEV  patadev,
 ** 功能描述: 块设备控制函数
 ** 输　入  : patadev     块设备数据结构指针
 **           iCmd        命令
-**           iArg        其它参数
+**           lArg        其它参数
 ** 输　出  : ERROR
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
 static INT __ataIoctl (__PATA_DEV patadev,
                        INT        iCmd,
-                       INT        iArg)
+                       LONG       lArg)
 {
     __PATA_CTRL     patactrl     = LW_NULL;
     ATA_DRV_FUNCS  *patadevfuscs = LW_NULL;
@@ -628,12 +628,11 @@ static INT __ataIoctl (__PATA_DEV patadev,
     
     switch (iCmd) {
 
+    case FIOSYNC:
+    case FIODATASYNC:
+    case FIOSYNCMETA:
     case FIOFLUSH:                                                      /*  将缓存回写到磁盘            */
-        break;
-
     case FIOUNMOUNT:                                                    /*  卸载卷                      */
-        break;
-
     case FIODISKINIT:                                                   /*  初始化ATA设备               */
         break;
 
@@ -642,16 +641,16 @@ static INT __ataIoctl (__PATA_DEV patadev,
         break;
 
     case LW_BLKD_GET_SECSIZE:
-        *(ULONG *)iArg = patadev->ATAD_blkdBlkDev.BLKD_ulBytesPerSector;
+        *(ULONG *)lArg = patadev->ATAD_blkdBlkDev.BLKD_ulBytesPerSector;
         break;
 
     case LW_BLKD_GET_BLKSIZE:
-        *(ULONG *)iArg = patadev->ATAD_blkdBlkDev.BLKD_ulBytesPerBlock;
+        *(ULONG *)lArg = patadev->ATAD_blkdBlkDev.BLKD_ulBytesPerBlock;
         break;
 
     case FIOWTIMEOUT:
-        if (iArg) {
-            timevalTemp = (struct timeval *)iArg;
+        if (lArg) {
+            timevalTemp = (struct timeval *)lArg;
             patactrl->ATACTRL_ulSyncSemTimeout = __timevalToTick(timevalTemp);
                                                                         /*  转换为系统时钟              */
         } else {
@@ -660,8 +659,8 @@ static INT __ataIoctl (__PATA_DEV patadev,
         break;
 
     case FIORTIMEOUT:
-        if (iArg) {
-            timevalTemp = (struct timeval *)iArg;
+        if (lArg) {
+            timevalTemp = (struct timeval *)lArg;
             patactrl->ATACTRL_ulSyncSemTimeout = __timevalToTick(timevalTemp);
                                                                         /*  转换为系统时钟              */
         } else {
@@ -674,7 +673,7 @@ static INT __ataIoctl (__PATA_DEV patadev,
                            patadev->ATAD_iDrive,
                            __ATA_CMD_SET_FEATURE,
                            __ATA_SUB_ENABLE_APM,
-                           iArg);
+                           (INT)lArg);
         break;
 
     case __ATA_CMD_DIS_POWERMANAGE:
@@ -682,7 +681,7 @@ static INT __ataIoctl (__PATA_DEV patadev,
                            patadev->ATAD_iDrive,
                            __ATA_CMD_SET_FEATURE,
                            __ATA_SUB_DISABLE_APM,
-                           iArg);
+                           (INT)lArg);
         break;
 
     case __ATA_CMD_IDLEIMMEDIATE:                                       /*  使指定设备立即空闲          */
@@ -701,12 +700,12 @@ static INT __ataIoctl (__PATA_DEV patadev,
 
     case __ATA_CMD_HARDRESET:
         if (patadevfuscs->sysReset) {
-            patadevfuscs->sysReset(patactrl->ATACTRL_pataChan, iArg);
+            patadevfuscs->sysReset(patactrl->ATACTRL_pataChan, (INT)lArg);
         }
         break;
 
     default:
-        iReturn = patadevfuscs->ioctl(patactrl->ATACTRL_pataChan, iCmd, (PVOID)iArg);
+        iReturn = patadevfuscs->ioctl(patactrl->ATACTRL_pataChan, iCmd, (PVOID)lArg);
         if (iReturn != ERROR_NONE) {                                    /*  错误                        */
             _ErrorHandle(ERROR_IO_UNKNOWN_REQUEST);
         }

@@ -227,6 +227,8 @@
 #define PCI_CLASS_STORAGE_FLOPPY        0x0102
 #define PCI_CLASS_STORAGE_IPI           0x0103
 #define PCI_CLASS_STORAGE_RAID          0x0104
+#define PCI_CLASS_STORAGE_SATA          0x0106
+#define PCI_CLASS_STORAGE_SAS           0x0107
 #define PCI_CLASS_STORAGE_OTHER         0x0180
 
 #define PCI_BASE_CLASS_NETWORK          0x02
@@ -278,6 +280,7 @@
 #define PCI_CLASS_SYSTEM_TIMER          0x0802
 #define PCI_CLASS_SYSTEM_RTC            0x0803
 #define PCI_CLASS_SYSTEM_PCI_HOTPLUG    0x0804
+#define PCI_CLASS_SYSTEM_SDHCI          0x0805
 #define PCI_CLASS_SYSTEM_OTHER          0x0880
 
 #define PCI_BASE_CLASS_INPUT            0x09
@@ -300,6 +303,9 @@
 #define PCI_CLASS_PROCESSOR_POWERPC     0x0b20
 #define PCI_CLASS_PROCESSOR_MIPS        0x0b30
 #define PCI_CLASS_PROCESSOR_CO          0x0b40
+
+#define PCI_BASE_CLASS_WIRELESS             0x0d
+#define PCI_CLASS_WIRELESS_RF_CONTROLLER    0x0d10
 
 #define PCI_BASE_CLASS_SERIAL           0x0c
 #define PCI_CLASS_SERIAL_FIREWIRE       0x0c00

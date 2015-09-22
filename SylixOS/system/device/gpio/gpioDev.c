@@ -65,8 +65,8 @@ static irqreturn_t  _gpiofdIsr(PLW_GPIOFD_FILE    pgpiofdfil);
 LW_API  
 INT  API_GpiofdDrvInstall (VOID)
 {
-    if (_G_iGpiofdDrvNum == PX_ERROR) {
-        _G_iGpiofdDrvNum =  iosDrvInstall(LW_NULL,
+    if (_G_iGpiofdDrvNum <= 0) {
+        _G_iGpiofdDrvNum  = iosDrvInstall(LW_NULL,
                                          LW_NULL,
                                          _gpiofdOpen,
                                          _gpiofdClose,
@@ -99,7 +99,7 @@ INT  API_GpiofdDrvInstall (VOID)
 LW_API  
 INT  API_GpiofdDevCreate (VOID)
 {
-    if (_G_iGpiofdDrvNum == (PX_ERROR)) {
+    if (_G_iGpiofdDrvNum <= 0) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "no driver.\r\n");
         _ErrorHandle(ERROR_IO_NO_DRIVER);
         return  (PX_ERROR);
