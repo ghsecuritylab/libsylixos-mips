@@ -44,47 +44,39 @@
 *********************************************************************************************************/
 VOID  archIntHandle (ULONG  ulVector, BOOL  bPreemptive)
 {
+    REGISTER irqreturn_t irqret;
 
-}
-/*********************************************************************************************************
-** 函数名称: archAbtHandle
-** 功能描述: 系统发生 data abort 或者 prefetch_abort 异常时会调用此函数
-** 输　入  : ulRetAddr     异常返回地址.
-**           uiArmExcType  ARM 异常类型
-** 输　出  : NONE
-** 全局变量:
-** 调用模块:
-*********************************************************************************************************/
-VOID  archAbtHandle (addr_t  ulRetAddr, UINT32  uiArmExcType)
-{
+    if (_Inter_Vector_Invalid(ulVector)) {
+        return;                                                         /*  向量号不正确                */
+    }
 
-}
-/*********************************************************************************************************
-** 函数名称: archUndHandle
-** 功能描述: archUndEntry 需要调用此函数处理未定义指令
-** 输　入  : ulAddr           对应的地址
-**           uiCpsr           产生异常时的 CPSR
-** 输　出  : NONE
-** 全局变量:
-** 调用模块:
-*********************************************************************************************************/
-VOID  archUndHandle (addr_t  ulAddr, UINT32  uiCpsr)
-{
+    if (LW_IVEC_GET_FLAG(ulVector) & LW_IRQ_FLAG_PREEMPTIVE) {
+        bPreemptive = LW_TRUE;
+    }
 
-}
-/*********************************************************************************************************
-** 函数名称: archSwiHandle
-** 功能描述: archSwiEntry 需要调用此函数处理软中断
-** 输　入  : uiSwiNo       软中断号
-**           puiRegs       寄存器组指针, 前 14 项为 R0-R12 LR 后面的项为超过 4 个参数的压栈项.
-** 输　出  : NONE
-** 全局变量:
-** 调用模块:
-** 注  意  : 以下代码为事例代码, SylixOS 目前未使用.
-*********************************************************************************************************/
-VOID  archSwiHandle (UINT32  uiSwiNo, UINT32  *puiRegs)
-{
+    if (bPreemptive) {
+        VECTOR_OP_LOCK();
+        __ARCH_INT_VECTOR_DISABLE(ulVector);                            /*  屏蔽 vector 中断            */
+        VECTOR_OP_UNLOCK();
+        KN_INT_ENABLE_FORCE();                                          /*  允许中断                    */
+    }
 
+    irqret = API_InterVectorIsr(ulVector);                              /*  调用中断服务程序            */
+
+    KN_INT_DISABLE();                                                   /*  禁能中断                    */
+
+    if (bPreemptive) {
+        if (irqret != LW_IRQ_HANDLED_DISV) {
+            VECTOR_OP_LOCK();
+            __ARCH_INT_VECTOR_ENABLE(ulVector);                         /*  允许 vector 中断            */
+            VECTOR_OP_UNLOCK();
+        }
+
+    } else if (irqret == LW_IRQ_HANDLED_DISV) {
+        VECTOR_OP_LOCK();
+        __ARCH_INT_VECTOR_DISABLE(ulVector);                            /*  屏蔽 vector 中断            */
+        VECTOR_OP_UNLOCK();
+    }
 }
 /*********************************************************************************************************
   END

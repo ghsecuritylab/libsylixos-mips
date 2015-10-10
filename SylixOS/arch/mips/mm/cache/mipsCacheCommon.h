@@ -12,7 +12,7 @@
 **
 ** 文   件   名: mipsCacheCommon.h
 **
-** 创   建   人: Ryan.Xin (韩辉)
+** 创   建   人: Ryan.Xin (信金龙)
 **
 ** 文件创建日期: 2015 年 09 月 01 日
 **
@@ -43,7 +43,7 @@ VOID    armDCacheClear(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
   CACHE 获得 pvAdrs 与 pvEnd 位置
 *********************************************************************************************************/
 
-#define MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiLineSize)               \
+#define MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiLineSize)              \
         do {                                                                \
             ulEnd  = (addr_t)((size_t)pvAdrs + stBytes);                    \
             pvAdrs = (PVOID)((addr_t)pvAdrs & ~((addr_t)uiLineSize - 1));   \

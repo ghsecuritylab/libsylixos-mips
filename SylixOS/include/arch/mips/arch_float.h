@@ -26,38 +26,38 @@
   MIPS floating point coprocessor register definitions
 *********************************************************************************************************/
 
-#define fp0     $f0                                                     /* return reg 0                 */
-#define fp1     $f1                                                     /* return reg 1                 */
-#define fp2     $f2                                                     /* return reg 2                 */
-#define fp3     $f3                                                     /* return reg 3                 */
-#define fp4     $f4                                                     /* caller saved 0               */
-#define fp5     $f5                                                     /* caller saved 1               */
-#define fp6     $f6                                                     /* caller saved 2               */
-#define fp7     $f7                                                     /* caller saved 3               */
-#define fp8     $f8                                                     /* caller saved 4               */
-#define fp9     $f9                                                     /* caller saved 5               */
-#define fp10    $f10                                                    /* caller saved 6               */
-#define fp11    $f11                                                    /* caller saved 7               */
-#define fp12    $f12                                                    /* arg reg 0                    */
-#define fp13    $f13                                                    /* arg reg 1                    */
-#define fp14    $f14                                                    /* arg reg 2                    */
-#define fp15    $f15                                                    /* arg reg 3                    */
-#define fp16    $f16                                                    /* caller saved 8               */
-#define fp17    $f17                                                    /* caller saved 9               */
-#define fp18    $f18                                                    /* caller saved 10              */
-#define fp19    $f19                                                    /* caller saved 11              */
-#define fp20    $f20                                                    /* callee saved 0               */
-#define fp21    $f21                                                    /* callee saved 1               */
-#define fp22    $f22                                                    /* callee saved 2               */
-#define fp23    $f23                                                    /* callee saved 3               */
-#define fp24    $f24                                                    /* callee saved 4               */
-#define fp25    $f25                                                    /* callee saved 5               */
-#define fp26    $f26                                                    /* callee saved 6               */
-#define fp27    $f27                                                    /* callee saved 7               */
-#define fp28    $f28                                                    /* callee saved 8               */
-#define fp29    $f29                                                    /* callee saved 9               */
-#define fp30    $f30                                                    /* callee saved 10              */
-#define fp31    $f31                                                    /* callee saved 11              */
+#define FP0     $f0                                                     /* return reg 0                 */
+#define FP1     $f1                                                     /* return reg 1                 */
+#define FP2     $f2                                                     /* return reg 2                 */
+#define FP3     $f3                                                     /* return reg 3                 */
+#define FP4     $f4                                                     /* caller saved 0               */
+#define FP5     $f5                                                     /* caller saved 1               */
+#define FP6     $f6                                                     /* caller saved 2               */
+#define FP7     $f7                                                     /* caller saved 3               */
+#define FP8     $f8                                                     /* caller saved 4               */
+#define FP9     $f9                                                     /* caller saved 5               */
+#define FP10    $f10                                                    /* caller saved 6               */
+#define FP11    $f11                                                    /* caller saved 7               */
+#define FP12    $f12                                                    /* arg reg 0                    */
+#define FP13    $f13                                                    /* arg reg 1                    */
+#define FP14    $f14                                                    /* arg reg 2                    */
+#define FP15    $f15                                                    /* arg reg 3                    */
+#define FP16    $f16                                                    /* caller saved 8               */
+#define FP17    $f17                                                    /* caller saved 9               */
+#define FP18    $f18                                                    /* caller saved 10              */
+#define FP19    $f19                                                    /* caller saved 11              */
+#define FP20    $f20                                                    /* callee saved 0               */
+#define FP21    $f21                                                    /* callee saved 1               */
+#define FP22    $f22                                                    /* callee saved 2               */
+#define FP23    $f23                                                    /* callee saved 3               */
+#define FP24    $f24                                                    /* callee saved 4               */
+#define FP25    $f25                                                    /* callee saved 5               */
+#define FP26    $f26                                                    /* callee saved 6               */
+#define FP27    $f27                                                    /* callee saved 7               */
+#define FP28    $f28                                                    /* callee saved 8               */
+#define FP29    $f29                                                    /* callee saved 9               */
+#define FP30    $f30                                                    /* callee saved 10              */
+#define FP31    $f31                                                    /* callee saved 11              */
 
 #define CP1_IR       $0                                                 /* implementation/revision reg  */
 #define CP1_STATUS   $31                                                /* control/status reg           */

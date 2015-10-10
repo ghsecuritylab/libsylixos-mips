@@ -25,7 +25,7 @@
 
 #include <arch/assembler.h>
 
-FILE_BEGIN()
+    FILE_BEGIN()
 
     IMPORT_LABEL(API_ThreadTcbInter)
     IMPORT_LABEL(API_InterStackBaseGet)
@@ -33,76 +33,137 @@ FILE_BEGIN()
     IMPORT_LABEL(API_InterEnter)
     IMPORT_LABEL(API_InterExit)
 
-    IMPORT_LABEL(archAbtHandle)
-    IMPORT_LABEL(archUndHandle)
-    IMPORT_LABEL(archSwiHandle)
     IMPORT_LABEL(bspIntHandle)
+    EXPORT_LABEL(archInterruptEntry)
 
-    EXPORT_LABEL(archIntEntry)
-    EXPORT_LABEL(archAbtEntry)
-    EXPORT_LABEL(archPreEntry)
-    EXPORT_LABEL(archUndEntry)
-    EXPORT_LABEL(archSwiEntry)
-
-;/*********************************************************************************************************
-;  中断入口
-;*********************************************************************************************************/
-
-MACRO_DEF(IRQ_ENTRY)
-    jr  ra
-    nop
-    MACRO_END()
-
-FUNC_DEF(archIntEntry)
-    IRQ_ENTRY
-FUNC_END(archIntEntry)
+    EXPORT_LABEL(CP0_wGetSR)
+    EXPORT_LABEL(CP0_wSetSR)
+    EXPORT_LABEL(CP0_wGetCAUSE)
+    EXPORT_LABEL(CP0_wGet_COUNT)
+    EXPORT_LABEL(CP0_wSet_COUNT)
+    EXPORT_LABEL(CP0_wGet_COMPARE)
+    EXPORT_LABEL(CP0_wSet_COMPARE)
+    EXPORT_LABEL(CP0_wGet_INTCTL)
 
 ;/*********************************************************************************************************
-;  abort 入口
-;  data_abort     $retoff == 8
-;  prefetch_abort $retoff == 4
+;  Exception 入口
 ;*********************************************************************************************************/
 
-MACRO_DEF(ABT_ENTRY retoff)
-    jr  ra
-    nop
-    MACRO_END()
+MACRO_DEF(EXCEPTION_ENTRY handle)
+    MFC0(K0, CP0_EPC)                                                   ;/*  Get异常的入口地址           */
+    STORE_REG_RET(K0)                                                   ;/*  保存任务控制块              */
 
-FUNC_DEF(archAbtEntry)
-    ABT_ENTRY 8
-FUNC_END(archAbtEntry)
+    JAL     API_InterEnter                                              ;/*  获取中断层数放到返回值V0    */
+    NOP
 
-FUNC_DEF(archPreEntry)
-    ABT_ENTRY 4
-FUNC_END(archPreEntry)
+    BNE     V0 , 1 , BSP_INT_HANDLE
+    NOP
 
-;/*********************************************************************************************************
-;  undefine 入口
-;*********************************************************************************************************/
+    JAL     API_ThreadTcbInter                                          ;/*  get current tcb             */
+    NOP
+    SW      SP , 0(V0)                                                  ;/*  current stack = SP          */
 
-MACRO_DEF(UND_ENTRY)
-    jr  ra
-    nop
-    MACRO_END()
+    JAL     API_InterStackBaseGet                                       ;/*  获得当前 CPU 中断堆栈栈顶   */
+    NOP
+    MOV     SP , V0
 
-FUNC_DEF(archUndEntry)
-    UND_ENTRY
-FUNC_END(archUndEntry)
+BSP_INT_HANDLE:
+    JAL     \handle
+    NOP
 
-;/*********************************************************************************************************
-;  swi 入口
-;*********************************************************************************************************/
+    JAL     API_InterGetNesting
+    NOP
 
-MACRO_DEF(SWI_ENTRY)
-    jr  ra
-    nop
-    MACRO_END()
+    BNE     V0 , 1 , BSP_INT_EXIT
+    NOP
 
-FUNC_DEF(archSwiEntry)
-    SWI_ENTRY
-FUNC_END(archSwiEntry)
+    JAL     API_ThreadTcbInter
+    NOP
 
-FILE_END()
+    LW      SP , 0(V0)
+
+BSP_INT_EXIT:
+    JAL     API_InterExit
+    NOP
+    RESTORE_REG_ERET()
+    JR      RA
+    NOP
+MACRO_END()
+
+FUNC_DEF(archInterruptEntry)
+    EXCEPTION_ENTRY bspIntHandle
+FUNC_END(archInterruptEntry)
+
+;/********************************************************************************************************
+;  Get CP0 Status register Value
+;********************************************************************************************************/
+FUNC_DEF(CP0_wGetSR)
+    MFC0(V0, CP0_STATUS)
+    JR      RA
+    NOP
+FUNC_END(CP0_wGetSR)
+
+FUNC_DEF(CP0_wSetSR)
+    MTC0(A0, CP0_STATUS)
+    JR      RA
+    NOP
+FUNC_END(CP0_wSetSR)
+
+;/********************************************************************************************************
+;  Get CP0 Cause register Value
+;********************************************************************************************************/
+FUNC_DEF(CP0_wGetCAUSE)
+    MFC0(V0, CP0_CAUSE)
+    JR      RA
+    NOP
+FUNC_END(CP0_wGetCAUSE)
+
+;/********************************************************************************************************
+;  Get CP0 Count register Value
+;********************************************************************************************************/
+FUNC_DEF(CP0_wGet_COUNT)
+    MFC0(V0, CP0_COUNT)
+    JR      RA
+    NOP
+FUNC_END(CP0_wGet_COUNT)
+
+;/********************************************************************************************************
+;  Set CP0 Count register Value
+;********************************************************************************************************/
+FUNC_DEF(CP0_wSet_COUNT)
+    MTC0(A0, CP0_COUNT)
+    JR      RA
+    NOP
+FUNC_END(CP0_wSet_COUNT)
+
+;/********************************************************************************************************
+;  Get CP0 Compare register Value
+;********************************************************************************************************/
+FUNC_DEF(CP0_wGet_COMPARE)
+    MFC0(V0, CP0_COMPARE)
+    JR      RA
+    NOP
+FUNC_END(CP0_wGet_COMPARE)
+
+;/********************************************************************************************************
+;  Set CP0 Compare register Value
+;********************************************************************************************************/
+FUNC_DEF(CP0_wSet_COMPARE)
+    MTC0(A0, CP0_COMPARE)
+    JR      RA
+    NOP
+FUNC_END(CP0_wSet_COMPARE)
+
+;/********************************************************************************************************
+;  Get interrupts vector
+;********************************************************************************************************/
+FUNC_DEF(CP0_wGet_INTCTL)
+    MFC0(V0, CP0_INTCTL)
+    JR      RA
+    NOP
+FUNC_END(CP0_wGet_INTCTL)
+
+    FILE_END()
 
 ;/*********************************************************************************************************
 ;  END

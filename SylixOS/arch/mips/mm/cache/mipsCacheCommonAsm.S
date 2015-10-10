@@ -26,7 +26,7 @@
 #include <arch/assembler.h>
 #include <config/kernel/cache_cfg.h>
 
-FILE_BEGIN()
+    FILE_BEGIN()
 
 #if LW_CFG_CACHE_EN > 0
 
@@ -48,13 +48,13 @@ FILE_BEGIN()
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheEnable)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsICacheEnable)
 
 FUNC_DEF(mipsDCacheEnable)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsDCacheEnable)
 
 ;/*********************************************************************************************************
@@ -62,13 +62,13 @@ FUNC_END(mipsDCacheEnable)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheDisable)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsICacheDisable)
 
 FUNC_DEF(mipsDCacheDisable)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsDCacheDisable)
 
 ;/*********************************************************************************************************
@@ -76,8 +76,8 @@ FUNC_END(mipsDCacheDisable)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheInvalidateAll)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsICacheInvalidateAll)
 
 ;/*********************************************************************************************************
@@ -85,8 +85,8 @@ FUNC_END(mipsICacheInvalidateAll)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheInvalidate)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsICacheInvalidate)
 
 ;/*********************************************************************************************************
@@ -94,8 +94,8 @@ FUNC_END(mipsICacheInvalidate)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsDCacheInvalidate)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsDCacheInvalidate)
 
 ;/*********************************************************************************************************
@@ -103,8 +103,8 @@ FUNC_END(mipsDCacheInvalidate)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsDCacheFlush)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsDCacheFlush)
 
 ;/*********************************************************************************************************
@@ -112,11 +112,11 @@ FUNC_END(mipsDCacheFlush)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsDCacheClear)
-    jr  ra
-    nop
+    JR     RA
+    NOP
 FUNC_END(mipsDCacheClear)
 
-FILE_END()
+    FILE_END()
 
 #endif
 ;/*********************************************************************************************************

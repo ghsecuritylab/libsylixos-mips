@@ -26,7 +26,7 @@
 #include <arch/assembler.h>
 #include <config/kernel/vmm_cfg.h>
 
-FILE_BEGIN()
+    FILE_BEGIN()
 
 #if LW_CFG_VMM_EN > 0
 
@@ -44,18 +44,18 @@ FILE_BEGIN()
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsMmuAbtFaultStatus)
-    jr  ra
-    move v0, zero
+    JR      RA
+    MOV     V0 , ZERO
 FUNC_END(mipsMmuAbtFaultStatus)
 
 FUNC_DEF(mipsMmuPreFaultStatus)
-    jr  ra
-    move v0, zero
+    JR      RA
+    MOV     V0 , ZERO
 FUNC_END(mipsMmuPreFaultStatus)
 
 FUNC_DEF(mipsMmuAbtFaultAddr)
-    jr  ra
-    move v0, zero
+    JR      RA
+    MOV     V0 , ZERO
 FUNC_END(mipsMmuAbtFaultAddr)
 
 ;/*********************************************************************************************************
@@ -63,13 +63,13 @@ FUNC_END(mipsMmuAbtFaultAddr)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsMmuEnable)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsMmuEnable)
 
 FUNC_DEF(mipsMmuDisable)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsMmuDisable)
 
 ;/*********************************************************************************************************
@@ -77,8 +77,8 @@ FUNC_END(mipsMmuDisable)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsMmuSetTTBase)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsMmuSetTTBase)
 
 ;/*********************************************************************************************************
@@ -86,16 +86,16 @@ FUNC_END(mipsMmuSetTTBase)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsMmuInvalidateTLB)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsMmuInvalidateTLB)
 
 FUNC_DEF(mipsMmuInvalidateTLBMVA)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsMmuInvalidateTLBMVA)
 
-FILE_END()
+    FILE_END()
 
 #endif
 ;/*********************************************************************************************************

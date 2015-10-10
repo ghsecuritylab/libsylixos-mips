@@ -44,9 +44,14 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     UINT uiGP;
 
     asm volatile("mfc0   %0,$12"   : "=r"(uiCP0_STATUS));
-    uiCP0_STATUS &= 0xfffffffe;
-    uiCP0_STATUS |= 0x001;
-    asm volatile("addi   %0,$28,0" : "=r"(uiGP));
+
+    uiCP0_STATUS |= (1 << 0) |
+                    (1 << (8 + 7)) |
+                    (1 << (8 + 4));
+
+    uiCP0_STATUS |= 0x01;
+
+    asm volatile("addi   %0, $28, 0" : "=r"(uiGP));
 
     if ((addr_t)pstkTop & 0x7) {                                        /*  保证出栈后 CPU SP 8 字节对齐*/
         pstkTop = (PLW_STACK)((addr_t)pstkTop - 4);                     /*  向低地址推进 4 字节         */
@@ -56,10 +61,11 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     pregctx = (ARCH_REG_CTX *)((PCHAR)pstkTop - sizeof(ARCH_FP_CTX) - sizeof(ARCH_REG_CTX));
 
     pfpctx->FP_uiFP = (ARCH_REG_T)LW_NULL;
+    pfpctx->FP_uiRA = (ARCH_REG_T)LW_NULL;
 
     pregctx->REG_uiCP0_STATUS = uiCP0_STATUS;
 
-    pregctx->REG_uiEPC   = (ARCH_REG_T)pfuncTask;
+    pregctx->REG_uiEPC = (ARCH_REG_T)pfuncTask;
 
     pregctx->REG_uiAT = (ARCH_REG_T)0x01010101;
     pregctx->REG_uiV0 = (ARCH_REG_T)0x02020202;
@@ -87,7 +93,7 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     pregctx->REG_uiT8 = (ARCH_REG_T)0x24242424;
     pregctx->REG_uiT9 = (ARCH_REG_T)0x25252525;
     pregctx->REG_uiGP = (ARCH_REG_T)uiGP;
-    pregctx->REG_uiFP = pfpctx->FP_uiFP;
+    pregctx->REG_uiFP = (ARCH_REG_T)pfpctx->FP_uiFP;
     pregctx->REG_uiRA = (ARCH_REG_T)pfuncTask;
 
     return  ((PLW_STACK)pregctx);
@@ -113,6 +119,9 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
      *  add  fp, sp, #4
      */
     pfpctx->FP_uiFP = pregctxSrc->REG_uiFP;
+    pfpctx->FP_uiRA = pregctxSrc->REG_uiRA;
+
+    pregctxDest->REG_uiFP = (ARCH_REG_T)&pfpctx->FP_uiRA;
 }
 /*********************************************************************************************************
 ** 函数名称: archTaskCtxShow

@@ -71,239 +71,85 @@
 *********************************************************************************************************/
 
 #define IMPORT_LABEL(label)       .extern label
-
 #define FUNC_LABEL(func)          func:
 #define LINE_LABEL(line)          line:
 
 /*********************************************************************************************************
   FUNC_DEF - declare leaf routine
 *********************************************************************************************************/
-#define FUNC_DEF(name) \
-        .text; \
-        .balign 4; \
-        .type symbol, @function; \
-        .ent  name; \
+#define FUNC_DEF(name)              \
+        .text;                      \
+        .balign 4;                  \
+        .type symbol, @function;    \
+        .ent  name;                 \
 name:
 
 /*********************************************************************************************************
   FUNC_END - mark end of function
 *********************************************************************************************************/
-#define FUNC_END(name) \
-        .size name,.-name; \
+#define FUNC_END(name)              \
+        .size name,.-name;          \
         .end  name
 
 #define MACRO_DEF(mfunc...) \
         .macro  mfunc
 
-#define MACRO_END() \
+#define MACRO_DEF(mfunc...)         \
+        .macro  mfunc
+
+#define MACRO_END()                 \
         .endm
 
-#define FILE_BEGIN() \
-        .set noreorder; \
+#define FILE_BEGIN()                \
+        .set noreorder;             \
         .balign 4;
 
 #define FILE_END()
 
-#define SECTION(sec) \
+#define SECTION(sec)                \
         .section sec
 
-#define WEAK(name) \
-        .weakext name; \
+#define WEAK(name)                  \
+        .weakext name;              \
         .balign 4;
-
-/*********************************************************************************************************
-  FEXPORT - export definition of a function symbol
-*********************************************************************************************************/
-
-#define FEXPORT(name) \
-        .globl  name; \
-        .type   name, @name; \
-name:
-
-/*********************************************************************************************************
-  ABS - export absolute symbol
-*********************************************************************************************************/
-
-#define ABS(symbol,value) \
-        .globl  symbol; \
-symbol  =  value
-
-#define PANIC(msg) \
-        .set    push; \
-        .set    reorder; \
-        PTR_LA  a0, 8f; \
-        jal panic; \
-9:      b   9b; \
-        .set    pop; \
-        TEXT(msg)
-
-#define TEXT(msg) \
-        .pushsection .data; \
-8:      .asciiz msg; \
-        .popsection;
-
-/*********************************************************************************************************
-  Build text tables
-*********************************************************************************************************/
-
-#define TTABLE(string) \
-        .pushsection .text; \
-        .word   1f; \
-        .popsection \
-        .pushsection .data; \
-1:      .asciiz string; \
-        .popsection
-
-/*********************************************************************************************************
-  Stack alignment
-*********************************************************************************************************/
-
-#define ALSZ    (7)
-#define ALMASK  (~7)
-
-/*********************************************************************************************************
-  Size of a register
-*********************************************************************************************************/
-
-#define REG_SIZE   4
-
-/*********************************************************************************************************
-  size define
-*********************************************************************************************************/
-
-#ifndef LW_CFG_KB_SIZE
-#define LW_CFG_KB_SIZE  (1024)
-#define LW_CFG_MB_SIZE  (1024 * LW_CFG_KB_SIZE)
-#define LW_CFG_GB_SIZE  (1024 * LW_CFG_MB_SIZE)
-#endif
-
-/*********************************************************************************************************
-  Use the following macros in assemblercode to load/store registers,pointers etc.
-*********************************************************************************************************/
-
-#define REG_S       sw
-#define REG_L       lw
-#define REG_SUBU    subu
-#define REG_ADDU    addu
-
-/*********************************************************************************************************
-  How to add/sub/load/store/shift C int variables.
-*********************************************************************************************************/
-
-#define INT_ADD     add
-#define INT_ADDU    addu
-#define INT_ADDI    addi
-#define INT_ADDIU   addiu
-#define INT_SUB     sub
-#define INT_SUBU    subu
-#define INT_L       lw
-#define INT_S       sw
-#define INT_SLL     sll
-#define INT_SLLV    sllv
-#define INT_SRL     srl
-#define INT_SRLV    srlv
-#define INT_SRA     sra
-#define INT_SRAV    srav
-
-/*********************************************************************************************************
-  How to add/sub/load/store/shift C long variables.
-*********************************************************************************************************/
-
-#define LONG_ADD    add
-#define LONG_ADDU   addu
-#define LONG_ADDI   addi
-#define LONG_ADDIU  addiu
-#define LONG_SUB    sub
-#define LONG_SUBU   subu
-#define LONG_L      lw
-#define LONG_S      sw
-#define LONG_SP     swp
-#define LONG_SLL    sll
-#define LONG_SLLV   sllv
-#define LONG_SRL    srl
-#define LONG_SRLV   srlv
-#define LONG_SRA    sra
-#define LONG_SRAV   srav
-
-#define LONG        .word
-#define LONGSIZE    4
-#define LONGMASK    3
-#define LONGLOG     2
-
-/*********************************************************************************************************
-  How to add/sub/load/store/shift pointers.
-*********************************************************************************************************/
-
-#define PTR_ADD     add
-#define PTR_ADDU    addu
-#define PTR_ADDI    addi
-#define PTR_ADDIU   addiu
-#define PTR_SUB     sub
-#define PTR_SUBU    subu
-#define PTR_L       lw
-#define PTR_S       sw
-#define PTR_LA      la
-#define PTR_LI      li
-#define PTR_SLL     sll
-#define PTR_SLLV    sllv
-#define PTR_SRL     srl
-#define PTR_SRLV    srlv
-#define PTR_SRA     sra
-#define PTR_SRAV    srav
-
-#define PTR_SCALESHIFT  2
-
-#define PTR     .word
-#define PTRSIZE     4
-#define PTRLOG      2
-
-/*********************************************************************************************************
-  Some cp0 registers were extended to 64bit for MIPS III.
-*********************************************************************************************************/
-
-#define MFC0        mfc0
-#define MTC0        mtc0
-
-#define SSNOP       sll zero, zero, 1
-#define NOPS        SSNOP; SSNOP; SSNOP; SSNOP
 
 /*********************************************************************************************************
   MIPS 通用寄存器定义
 *********************************************************************************************************/
 
-#define zero            $0                                              /* wired zero                   */
+#define ZERO            $0                                              /* wired zero                   */
 #define AT              $at                                             /* assembler temp               */
-#define v0              $2                                              /* return reg 0                 */
-#define v1              $3                                              /* return reg 1                 */
-#define a0              $4                                              /* arg reg 0                    */
-#define a1              $5                                              /* arg reg 1                    */
-#define a2              $6                                              /* arg reg 2                    */
-#define a3              $7                                              /* arg reg 3                    */
-#define t0              $8                                              /* caller saved 0               */
-#define t1              $9                                              /* caller saved 1               */
-#define t2              $10                                             /* caller saved 2               */
-#define t3              $11                                             /* caller saved 3               */
-#define t4              $12                                             /* caller saved 4               */
-#define t5              $13                                             /* caller saved 5               */
-#define t6              $14                                             /* caller saved 6               */
-#define t7              $15                                             /* caller saved 7               */
-#define s0              $16                                             /* callee saved 0               */
-#define s1              $17                                             /* callee saved 1               */
-#define s2              $18                                             /* callee saved 2               */
-#define s3              $19                                             /* callee saved 3               */
-#define s4              $20                                             /* callee saved 4               */
-#define s5              $21                                             /* callee saved 5               */
-#define s6              $22                                             /* callee saved 6               */
-#define s7              $23                                             /* callee saved 7               */
-#define t8              $24                                             /* caller saved 8               */
-#define t9              $25                                             /* caller saved 9               */
-#define k0              $26                                             /* kernel temp 0                */
-#define k1              $27                                             /* kernel temp 1                */
-#define gp              $28                                             /* global pointer               */
-#define sp              $29                                             /* stack pointer                */
-#define s8              $30                                             /* callee saved 8               */
-#define fp              s8                                              /* callee saved 8               */
-#define ra              $31                                             /* return address               */
+#define V0              $2                                              /* return reg 0                 */
+#define V1              $3                                              /* return reg 1                 */
+#define A0              $4                                              /* arg reg 0                    */
+#define A1              $5                                              /* arg reg 1                    */
+#define A2              $6                                              /* arg reg 2                    */
+#define A3              $7                                              /* arg reg 3                    */
+#define T0              $8                                              /* caller saved 0               */
+#define T1              $9                                              /* caller saved 1               */
+#define T2              $10                                             /* caller saved 2               */
+#define T3              $11                                             /* caller saved 3               */
+#define T4              $12                                             /* caller saved 4               */
+#define T5              $13                                             /* caller saved 5               */
+#define T6              $14                                             /* caller saved 6               */
+#define T7              $15                                             /* caller saved 7               */
+#define S0              $16                                             /* callee saved 0               */
+#define S1              $17                                             /* callee saved 1               */
+#define S2              $18                                             /* callee saved 2               */
+#define S3              $19                                             /* callee saved 3               */
+#define S4              $20                                             /* callee saved 4               */
+#define S5              $21                                             /* callee saved 5               */
+#define S6              $22                                             /* callee saved 6               */
+#define S7              $23                                             /* callee saved 7               */
+#define T8              $24                                             /* caller saved 8               */
+#define T9              $25                                             /* caller saved 9               */
+#define K0              $26                                             /* kernel temp 0                */
+#define K1              $27                                             /* kernel temp 1                */
+#define GP              $28                                             /* global pointer               */
+#define SP              $29                                             /* stack pointer                */
+#define S8              $30                                             /* callee saved 8               */
+#define FP              S8                                              /* callee saved 8               */
+#define RA              $31                                             /* return address               */
 
 /*********************************************************************************************************
   MIPS 协处理器0寄存器定义
@@ -323,6 +169,7 @@ symbol  =  value
 #define CP0_TLBHI       $10                                             /* tlb entry hi                 */
 #define CP0_COMPARE     $11                                             /* compare                      */
 #define CP0_STATUS      $12                                             /* status register              */
+#define CP0_INTCTL      $12,1                                           /* interrupts vector set        */
 #define CP0_CAUSE       $13                                             /* exception cause              */
 #define CP0_EPC         $14                                             /* exception pc                 */
 #define CP0_PRID        $15
@@ -336,6 +183,175 @@ symbol  =  value
 #define CP0_TAGLO       $28
 #define CP0_TAGHI       $29
 #define CP0_ERRPC       $30
+
+
+/*********************************************************************************************************
+  MIPS Use the following macros in assemblercode
+*********************************************************************************************************/
+#define LA              la
+#define LI              li
+#define SW              sw
+#define LW              lw
+#define ADD             add
+#define ADDU            addu
+#define ADDI            addi
+#define ADDIU           addiu
+#define SUB             sub
+#define SUBU            subu
+#define SLL             sll
+#define SLLV            sllv
+#define SRL             srl
+#define SRLV            srlv
+#define SRA             sra
+#define SRAV            srav
+#define AND             and
+#define OR              or
+#define XOR             xor
+#define JR              jr
+#define MOV             move
+#define JALR            jalr
+#define JAL             jal
+#define BNE             bne
+#define BAL             bal
+#define BLT             blt
+#define BLEZ            blez
+
+#define LONG            .word
+#define LONGSIZE        4
+#define LONGMASK        3
+#define LONGLOG         2
+
+#define PTR             .word
+#define PTR_SCALESHIFT  2
+#define PTRSIZE         4
+#define PTRLOG          2
+
+#define SSNOP           SLL ZER0, ZER0, 1
+#define NOPS            SSNOP; SSNOP; SSNOP; SSNOP
+#define NOP             nop
+#define ERET            eret
+
+
+#define MTC0(src, dst)              \
+    mtc0 src, dst;                  \
+    ehb
+#define MFC0(dst, src)              \
+    mfc0 dst, src;                  \
+    ehb
+
+/*********************************************************************************************************
+  define the address offset of the Grenel register
+*********************************************************************************************************/
+#define STK_OFFSET_RA     (0)
+#define STK_OFFSET_FP     (STK_OFFSET_RA  + 4)
+#define STK_OFFSET_GP     (STK_OFFSET_FP  + 4)
+#define STK_OFFSET_T9     (STK_OFFSET_GP  + 4)
+#define STK_OFFSET_T8     (STK_OFFSET_T9  + 4)
+#define STK_OFFSET_S7     (STK_OFFSET_T8  + 4)
+#define STK_OFFSET_S6     (STK_OFFSET_S7  + 4)
+#define STK_OFFSET_S5     (STK_OFFSET_S6  + 4)
+#define STK_OFFSET_S4     (STK_OFFSET_S5  + 4)
+#define STK_OFFSET_S3     (STK_OFFSET_S4  + 4)
+#define STK_OFFSET_S2     (STK_OFFSET_S3  + 4)
+#define STK_OFFSET_S1     (STK_OFFSET_S2  + 4)
+#define STK_OFFSET_S0     (STK_OFFSET_S1  + 4)
+#define STK_OFFSET_T7     (STK_OFFSET_S0  + 4)
+#define STK_OFFSET_T6     (STK_OFFSET_T7  + 4)
+#define STK_OFFSET_T5     (STK_OFFSET_T6  + 4)
+#define STK_OFFSET_T4     (STK_OFFSET_T5  + 4)
+#define STK_OFFSET_T3     (STK_OFFSET_T4  + 4)
+#define STK_OFFSET_T2     (STK_OFFSET_T3  + 4)
+#define STK_OFFSET_T1     (STK_OFFSET_T2  + 4)
+#define STK_OFFSET_T0     (STK_OFFSET_T1  + 4)
+#define STK_OFFSET_A3     (STK_OFFSET_T0  + 4)
+#define STK_OFFSET_A2     (STK_OFFSET_A3  + 4)
+#define STK_OFFSET_A1     (STK_OFFSET_A2  + 4)
+#define STK_OFFSET_A0     (STK_OFFSET_A1  + 4)
+#define STK_OFFSET_V1     (STK_OFFSET_A0  + 4)
+#define STK_OFFSET_V0     (STK_OFFSET_V1  + 4)
+#define STK_OFFSET_AT     (STK_OFFSET_V0  + 4)
+#define STK_OFFSET_SR     (STK_OFFSET_AT  + 4)
+#define STK_OFFSET_EPC    (STK_OFFSET_SR  + 4)
+#define STK_CTX_SIZE      (STK_OFFSET_EPC + 4)
+
+/*********************************************************************************************************
+  operate the general register load/store AT---RA
+*********************************************************************************************************/
+#define OPERATE_REG(op)             \
+    op      RA, STK_OFFSET_RA(SP);  \
+    op      FP, STK_OFFSET_FP(SP);  \
+    op      GP, STK_OFFSET_GP(SP);  \
+    op      T9, STK_OFFSET_T9(SP);  \
+    op      T8, STK_OFFSET_T8(SP);  \
+    op      S7, STK_OFFSET_S7(SP);  \
+    op      S6, STK_OFFSET_S6(SP);  \
+    op      S5, STK_OFFSET_S5(SP);  \
+    op      S4, STK_OFFSET_S4(SP);  \
+    op      S3, STK_OFFSET_S3(SP);  \
+    op      S2, STK_OFFSET_S2(SP);  \
+    op      S1, STK_OFFSET_S1(SP);  \
+    op      S0, STK_OFFSET_S0(SP);  \
+    op      T7, STK_OFFSET_T7(SP);  \
+    op      T6, STK_OFFSET_T6(SP);  \
+    op      T5, STK_OFFSET_T5(SP);  \
+    op      T4, STK_OFFSET_T4(SP);  \
+    op      T3, STK_OFFSET_T3(SP);  \
+    op      T2, STK_OFFSET_T2(SP);  \
+    op      T1, STK_OFFSET_T1(SP);  \
+    op      T0, STK_OFFSET_T0(SP);  \
+    op      A3, STK_OFFSET_A3(SP);  \
+    op      A2, STK_OFFSET_A2(SP);  \
+    op      A1, STK_OFFSET_A1(SP);  \
+    op      A0, STK_OFFSET_A0(SP);  \
+    op      V1, STK_OFFSET_V1(SP);  \
+    op      V0, STK_OFFSET_V0(SP);  \
+    op      AT, STK_OFFSET_AT(SP);
+
+/*********************************************************************************************************
+  pop context (normal execution): at, v0-v1,a0-a3,t0-t9,s0-s7,gp,fp,ra, & pc
+*********************************************************************************************************/
+#define RESTORE_REG_RET()           \
+    .set    noat;                   \
+    .set    noreorder;              \
+    OPERATE_REG(LW);                \
+    LW      K0, STK_OFFSET_SR(SP);  \
+    MTC0(K0, CP0_STATUS);           \
+    LW      K0, STK_OFFSET_EPC(SP); \
+    ADDU    SP, STK_CTX_SIZE;       \
+    JR      K0;                     \
+    NOP;                            \
+    .set    at
+
+/*********************************************************************************************************
+  pop context: at, v0-v1,a0-a3,t0-t9,s0-s7,gp,fp,ra, & pc
+*********************************************************************************************************/
+#define RESTORE_REG_ERET()          \
+    .set    noat;                   \
+    .set    noreorder;              \
+    OPERATE_REG(LW);                \
+    LW      K0, STK_OFFSET_SR(SP);  \
+    MTC0(K0, CP0_STATUS);           \
+    LW      K0, STK_OFFSET_EPC(SP); \
+    MTC0(K0, CP0_EPC);              \
+    ADDU    SP, STK_CTX_SIZE;       \
+    ERET;                           \
+    NOP;                            \
+    .set    at
+
+/*********************************************************************************************************
+  push context: at, v0-v1,a0-a3,t0-t9,s0-s7,gp,fp,ra, & pc
+*********************************************************************************************************/
+#define STORE_REG_RET(Retaddr)      \
+    .set    noat;                   \
+    .set    noreorder;              \
+    SUBU    SP, STK_CTX_SIZE;       \
+    OPERATE_REG(SW);                \
+    MFC0(T0, CP0_STATUS);           \
+    SW      T0, STK_OFFSET_SR(SP);  \
+    SW      Retaddr, STK_OFFSET_EPC(SP); \
+    .set    at
+
+#endif                                                                  /*  __ASSEMBLY__                */
 
 /*********************************************************************************************************
   CP0 Status Register
@@ -471,6 +487,57 @@ symbol  =  value
 #define M_CauseExcCode  (0x1f << S_CauseExcCode)
 
 /*********************************************************************************************************
+ * Values in the ExcCode field
+*********************************************************************************************************/
+#define EX_INT          0                                               /* Interrupt                    */
+#define EXC_INT         (EX_INT << S_CauseExcCode)
+#define EX_MOD          1                                               /* TLB modified                 */
+#define EXC_MOD         (EX_MOD << S_CauseExcCode)
+#define EX_TLBL         2                                               /* TLB exception(load or ifetch)*/
+#define EXC_TLBL        (EX_TLBL << S_CauseExcCode)
+#define EX_TLBS         3                                               /* TLB exception (store)        */
+#define EXC_TLBS        (EX_TLBS << S_CauseExcCode)
+#define EX_ADEL         4                                               /* Address error(load or ifetch)*/
+#define EXC_ADEL        (EX_ADEL << S_CauseExcCode)
+#define EX_ADES         5                                               /* Address error (store)        */
+#define EXC_ADES        (EX_ADES << S_CauseExcCode)
+#define EX_IBE          6                                               /* Instruction Bus Error        */
+#define EXC_IBE         (EX_IBE << S_CauseExcCode)
+#define EX_DBE          7                                               /* Data Bus Error               */
+#define EXC_DBE         (EX_DBE << S_CauseExcCode)
+#define EX_SYS          8                                               /* Syscall                      */
+#define EXC_SYS         (EX_SYS << S_CauseExcCode)
+#define EX_SYSCALL      EX_SYS
+#define EXC_SYSCALL     EXC_SYS
+#define EX_BP           9                                               /* Breakpoint                   */
+#define EXC_BP          (EX_BP << S_CauseExcCode)
+#define EX_BREAK        EX_BP
+#define EXC_BREAK       EXC_BP
+#define EX_RI           10                                              /* Reserved instruction         */
+#define EXC_RI          (EX_RI << S_CauseExcCode)
+#define EX_CPU          11                                              /* CoProcessor Unusable         */
+#define EXC_CPU         (EX_CPU << S_CauseExcCode)
+#define EX_OV           12                                              /* OVerflow                     */
+#define EXC_OV          (EX_OV << S_CauseExcCode)
+#define EX_TR           13                                              /* Trap instruction             */
+#define EXC_TR          (EX_TR << S_CauseExcCode)
+#define EX_TRAP         EX_TR
+#define EXC_TRAP        EXC_TR
+#define EX_FPE          15                                              /* floating point exception     */
+#define EXC_FPE         (EX_FPE << S_CauseExcCode)
+#define EX_C2E          18                                              /* COP2 exception               */
+#define EXC_C2E         (EX_C2E << S_CauseExcCode)
+#define EX_MDMX         22                                              /* MDMX exception               */
+#define EXC_MDMX        (EX_MDMX << S_CauseExcCode)
+#define EX_WATCH        23                                              /* Watch exception              */
+#define EXC_WATCH       (EX_WATCH << S_CauseExcCode)
+#define EX_MCHECK       24                                              /* Machine check exception      */
+#define EXC_MCHECK      (EX_MCHECK << S_CauseExcCode)
+#define EX_CacheErr     30                                              /* Cache error caused re-entry  */
+                                                                        /* to Debug Mode                */
+#define EXC_CacheErr    (EX_CacheErr << S_CauseExcCode)
+
+/*********************************************************************************************************
   CP0 Config Register
   ************************************************************************
  *
@@ -501,6 +568,24 @@ symbol  =  value
                                                                          * algorithm (R/W)              */
 #define M_ConfigK0      (0x7 << S_ConfigK0)
 
+/*********************************************************************************************************
+ *         I N T C T L   R E G I S T E R   ( 1 2, SELECT 1 )
+ ************************************************************************
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |IPTI |IPPCI|                               |    VS   |         |IntCtl
+ * |     |     |            0                  |         |    0    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_IntCtlIPPI       29
+#define M_IntCtlIPPI       (0x7 << S_IntCtlIPPI)
+#define S_IntCtlIPPCI      26
+#define M_IntCtlIPPCI      (0x7 << S_IntCtlIPPCI)
+#define S_IntCtlVS         5
+#define M_IntCtlVS         (0x1f << S_IntCtlVS)
 
 /*********************************************************************************************************
   Virtual Address Definitions
@@ -522,8 +607,6 @@ symbol  =  value
 #define K_CacheSecU     3                                               /* Unified secondary            */
 
 #define CONF_CM_CACHABLE_NONCOHERENT 3
-
-#endif                                                                  /*  __ASSEMBLY__                */
 
 #endif                                                                  /*  __ASMMIPS_ASSEMBLER_H        */
 /*********************************************************************************************************

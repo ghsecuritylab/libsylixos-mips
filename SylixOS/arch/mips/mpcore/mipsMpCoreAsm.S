@@ -26,7 +26,7 @@
 #include <arch/assembler.h>
 #include <config/mp/mp_cfg.h>
 
-FILE_BEGIN()
+    FILE_BEGIN()
 
 #if LW_CFG_SMP_EN > 0
 
@@ -46,18 +46,18 @@ FILE_BEGIN()
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsSpinLock)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsSpinLock)
 
 FUNC_DEF(mipsSpinTryLock)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsSpinTryLock)
 
 FUNC_DEF(mipsSpinUnlock)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(mipsSpinUnlock)
 
 ;/*********************************************************************************************************
@@ -65,8 +65,8 @@ FUNC_END(mipsSpinUnlock)
 ;*********************************************************************************************************/
 
 FUNC_DEF(archMpCur)
-    jr  ra
-    move v0, zero
+    JR      RA
+    MOV     V0 , ZERO
 FUNC_END(archMpCur)
 
 ;/*********************************************************************************************************
@@ -74,11 +74,11 @@ FUNC_END(archMpCur)
 ;*********************************************************************************************************/
 
 FUNC_DEF(archMpInt)
-    jr  ra
-    nop
+    JR      RA
+    NOP
 FUNC_END(archMpInt)
 
-FILE_END()
+    FILE_END()
 
 #endif
 ;/*********************************************************************************************************
