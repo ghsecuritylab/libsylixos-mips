@@ -23,7 +23,7 @@
 #define __ASMMIPS_ASSEMBLER_H
 
 /*********************************************************************************************************
-  定义MIPS架构是大/小端存储
+  定义 MIPS 架构是大/小端存储
 *********************************************************************************************************/
 
 #if defined(MIPSEB) || defined(__MIPSEB__)
@@ -37,7 +37,7 @@
 #endif
 
 /*********************************************************************************************************
-  定MIPS32/MIPS64，暂时先不用
+  定义 MIPS32/MIPS64，暂时先不用
 *********************************************************************************************************/
 
 #define __SYLIXOS_CPU_MIPS_32BIT ((__SYLIXOS_CPU==__SYLIXOS_MIPS32) || \
@@ -51,7 +51,7 @@
                 (__SYLIXOS_CPU==__SYLIXOS_MIPSI64R2))
 
 /*********************************************************************************************************
-  mips架构下的特殊code定义
+  MIPS 架构下的特殊 code 定义
 *********************************************************************************************************/
 
 #if defined(__ASSEMBLY__) || defined(ASSEMBLY)
@@ -418,21 +418,21 @@ name:
 #define M_StatusIM1     (0x1 << S_StatusIM1)
 #define S_StatusIM0     8
 #define M_StatusIM0     (0x1 << S_StatusIM0)
-#define S_StatusKX      7                                               /* Enable access to extended
-                                                                         * kernel addresses
-                                                                         * (MIPS64 only) (R/W)          */
+#define S_StatusKX      7                                               /* Enable access to extended    */
+                                                                        /* kernel addresses             */
+                                                                        /* (MIPS64 only) (R/W)          */
 #define M_StatusKX      (0x1 << S_StatusKX)
-#define S_StatusSX      6                                               /* Enable access to extended
-                                                                         * supervisor addresses
-                                                                         * (MIPS64 only) (R/W)          */
+#define S_StatusSX      6                                               /* Enable access to extended    */
+                                                                        /* supervisor addresses         */
+                                                                        /* (MIPS64 only) (R/W)          */
 #define M_StatusSX      (0x1 << S_StatusSX)
-#define S_StatusUX      5                                               /* Enable access to extended user
-                                                                         * addresses (MIPS64 only) (R/W)*/
+#define S_StatusUX      5                                               /* Enable access to extended    */
+                                                                        /* user addresses (MIPS64 only) */
 #define M_StatusUX      (0x1 << S_StatusUX)
 #define S_StatusKSU     3                                               /* Two-bit current mode (R/W)   */
 #define M_StatusKSU     (0x3 << S_StatusKSU)
-#define S_StatusUM      4                                               /* User mode if supervisor mode
-                                                                         * not implemented (R/W)        */
+#define S_StatusUM      4                                               /* User mode if supervisor mode */
+                                                                        /* not implemented (R/W)        */
 #define M_StatusUM      (0x1 << S_StatusUM)
 #define S_StatusSM      3                                               /* Supervisor mode (R/W)        */
 #define M_StatusSM      (0x1 << S_StatusSM)
@@ -549,14 +549,14 @@ name:
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 *********************************************************************************************************/
 
-#define S_ConfigMore    31                                              /* Additional config registers
-                                                                         * present (R)                  */
+#define S_ConfigMore    31                                              /* Additional config registers  */
+                                                                        /* present (R)                  */
 #define M_ConfigMore    (0x1 << S_ConfigMore)
-#define S_ConfigImpl    16                                              /* Implementation-specific
-                                                                         * fields                       */
+#define S_ConfigImpl    16                                              /* Implementation-specific      */
+                                                                        /* fields                       */
 #define M_ConfigImpl    (0x7fff << S_ConfigImpl)
-#define S_ConfigBE      15                                              /* Denotes big-endian
-                                                                         * operation (R)                */
+#define S_ConfigBE      15                                              /* Denotes big-endian           */
+                                                                        /* operation (R)                */
 #define M_ConfigBE      (0x1 << S_ConfigBE)
 #define S_ConfigAT      13                                              /* Architecture type (R)        */
 #define M_ConfigAT      (0x3 << S_ConfigAT)
@@ -564,8 +564,8 @@ name:
 #define M_ConfigAR      (0x7 << S_ConfigAR)
 #define S_ConfigMT      7                                               /* MMU Type (R)                 */
 #define M_ConfigMT      (0x7 << S_ConfigMT)
-#define S_ConfigK0      0                                               /* Kseg0 coherency
-                                                                         * algorithm (R/W)              */
+#define S_ConfigK0      0                                               /* Kseg0 coherency              */
+                                                                        /* algorithm (R/W)              */
 #define M_ConfigK0      (0x7 << S_ConfigK0)
 
 /*********************************************************************************************************
@@ -595,8 +595,8 @@ name:
 #define A_K1BASE        0xa0000000
 #define A_K2BASE        0xc0000000
 #define A_K3BASE        0xe0000000
-#define M_KMAPPED       0x40000000                                      /* KnSEG address is mapped
-                                                                         * if bit is one                */
+#define M_KMAPPED       0x40000000                                      /* KnSEG address is mapped      */
+                                                                        /* if bit is one                */
 /*********************************************************************************************************
   Cache Instruction OPeration Codes
 *********************************************************************************************************/
@@ -608,7 +608,7 @@ name:
 
 #define CONF_CM_CACHABLE_NONCOHERENT 3
 
-#endif                                                                  /*  __ASMMIPS_ASSEMBLER_H        */
+#endif                                                                  /*  __ASMMIPS_ASSEMBLER_H       */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

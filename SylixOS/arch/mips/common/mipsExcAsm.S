@@ -50,9 +50,16 @@
 ;*********************************************************************************************************/
 
 MACRO_DEF(EXCEPTION_ENTRY handle)
-    MFC0(K0, CP0_EPC)                                                   ;/*  Get异常的入口地址           */
+    MFC0(K0, CP0_EPC)                                                   ;/*  获得异常的返回地址          */
+
     STORE_REG_RET(K0)                                                   ;/*  保存任务控制块              */
 
+    ;/*
+    ; *  if (API_InterEnter() == 1) {
+    ; *      current stack = SP;
+    ; *      SP = interrupt stack;
+    ; *  }
+    ; */
     JAL     API_InterEnter                                              ;/*  获取中断层数放到返回值V0    */
     NOP
 
@@ -71,37 +78,46 @@ BSP_INT_HANDLE:
     JAL     \handle
     NOP
 
+    ;/*
+    ; *  if (API_InterGetNesting() == 1) {
+    ; *      SP = current stack;
+    ; *  }
+    ; */
     JAL     API_InterGetNesting
     NOP
 
     BNE     V0 , 1 , BSP_INT_EXIT
     NOP
 
-    JAL     API_ThreadTcbInter
+    JAL     API_ThreadTcbInter                                          ;/*  get current tcb             */
     NOP
 
-    LW      SP , 0(V0)
+    LW      SP , 0(V0)                                                  ;/*  SP = current stack          */
 
 BSP_INT_EXIT:
     JAL     API_InterExit
     NOP
+
     RESTORE_REG_ERET()
-    JR      RA
-    NOP
 MACRO_END()
 
 FUNC_DEF(archInterruptEntry)
-    EXCEPTION_ENTRY bspIntHandle
+    EXCEPTION_ENTRY     bspIntHandle
 FUNC_END(archInterruptEntry)
 
 ;/********************************************************************************************************
-;  Get CP0 Status register Value
+;  Get CP0 Status register value
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wGetSR)
     MFC0(V0, CP0_STATUS)
     JR      RA
     NOP
 FUNC_END(CP0_wGetSR)
+
+;/********************************************************************************************************
+;  Set CP0 Status register value
+;********************************************************************************************************/
 
 FUNC_DEF(CP0_wSetSR)
     MTC0(A0, CP0_STATUS)
@@ -110,8 +126,9 @@ FUNC_DEF(CP0_wSetSR)
 FUNC_END(CP0_wSetSR)
 
 ;/********************************************************************************************************
-;  Get CP0 Cause register Value
+;  Get CP0 Cause register value
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wGetCAUSE)
     MFC0(V0, CP0_CAUSE)
     JR      RA
@@ -119,8 +136,9 @@ FUNC_DEF(CP0_wGetCAUSE)
 FUNC_END(CP0_wGetCAUSE)
 
 ;/********************************************************************************************************
-;  Get CP0 Count register Value
+;  Get CP0 Count register value
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wGet_COUNT)
     MFC0(V0, CP0_COUNT)
     JR      RA
@@ -128,8 +146,9 @@ FUNC_DEF(CP0_wGet_COUNT)
 FUNC_END(CP0_wGet_COUNT)
 
 ;/********************************************************************************************************
-;  Set CP0 Count register Value
+;  Set CP0 Count register value
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wSet_COUNT)
     MTC0(A0, CP0_COUNT)
     JR      RA
@@ -137,8 +156,9 @@ FUNC_DEF(CP0_wSet_COUNT)
 FUNC_END(CP0_wSet_COUNT)
 
 ;/********************************************************************************************************
-;  Get CP0 Compare register Value
+;  Get CP0 Compare register value
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wGet_COMPARE)
     MFC0(V0, CP0_COMPARE)
     JR      RA
@@ -146,8 +166,9 @@ FUNC_DEF(CP0_wGet_COMPARE)
 FUNC_END(CP0_wGet_COMPARE)
 
 ;/********************************************************************************************************
-;  Set CP0 Compare register Value
+;  Set CP0 Compare register value
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wSet_COMPARE)
     MTC0(A0, CP0_COMPARE)
     JR      RA
@@ -155,8 +176,9 @@ FUNC_DEF(CP0_wSet_COMPARE)
 FUNC_END(CP0_wSet_COMPARE)
 
 ;/********************************************************************************************************
-;  Get interrupts vector
+;  Get Timer interrupt vector
 ;********************************************************************************************************/
+
 FUNC_DEF(CP0_wGet_INTCTL)
     MFC0(V0, CP0_INTCTL)
     JR      RA

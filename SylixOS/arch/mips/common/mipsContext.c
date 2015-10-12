@@ -40,8 +40,8 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 {
     ARCH_REG_CTX      *pregctx;
     ARCH_FP_CTX       *pfpctx;
-    UINT uiCP0_STATUS;
-    UINT uiGP;
+    UINT32             uiCP0_STATUS;
+    UINT32             uiGP;
 
     asm volatile("mfc0   %0,$12"   : "=r"(uiCP0_STATUS));
 

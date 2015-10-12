@@ -30,46 +30,53 @@
 typedef UINT        ARCH_REG_T;
 
 typedef struct {
-    ARCH_REG_T REG_uiRA;                                                /* 返回地址寄存器               */
-    ARCH_REG_T REG_uiFP;                                                /* 帧栈指针寄存器               */
-    ARCH_REG_T REG_uiGP;                                                /* 全局指针寄存器               */
-    ARCH_REG_T REG_uiT9;
+    ARCH_REG_T REG_uiRA;                                                /*  返回地址寄存器              */
+    ARCH_REG_T REG_uiFP;                                                /*  帧栈指针寄存器              */
+    ARCH_REG_T REG_uiGP;                                                /*  全局指针寄存器              */
+
+    ARCH_REG_T REG_uiT9;												/*  子程序暂存变量寄存器        */
     ARCH_REG_T REG_uiT8;
-    ARCH_REG_T REG_uiS7;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS6;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS5;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS4;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS3;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS2;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS1;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiS0;                                                /* 子程序暂存寄存器变量寄存器   */
-    ARCH_REG_T REG_uiT7;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT6;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT5;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT4;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT3;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT2;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT1;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiT0;                                                /* 子程序暂存变量寄存器         */
-    ARCH_REG_T REG_uiA3;                                                /* 子程序参数寄存器             */
-    ARCH_REG_T REG_uiA2;                                                /* 子程序参数寄存器             */
-    ARCH_REG_T REG_uiA1;                                                /* 子程序参数寄存器             */
-    ARCH_REG_T REG_uiA0;                                                /* 子程序参数寄存器             */
-    ARCH_REG_T REG_uiV1;                                                /* 子程序返回值寄存器           */
-    ARCH_REG_T REG_uiV0;                                                /* 子程序返回值寄存器           */
-    ARCH_REG_T REG_uiAT;                                                /* 汇编暂存寄存器               */
-    ARCH_REG_T REG_uiCP0_STATUS;                                        /* CP0协处理器状态寄存器        */
-    ARCH_REG_T REG_uiEPC;                                               /* CP0协处理器异常程序计数器寄存器*/
-}ARCH_REG_CTX;
+
+    ARCH_REG_T REG_uiS7;                                                /*  子程序保存变量寄存器   	 	*/
+    ARCH_REG_T REG_uiS6;
+    ARCH_REG_T REG_uiS5;
+    ARCH_REG_T REG_uiS4;
+    ARCH_REG_T REG_uiS3;
+    ARCH_REG_T REG_uiS2;
+    ARCH_REG_T REG_uiS1;
+    ARCH_REG_T REG_uiS0;
+
+    ARCH_REG_T REG_uiT7;                                                /*  子程序暂存变量寄存器        */
+    ARCH_REG_T REG_uiT6;
+    ARCH_REG_T REG_uiT5;
+    ARCH_REG_T REG_uiT4;
+    ARCH_REG_T REG_uiT3;
+    ARCH_REG_T REG_uiT2;
+    ARCH_REG_T REG_uiT1;
+    ARCH_REG_T REG_uiT0;
+
+    ARCH_REG_T REG_uiA3;                                                /*  子程序参数寄存器            */
+    ARCH_REG_T REG_uiA2;
+    ARCH_REG_T REG_uiA1;
+    ARCH_REG_T REG_uiA0;
+
+    ARCH_REG_T REG_uiV1;                                                /*  子程序返回值寄存器          */
+    ARCH_REG_T REG_uiV0;
+
+    ARCH_REG_T REG_uiAT;                                                /*  汇编综合寄存器              */
+
+    ARCH_REG_T REG_uiCP0_STATUS;                                        /*  CP0 协处理器状态寄存器      */
+    ARCH_REG_T REG_uiEPC;                                               /*  程序计数器寄存器			*/
+} ARCH_REG_CTX;
 
 /*********************************************************************************************************
   标准调用回溯堆栈表
 *********************************************************************************************************/
 
 typedef struct {
-    ARCH_REG_T FP_uiFP;                                                 /* 帧栈指针寄存器               */
+    ARCH_REG_T FP_uiFP;                                                 /*  帧栈指针寄存器              */
     ARCH_REG_T FP_uiRA;                                                 /*  返回地址寄存器              */
-}ARCH_FP_CTX;
+} ARCH_FP_CTX;
 
 /*********************************************************************************************************
   堆栈中的寄存器信息所占大小
