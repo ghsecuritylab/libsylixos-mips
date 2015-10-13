@@ -151,7 +151,7 @@ FUNC_END(longjmp)
 ;*********************************************************************************************************/
 
 FUNC_DEF(archReboot)
-    JR      RA
+    JAL     bspReboot                                                   ;/* 不再返回, 由 BSP 进行复位操作*/
     NOP
 FUNC_END(archReboot)
 

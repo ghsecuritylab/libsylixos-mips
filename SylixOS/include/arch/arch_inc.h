@@ -42,6 +42,7 @@
 
 #elif (defined LW_CFG_CPU_ARCH_MIPS)
 #include "mips/arch_types.h"
+#include "mips/arch_def.h"
 #include "mips/arch_compiler.h"
 #include "mips/arch_float.h"
 #include "mips/arch_limits.h"

@@ -69,7 +69,7 @@ FUNC_DEF(archTaskCtxSwitch)
 
     LA     T0 , _SchedSwp                                               ;/*  _SchedSwp();                */
     JALR   T0
-    nop
+    NOP
 
     LW     A0 , 0(SP)                                                   ;/*  当前 CPU 信息出栈           */
     ADDU   SP , 4

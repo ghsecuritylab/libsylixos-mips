@@ -21,6 +21,7 @@
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
+#include "arch/mips/common/cp0/mipsCp0.h"
 /*********************************************************************************************************
 ** 函数名称: archTaskCtxCreate
 ** 功能描述: 创建任务上下文
@@ -43,7 +44,7 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     UINT32             uiCP0_STATUS;
     UINT32             uiGP;
 
-    asm volatile("mfc0   %0,$12"   : "=r"(uiCP0_STATUS));
+    uiCP0_STATUS  = mipsCp0StatusRead();
 
     uiCP0_STATUS |= (1 << 0) |
                     (1 << (8 + 7)) |
@@ -136,7 +137,51 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
 
 VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 {
+    fdprintf(iFd, "RA  = 0x%08x  ", pstkTop[STK_OFFSET_RA / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "FP  = 0x%08x  ", pstkTop[STK_OFFSET_FP / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "GP  = 0x%08x\n", pstkTop[STK_OFFSET_GP / sizeof(ARCH_REG_T)]);
 
+    fdprintf(iFd, "T9  = 0x%08x  ", pstkTop[STK_OFFSET_T9 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "T8  = 0x%08x\n", pstkTop[STK_OFFSET_T8 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "S7  = 0x%08x  ", pstkTop[STK_OFFSET_S7 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "S6  = 0x%08x\n", pstkTop[STK_OFFSET_S6 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "S5  = 0x%08x  ", pstkTop[STK_OFFSET_S4 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "S4  = 0x%08x\n", pstkTop[STK_OFFSET_S4 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "S3  = 0x%08x  ", pstkTop[STK_OFFSET_S3 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "S2  = 0x%08x\n", pstkTop[STK_OFFSET_S2 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "S1  = 0x%08x  ", pstkTop[STK_OFFSET_S1 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "S0  = 0x%08x\n", pstkTop[STK_OFFSET_S0 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "T7  = 0x%08x  ", pstkTop[STK_OFFSET_T7 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "T6  = 0x%08x\n", pstkTop[STK_OFFSET_T6 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "T5  = 0x%08x  ", pstkTop[STK_OFFSET_T5 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "T4  = 0x%08x\n", pstkTop[STK_OFFSET_T4 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "T3  = 0x%08x  ", pstkTop[STK_OFFSET_T3 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "T2  = 0x%08x\n", pstkTop[STK_OFFSET_T2 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "T1  = 0x%08x  ", pstkTop[STK_OFFSET_T1 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "T0  = 0x%08x\n", pstkTop[STK_OFFSET_T0 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "A3  = 0x%08x  ", pstkTop[STK_OFFSET_A3 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "A2  = 0x%08x\n", pstkTop[STK_OFFSET_A2 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "A1  = 0x%08x  ", pstkTop[STK_OFFSET_A1 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "A0  = 0x%08x\n", pstkTop[STK_OFFSET_A0 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "V1  = 0x%08x  ", pstkTop[STK_OFFSET_V1 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "V0  = 0x%08x\n", pstkTop[STK_OFFSET_V0 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "AT  = 0x%08x  ", pstkTop[STK_OFFSET_AT / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "SR  = 0x%08x\n", pstkTop[STK_OFFSET_SR / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "EPC = 0x%08x  ", pstkTop[STK_OFFSET_EPC / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "SP  = 0x%08x\n", (ARCH_REG_T)pstkTop);
 }
 
 #endif                                                                  /*  LW_CFG_DEVICE_EN > 0        */
