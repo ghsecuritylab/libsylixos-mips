@@ -51,6 +51,9 @@ INT  archElfRelocateRela (Elf_Rela   *prela,
                           PCHAR       pcBuffer,
                           size_t      stBuffLen)
 {
+    /*
+     * TODO
+     */
     return  (PX_ERROR);
 }
 /*********************************************************************************************************
@@ -71,6 +74,9 @@ INT  archElfRelocateRel (Elf_Rel     *prel,
                          PCHAR        pcBuffer,
                          size_t       stBuffLen)
 {
+    /*
+     * TODO
+     */
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -83,6 +89,9 @@ INT  archElfRelocateRel (Elf_Rel     *prel,
 *********************************************************************************************************/
 INT  archElfRGetJmpBuffItemLen (VOID)
 {
+    /*
+     * TODO
+     */
     return  (JMP_TABLE_ITEMLEN);
 }
 

@@ -454,7 +454,8 @@
 #define K_CacheTerU     2                                               /* Unified Tertiary             */
 #define K_CacheSecU     3                                               /* Unified secondary            */
 
-#define CONF_CM_CACHABLE_NONCOHERENT 3
+#define MIPS_CACHABLE_NONCOHERENT    3
+#define MIPS_UNCACHED                2
 
 #endif                                                                  /*  ARCH_DEF_H_                 */
 /*********************************************************************************************************

@@ -37,6 +37,9 @@
 *********************************************************************************************************/
 CPCHAR  archGdbTargetXml (VOID)
 {
+    /*
+     * TODO
+     */
     return  (CPCHAR)LW_NULL;
 }
 /*********************************************************************************************************
@@ -49,6 +52,9 @@ CPCHAR  archGdbTargetXml (VOID)
 *********************************************************************************************************/
 CPCHAR  archGdbCoreXml (VOID)
 {
+    /*
+     * TODO
+     */
     return  (CPCHAR)LW_NULL;
 }
 /*********************************************************************************************************
@@ -64,6 +70,9 @@ CPCHAR  archGdbCoreXml (VOID)
 *********************************************************************************************************/
 INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pregset)
 {
+    /*
+     * TODO
+     */
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -78,6 +87,9 @@ INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 *********************************************************************************************************/
 INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pregset)
 {
+    /*
+     * TODO
+     */
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -92,6 +104,9 @@ INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 *********************************************************************************************************/
 INT  archGdbRegSetPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, ULONG ulPc)
 {
+    /*
+     * TODO
+     */
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -104,6 +119,9 @@ INT  archGdbRegSetPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, ULONG ulPc)
 *********************************************************************************************************/
 ULONG  archGdbGetNextPc (GDB_REG_SET *pRegs)
 {
+    /*
+     * TODO
+     */
     return  (ULONG)(0);
 }
 

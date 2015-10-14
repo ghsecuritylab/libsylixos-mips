@@ -37,9 +37,10 @@
 *********************************************************************************************************/
 VOID  archCacheInit (CACHE_MODE  uiInstruction, CACHE_MODE  uiData, CPCHAR  pcMachineName)
 {
-
+    /*
+     * TODO
+     */
 }
-
 /*********************************************************************************************************
 ** 函数名称: archCacheReset
 ** 功能描述: 复位 CACHE, MMU 初始化时需要调用此函数
@@ -50,7 +51,9 @@ VOID  archCacheInit (CACHE_MODE  uiInstruction, CACHE_MODE  uiData, CPCHAR  pcMa
 *********************************************************************************************************/
 VOID  archCacheReset (CPCHAR  pcMachineName)
 {
-
+    /*
+     * TODO
+     */
 }
 
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */

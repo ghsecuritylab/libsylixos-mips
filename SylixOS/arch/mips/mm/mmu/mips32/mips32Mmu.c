@@ -34,8 +34,6 @@
 
 #define MIPS32_ENTRYLO_C_SHIFT          (3)
 #define MIPS32_ENTRYLO_C_MASK           (0x07 << MIPS32_ENTRYLO_C_SHIFT)
-#define MIPS32_ENTRYLO_C_UNCACHED       (2)
-#define MIPS32_ENTRYLO_C_CACHEABLE_NONCOHERENT      (3)
 
 #define MIPS32_ENTRYLO_PFN_MASK         (UINT32)(~0x3F)
 #define MIPS32_ENTRYLO_PFN_SHIFT        (6)
@@ -50,58 +48,37 @@ static LW_OBJECT_HANDLE     _G_hPGDPartition;                           /*  系统
 static PVOID                _G_pvPTETable;                              /*  PTE 表                      */
 static UINT32               _G_uiTlbSize = 0;                           /*  TLB 数组大小                */
 /*********************************************************************************************************
-** 函数名称: mips32MmuBuildPgdesc
-** 功能描述: 生成一个一级描述符 (PGD 描述符)
-** 输　入  : uiBaseAddr              基地址     (二级页表基地址)
-**           uiFlag
-** 输　出  : ERROR or OK
-** 全局变量: 
-** 调用模块: 
+** 函数名称: mips32MmuEnable
+** 功能描述: 使能 MMU
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
 *********************************************************************************************************/
-static LW_PGD_TRANSENTRY  mips32MmuBuildPgdesc (UINT32  uiBaseAddr)
+static VOID  mips32MmuEnable (VOID)
 {
-    return  (uiBaseAddr);                                               /*  一级描述符就是二级页表基地址*/
+
 }
 /*********************************************************************************************************
-** 函数名称: mips32MmuBuildPtentry
-** 功能描述: 生成一个二级描述符 (PTE 描述符)
-** 输　入  : uiBaseAddr              基地址     (页地址)
-**           uiFlag
-** 输　出  : ERROR or OK
-** 全局变量: 
-** 调用模块: 
+** 函数名称: mips32MmuDisable
+** 功能描述: 禁能 MMU
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
 *********************************************************************************************************/
-static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
-                                                 ULONG   ulFlag)
+static VOID  mips32MmuDisable (VOID)
 {
-    LW_PTE_TRANSENTRY   stDescriptor;
-    UINT32              uiPFN;
 
-    uiPFN = uiBaseAddr >> LW_CFG_VMM_PAGE_SHIFT;                        /*  计算 PFN                    */
-    
-    stDescriptor.PTE_uiEntryLO = uiPFN << MIPS32_ENTRYLO_PFN_SHIFT;     /*  填充 PFN                    */
-
-    if (ulFlag & LW_VMM_FLAG_VALID) {
-        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_V_BIT;             /*  填充 V 位                   */
-    }
-
-    if (ulFlag & LW_VMM_FLAG_WRITABLE) {
-        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_D_BIT;             /*  填充 D 位                   */
-    }
-
-    stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_G_BIT;                 /*  填充 G 位                   */
-
-    if (ulFlag & LW_VMM_FLAG_CACHEABLE) {                               /*  填充 C 位                   */
-        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_C_CACHEABLE_NONCOHERENT << MIPS32_ENTRYLO_C_SHIFT;
-    }
-
-    if (ulFlag & LW_VMM_FLAG_EXECABLE) {
-        stDescriptor.PTE_uiSoftware |= 1 << MIPS32_PTE_EXEC_SHIFT;      /*  填充软件的可执行位          */
-    }
-
-    return  (stDescriptor);
 }
-
+/*********************************************************************************************************
+** 函数名称: mips32MmuInvalidateTLB
+** 功能描述: 无效 TLB
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
 static VOID  mips32MmuInvalidateTLB (VOID)
 {
     UINT32  uiEntryHiBak = mipsCp0EntryHiRead();
@@ -117,7 +94,14 @@ static VOID  mips32MmuInvalidateTLB (VOID)
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
 }
-
+/*********************************************************************************************************
+** 函数名称: mips32MmuInvalidateTLBMVA
+** 功能描述: 无效指定 MVA 的 TLB
+** 输　入  : ulAddr            指定 MVA
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
 static VOID  mips32MmuInvalidateTLBMVA (addr_t  ulAddr)
 {
     UINT32  uiEntryHiBak = mipsCp0EntryHiRead();
@@ -136,15 +120,57 @@ static VOID  mips32MmuInvalidateTLBMVA (addr_t  ulAddr)
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
 }
-
-static VOID  mips32MmuEnable (VOID)
+/*********************************************************************************************************
+** 函数名称: mips32MmuBuildPgdesc
+** 功能描述: 生成一个一级描述符 (PGD 描述符)
+** 输　入  : uiBaseAddr              基地址     (二级页表基地址)
+**           uiFlag
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static LW_PGD_TRANSENTRY  mips32MmuBuildPgdesc (UINT32  uiBaseAddr)
 {
-
+    return  (uiBaseAddr);                                               /*  一级描述符就是二级页表基地址*/
 }
-
-static VOID  mips32MmuDisable (VOID)
+/*********************************************************************************************************
+** 函数名称: mips32MmuBuildPtentry
+** 功能描述: 生成一个二级描述符 (PTE 描述符)
+** 输　入  : uiBaseAddr              基地址     (页地址)
+**           uiFlag
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
+                                                 ULONG   ulFlag)
 {
+    LW_PTE_TRANSENTRY   stDescriptor;
+    UINT32              uiPFN;
 
+    uiPFN = uiBaseAddr >> LW_CFG_VMM_PAGE_SHIFT;                        /*  计算 PFN                    */
+
+    stDescriptor.PTE_uiEntryLO = uiPFN << MIPS32_ENTRYLO_PFN_SHIFT;     /*  填充 PFN                    */
+
+    if (ulFlag & LW_VMM_FLAG_VALID) {
+        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_V_BIT;             /*  填充 V 位                   */
+    }
+
+    if (ulFlag & LW_VMM_FLAG_WRITABLE) {
+        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_D_BIT;             /*  填充 D 位                   */
+    }
+
+    stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_G_BIT;                 /*  填充 G 位                   */
+
+    if (ulFlag & LW_VMM_FLAG_CACHEABLE) {                               /*  填充 C 位                   */
+        stDescriptor.PTE_uiEntryLO |= MIPS_CACHABLE_NONCOHERENT << MIPS32_ENTRYLO_C_SHIFT;
+    }
+
+    if (ulFlag & LW_VMM_FLAG_EXECABLE) {
+        stDescriptor.PTE_uiSoftware |= 1 << MIPS32_PTE_EXEC_SHIFT;      /*  填充软件的可执行位          */
+    }
+
+    return  (stDescriptor);
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuMemInit
@@ -212,7 +238,7 @@ static INT  mips32MmuGlobalInit (CPCHAR  pcMachineName)
         _G_uiTlbSize = 64;                                              /*  按最大算                    */
     }
 
-    _DebugFormat(__LOGMESSAGE_LEVEL, "MMU TLB Size %d.\r\n", _G_uiTlbSize);
+    _DebugFormat(__LOGMESSAGE_LEVEL, "MMU TLB size = %d.\r\n", _G_uiTlbSize);
 
     archCacheReset(pcMachineName);                                      /*  复位 Cache                  */
     
@@ -275,7 +301,7 @@ static  LW_PTE_TRANSENTRY *mips32MmuPteOffset (LW_PMD_TRANSENTRY  *p_pmdentry, a
 {
     REGISTER LW_PTE_TRANSENTRY  *p_pteentry;
     REGISTER UINT32              uiTemp;
-    
+
     uiTemp = (UINT32)(*p_pmdentry);                                     /*  获得一级页表描述符          */
     
     p_pteentry = (LW_PTE_TRANSENTRY *)(uiTemp);                         /*  获得二级页表基地址          */
@@ -287,11 +313,11 @@ static  LW_PTE_TRANSENTRY *mips32MmuPteOffset (LW_PMD_TRANSENTRY  *p_pmdentry, a
      *
      * 而 LW_PTE_TRANSENTRY 的大小为 8
      *
-     * & 0xFF0 == & 0b111111110000, 段内页号占 8 位（LW_CFG_VMM_PGD_SHIFT - LW_CFG_VMM_PAGE_SHIFT
+     * & 0x7F8 == & 0b11111111000, 段内页号占 8 位（LW_CFG_VMM_PGD_SHIFT - LW_CFG_VMM_PAGE_SHIFT
      * 一段有 256 个页面）
      */
     p_pteentry = (LW_PTE_TRANSENTRY *)((addr_t)p_pteentry
-               | ((ulAddr >> (LW_CFG_VMM_PAGE_SHIFT - 3) & 0xFF0)));    /*  获得虚拟地址页表描述符地址  */
+               | ((ulAddr >> (LW_CFG_VMM_PAGE_SHIFT - 3) & 0x7F8)));    /*  获得虚拟地址页表描述符地址  */
     
     return  (p_pteentry);
 }
@@ -494,10 +520,10 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
                 uiCache = (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_C_MASK)
                            >> MIPS32_ENTRYLO_C_SHIFT;                   /*  获得 CACHE 属性             */
                 switch (uiCache) {
-                case MIPS32_ENTRYLO_C_UNCACHED:                         /*  不可以 CACHE                */
+                case MIPS_UNCACHED:                                     /*  不可以 CACHE                */
                     break;
 
-                case MIPS32_ENTRYLO_C_CACHEABLE_NONCOHERENT:            /*  可以 CACHE, 但不参与一致性  */
+                case MIPS_CACHABLE_NONCOHERENT:                         /*  可以 CACHE, 但不参与一致性  */
                     ulFlag |= LW_VMM_FLAG_CACHEABLE;
                     break;
 

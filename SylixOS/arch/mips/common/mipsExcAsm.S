@@ -34,10 +34,15 @@
     IMPORT_LABEL(API_InterExit)
 
     IMPORT_LABEL(bspIntHandle)
+    IMPORT_LABEL(archCacheErrorHandle)
+    IMPORT_LABEL(archExceptionHandle)
+
     EXPORT_LABEL(archInterruptEntry)
+    EXPORT_LABEL(archCacheErrorEntry)
+    EXPORT_LABEL(archExceptionEntry)
 
 ;/*********************************************************************************************************
-;  Exception 入口
+;  异常入口宏
 ;*********************************************************************************************************/
 
 MACRO_DEF(EXCEPTION_ENTRY handle)
@@ -54,7 +59,7 @@ MACRO_DEF(EXCEPTION_ENTRY handle)
     JAL     API_InterEnter                                              ;/*  获取中断层数放到返回值V0    */
     NOP
 
-    BNE     V0 , 1 , BSP_INT_HANDLE
+    BNE     V0 , 1 , 1f
     NOP
 
     JAL     API_ThreadTcbInter                                          ;/*  get current tcb             */
@@ -65,7 +70,8 @@ MACRO_DEF(EXCEPTION_ENTRY handle)
     NOP
     MOV     SP , V0
 
-BSP_INT_HANDLE:
+1:
+    MFC0(A0, CP0_EPC)                                                   ;/*  获得异常的返回地址          */
     JAL     \handle
     NOP
 
@@ -77,7 +83,7 @@ BSP_INT_HANDLE:
     JAL     API_InterGetNesting
     NOP
 
-    BNE     V0 , 1 , BSP_INT_EXIT
+    BNE     V0 , 1 , 2f
     NOP
 
     JAL     API_ThreadTcbInter                                          ;/*  get current tcb             */
@@ -85,16 +91,36 @@ BSP_INT_HANDLE:
 
     LW      SP , 0(V0)                                                  ;/*  SP = current stack          */
 
-BSP_INT_EXIT:
+2:
     JAL     API_InterExit
     NOP
 
     RESTORE_REG_ERET()
 MACRO_END()
 
+;/*********************************************************************************************************
+;  中断入口
+;*********************************************************************************************************/
+
 FUNC_DEF(archInterruptEntry)
     EXCEPTION_ENTRY     bspIntHandle
 FUNC_END(archInterruptEntry)
+
+;/*********************************************************************************************************
+;  Cache Error 入口
+;*********************************************************************************************************/
+
+FUNC_DEF(archCacheErrorEntry)
+    EXCEPTION_ENTRY     archCacheErrorHandle
+FUNC_END(archCacheErrorEntry)
+
+;/*********************************************************************************************************
+;  Exception 入口
+;*********************************************************************************************************/
+
+FUNC_DEF(archExceptionEntry)
+    EXCEPTION_ENTRY     archExceptionHandle
+FUNC_END(archExceptionEntry)
 
     FILE_END()
 

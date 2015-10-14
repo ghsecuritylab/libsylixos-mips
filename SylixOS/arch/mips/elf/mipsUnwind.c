@@ -38,6 +38,9 @@
 *********************************************************************************************************/
 _Unwind_Ptr dl_unwind_find_exidx (_Unwind_Ptr pc, int *pcount, PVOID *pvVProc)
 {
+    /*
+     * TODO
+     */
     return  (LW_NULL);
 }
 

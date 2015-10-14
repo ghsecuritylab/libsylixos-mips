@@ -50,8 +50,6 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
                    (1 << (8 + 7)) |
                    (1 << (8 + 4));
 
-    uiCP0Status |= 0x01;
-
     MIPS_EXEC_INS("addi   %0, " MIPS_GP ", 0" : "=r"(uiGP));
 
     if ((addr_t)pstkTop & 0x7) {                                        /*  保证出栈后 CPU SP 8 字节对齐*/
@@ -68,31 +66,31 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 
     pregctx->REG_uiEPC = (ARCH_REG_T)pfuncTask;
 
-    pregctx->REG_uiAT = (ARCH_REG_T)0x01010101;
-    pregctx->REG_uiV0 = (ARCH_REG_T)0x02020202;
-    pregctx->REG_uiV1 = (ARCH_REG_T)0x03030303;
+    pregctx->REG_uiAT = (ARCH_REG_T)0xAF;
+    pregctx->REG_uiV0 = (ARCH_REG_T)0x0;
+    pregctx->REG_uiV1 = (ARCH_REG_T)0x1;
     pregctx->REG_uiA0 = (ARCH_REG_T)pvArg;
-    pregctx->REG_uiA1 = (ARCH_REG_T)0x05050505;
-    pregctx->REG_uiA2 = (ARCH_REG_T)0x06060606;
-    pregctx->REG_uiA3 = (ARCH_REG_T)0x07070707;
-    pregctx->REG_uiT0 = (ARCH_REG_T)0x08080808;
-    pregctx->REG_uiT1 = (ARCH_REG_T)0x09090909;
-    pregctx->REG_uiT2 = (ARCH_REG_T)0x10101010;
-    pregctx->REG_uiT3 = (ARCH_REG_T)0x11111111;
-    pregctx->REG_uiT4 = (ARCH_REG_T)0x12121212;
-    pregctx->REG_uiT5 = (ARCH_REG_T)0x13131313;
-    pregctx->REG_uiT6 = (ARCH_REG_T)0x14141414;
-    pregctx->REG_uiT7 = (ARCH_REG_T)0x15151515;
-    pregctx->REG_uiS0 = (ARCH_REG_T)0x16161616;
-    pregctx->REG_uiS1 = (ARCH_REG_T)0x17171717;
-    pregctx->REG_uiS2 = (ARCH_REG_T)0x18181818;
-    pregctx->REG_uiS3 = (ARCH_REG_T)0x19191919;
-    pregctx->REG_uiS4 = (ARCH_REG_T)0x20202020;
-    pregctx->REG_uiS5 = (ARCH_REG_T)0x21212121;
-    pregctx->REG_uiS6 = (ARCH_REG_T)0x22222222;
-    pregctx->REG_uiS7 = (ARCH_REG_T)0x23232323;
-    pregctx->REG_uiT8 = (ARCH_REG_T)0x24242424;
-    pregctx->REG_uiT9 = (ARCH_REG_T)0x25252525;
+    pregctx->REG_uiA1 = (ARCH_REG_T)0xA1;
+    pregctx->REG_uiA2 = (ARCH_REG_T)0xA2;
+    pregctx->REG_uiA3 = (ARCH_REG_T)0xA3;
+    pregctx->REG_uiT0 = (ARCH_REG_T)0xF0;
+    pregctx->REG_uiT1 = (ARCH_REG_T)0xF1;
+    pregctx->REG_uiT2 = (ARCH_REG_T)0xF2;
+    pregctx->REG_uiT3 = (ARCH_REG_T)0xF3;
+    pregctx->REG_uiT4 = (ARCH_REG_T)0xF4;
+    pregctx->REG_uiT5 = (ARCH_REG_T)0xF5;
+    pregctx->REG_uiT6 = (ARCH_REG_T)0xF6;
+    pregctx->REG_uiT7 = (ARCH_REG_T)0xF7;
+    pregctx->REG_uiS0 = (ARCH_REG_T)0x80;
+    pregctx->REG_uiS1 = (ARCH_REG_T)0x81;
+    pregctx->REG_uiS2 = (ARCH_REG_T)0x82;
+    pregctx->REG_uiS3 = (ARCH_REG_T)0x83;
+    pregctx->REG_uiS4 = (ARCH_REG_T)0x84;
+    pregctx->REG_uiS5 = (ARCH_REG_T)0x85;
+    pregctx->REG_uiS6 = (ARCH_REG_T)0x86;
+    pregctx->REG_uiS7 = (ARCH_REG_T)0x87;
+    pregctx->REG_uiT8 = (ARCH_REG_T)0xF8;
+    pregctx->REG_uiT9 = (ARCH_REG_T)0xF9;
     pregctx->REG_uiGP = (ARCH_REG_T)uiGP;
     pregctx->REG_uiFP = (ARCH_REG_T)pfpctx->FP_uiFP;
     pregctx->REG_uiRA = (ARCH_REG_T)pfuncTask;
@@ -137,12 +135,11 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
 
 VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 {
+    fdprintf(iFd, "\n");
+
     fdprintf(iFd, "RA  = 0x%08x  ", pstkTop[STK_OFFSET_RA / sizeof(ARCH_REG_T)]);
     fdprintf(iFd, "FP  = 0x%08x  ", pstkTop[STK_OFFSET_FP / sizeof(ARCH_REG_T)]);
     fdprintf(iFd, "GP  = 0x%08x\n", pstkTop[STK_OFFSET_GP / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "T9  = 0x%08x  ", pstkTop[STK_OFFSET_T9 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "T8  = 0x%08x\n", pstkTop[STK_OFFSET_T8 / sizeof(ARCH_REG_T)]);
 
     fdprintf(iFd, "S7  = 0x%08x  ", pstkTop[STK_OFFSET_S7 / sizeof(ARCH_REG_T)]);
     fdprintf(iFd, "S6  = 0x%08x\n", pstkTop[STK_OFFSET_S6 / sizeof(ARCH_REG_T)]);
@@ -155,6 +152,9 @@ VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 
     fdprintf(iFd, "S1  = 0x%08x  ", pstkTop[STK_OFFSET_S1 / sizeof(ARCH_REG_T)]);
     fdprintf(iFd, "S0  = 0x%08x\n", pstkTop[STK_OFFSET_S0 / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "T9  = 0x%08x  ", pstkTop[STK_OFFSET_T9 / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "T8  = 0x%08x\n", pstkTop[STK_OFFSET_T8 / sizeof(ARCH_REG_T)]);
 
     fdprintf(iFd, "T7  = 0x%08x  ", pstkTop[STK_OFFSET_T7 / sizeof(ARCH_REG_T)]);
     fdprintf(iFd, "T6  = 0x%08x\n", pstkTop[STK_OFFSET_T6 / sizeof(ARCH_REG_T)]);

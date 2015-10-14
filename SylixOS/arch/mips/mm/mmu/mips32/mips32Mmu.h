@@ -22,7 +22,7 @@
 #ifndef __MIPS32_MMU_H
 #define __MIPS32_MMU_H
 
-VOID  mips32MmuInit(LW_MMU_OP *pmmuop, CPCHAR  pcMachineName);
+VOID  mips32MmuInit(LW_MMU_OP  *pmmuop, CPCHAR  pcMachineName);
 
 #endif                                                                  /*  __MIPS32_MMU_H              */
 /*********************************************************************************************************

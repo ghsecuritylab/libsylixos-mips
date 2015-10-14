@@ -60,22 +60,19 @@ FUNC_DEF(archTaskCtxSwitch)
     STORE_REG_RET(RA)                                                   ;/*  所有寄存器入栈              */
                                                                         ;/*  并保存 CP0 Status 寄存器    */
 
-    MOV    T0 , A0                                                      ;/*  stack current = SP          */
-    LW     T1 , 0(A0)
+    LW     T1 , 0(A0)                                                   ;/*  stack current = SP          */
     SW     SP , 0(T1)
 
     SUBU   SP , 4
     SW     A0 , 0(SP)                                                   ;/*  当前 CPU 信息入栈           */
 
-    LA     T0 , _SchedSwp                                               ;/*  _SchedSwp();                */
-    JALR   T0
+    JAL    _SchedSwp                                                    ;/*  _SchedSwp();                */
     NOP
 
     LW     A0 , 0(SP)                                                   ;/*  当前 CPU 信息出栈           */
     ADDU   SP , 4
 
-    MOV    T0 , A0                                                      ;/*  SP = stack current          */
-    LW     T1 , 0(A0)
+    LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)
 
     RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */
@@ -92,22 +89,19 @@ FUNC_DEF(archCrtCtxSwitch)
     STORE_REG_RET(RA)                                                   ;/*  所有寄存器入栈              */
                                                                         ;/*  并保存 CP0 Status 寄存器    */
 
-    MOV    T0 , A0                                                      ;/*  stack current = SP          */
-    LW     T1 , 0(A0)
+    LW     T1 , 0(A0)                                                   ;/*  stack current = SP          */
     SW     SP , 0(T1)
 
     SUBU   SP , 4                                                       ;/*  当前 CPU 信息入栈           */
     SW     A0 , 0(SP)
 
-    LA     T0 , _SchedCrSwp                                             ;/*  _SchedCrSwp();              */
-    JALR   T0
+    JAL    _SchedCrSwp                                                  ;/*  _SchedCrSwp();              */
     NOP
 
     LW     A0, 0(SP)                                                    ;/*  当前 CPU 信息出栈           */
     ADDU   SP, 4
 
-    MOV    T0 , A0                                                      ;/*  SP = stack current          */
-    LW     T1 , 0(A0)
+    LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)
 
     RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */
@@ -124,15 +118,13 @@ FUNC_DEF(archIntCtxLoad)
     SUBU   SP , 4
     SW     A0 , 0(SP)                                                   ;/*  当前 CPU 信息入栈           */
 
-    LA     T0 , _SchedSwp                                               ;/*  _SchedSwp();                */
-    JALR   T0
+    JAL    _SchedSwp                                                    ;/*  _SchedSwp();                */
     NOP
 
     LW     A0 , 0(SP)                                                   ;/*  当前 CPU 信息出栈           */
     ADDU   SP , 4
 
-    MOV    T0 , A0                                                      ;/*  SP = stack current          */
-    LW     T1 , 0(A0)
+    LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)
 
     RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */

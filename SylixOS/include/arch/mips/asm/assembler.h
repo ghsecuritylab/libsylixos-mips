@@ -73,38 +73,38 @@
 #define FUNC_LABEL(func)          func:
 #define LINE_LABEL(line)          line:
 
-#define FUNC_DEF(name)              \
-        .text;                      \
-        .balign 4;                  \
-        .type symbol, @function;    \
-        .ent  name;                 \
+#define FUNC_DEF(name)                  \
+        .text;                          \
+        .balign     4;                  \
+        .type       symbol, @function;  \
+        .ent        name;               \
 name:
 
-#define FUNC_END(name)              \
-        .size name,.-name;          \
-        .end  name
+#define FUNC_END(name)                  \
+        .size       name,.-name;        \
+        .end        name
 
-#define MACRO_DEF(mfunc...) \
-        .macro  mfunc
+#define MACRO_DEF(mfunc...)             \
+        .macro      mfunc
 
-#define MACRO_DEF(mfunc...)         \
-        .macro  mfunc
+#define MACRO_DEF(mfunc...)             \
+        .macro      mfunc
 
-#define MACRO_END()                 \
+#define MACRO_END()                     \
         .endm
 
-#define FILE_BEGIN()                \
-        .set noreorder;             \
-        .balign 4;
+#define FILE_BEGIN()                    \
+        .set        noreorder;          \
+        .balign     4;
 
 #define FILE_END()
 
-#define SECTION(sec)                \
-        .section sec
+#define SECTION(sec)                    \
+        .section    sec
 
-#define WEAK(name)                  \
-        .weakext name;              \
-        .balign 4;
+#define WEAK(name)                      \
+        .weakext    name;               \
+        .balign     4;
 
 /*********************************************************************************************************
   MIPS Use the following macros in assembler code
@@ -153,94 +153,179 @@ name:
 #define NOP             nop
 #define ERET            eret
 
-#define MTC0(src, dst)              \
-    mtc0 src, dst;                  \
+#define MTC0(src, dst)                  \
+    mtc0    src, dst;                   \
     ehb
 
-#define MFC0(dst, src)              \
-    mfc0 dst, src;                  \
+#define MFC0(dst, src)                  \
+    mfc0    dst, src;                   \
     ehb
 
 /*********************************************************************************************************
   Operate the general registers: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra
 *********************************************************************************************************/
 
-#define OPERATE_REG(op)             \
-    op      RA, STK_OFFSET_RA(SP);  \
-    op      FP, STK_OFFSET_FP(SP);  \
-    op      GP, STK_OFFSET_GP(SP);  \
-    op      T9, STK_OFFSET_T9(SP);  \
-    op      T8, STK_OFFSET_T8(SP);  \
-    op      S7, STK_OFFSET_S7(SP);  \
-    op      S6, STK_OFFSET_S6(SP);  \
-    op      S5, STK_OFFSET_S5(SP);  \
-    op      S4, STK_OFFSET_S4(SP);  \
-    op      S3, STK_OFFSET_S3(SP);  \
-    op      S2, STK_OFFSET_S2(SP);  \
-    op      S1, STK_OFFSET_S1(SP);  \
-    op      S0, STK_OFFSET_S0(SP);  \
-    op      T7, STK_OFFSET_T7(SP);  \
-    op      T6, STK_OFFSET_T6(SP);  \
-    op      T5, STK_OFFSET_T5(SP);  \
-    op      T4, STK_OFFSET_T4(SP);  \
-    op      T3, STK_OFFSET_T3(SP);  \
-    op      T2, STK_OFFSET_T2(SP);  \
-    op      T1, STK_OFFSET_T1(SP);  \
-    op      T0, STK_OFFSET_T0(SP);  \
-    op      A3, STK_OFFSET_A3(SP);  \
-    op      A2, STK_OFFSET_A2(SP);  \
-    op      A1, STK_OFFSET_A1(SP);  \
-    op      A0, STK_OFFSET_A0(SP);  \
-    op      V1, STK_OFFSET_V1(SP);  \
-    op      V0, STK_OFFSET_V0(SP);  \
+#define OPERATE_REG(op)                 \
+    op      RA, STK_OFFSET_RA(SP);      \
+    op      FP, STK_OFFSET_FP(SP);      \
+    op      GP, STK_OFFSET_GP(SP);      \
+    op      S7, STK_OFFSET_S7(SP);      \
+    op      S6, STK_OFFSET_S6(SP);      \
+    op      S5, STK_OFFSET_S5(SP);      \
+    op      S4, STK_OFFSET_S4(SP);      \
+    op      S3, STK_OFFSET_S3(SP);      \
+    op      S2, STK_OFFSET_S2(SP);      \
+    op      S1, STK_OFFSET_S1(SP);      \
+    op      S0, STK_OFFSET_S0(SP);      \
+    op      T9, STK_OFFSET_T9(SP);      \
+    op      T8, STK_OFFSET_T8(SP);      \
+    op      T7, STK_OFFSET_T7(SP);      \
+    op      T6, STK_OFFSET_T6(SP);      \
+    op      T5, STK_OFFSET_T5(SP);      \
+    op      T4, STK_OFFSET_T4(SP);      \
+    op      T3, STK_OFFSET_T3(SP);      \
+    op      T2, STK_OFFSET_T2(SP);      \
+    op      T1, STK_OFFSET_T1(SP);      \
+    op      T0, STK_OFFSET_T0(SP);      \
+    op      A3, STK_OFFSET_A3(SP);      \
+    op      A2, STK_OFFSET_A2(SP);      \
+    op      A1, STK_OFFSET_A1(SP);      \
+    op      A0, STK_OFFSET_A0(SP);      \
+    op      V1, STK_OFFSET_V1(SP);      \
+    op      V0, STK_OFFSET_V0(SP);      \
     op      AT, STK_OFFSET_AT(SP);
 
 /*********************************************************************************************************
   Pop the context (normal execution): at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc
 *********************************************************************************************************/
 
-#define RESTORE_REG_RET()           \
-    .set    noat;                   \
-    .set    noreorder;              \
-    OPERATE_REG(LW);                \
-    LW      K0, STK_OFFSET_SR(SP);  \
-    MTC0(K0, CP0_STATUS);           \
-    LW      K0, STK_OFFSET_EPC(SP); \
-    ADDU    SP, STK_CTX_SIZE;       \
-    JR      K0;                     \
-    NOP;                            \
-    .set    at
+#define RESTORE_REG_RET()               \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    OPERATE_REG(LW);                    \
+                                        \
+    LW      K0, STK_OFFSET_SR(SP);      \
+    MTC0(K0, CP0_STATUS);               \
+                                        \
+    LW      K0, STK_OFFSET_EPC(SP);     \
+                                        \
+    ADDU    SP, STK_CTX_SIZE;           \
+                                        \
+    JR      K0;                         \
+    NOP;                                \
+                                        \
+    .set    pop
 
 /*********************************************************************************************************
   Pop the context: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc
 *********************************************************************************************************/
 
-#define RESTORE_REG_ERET()          \
-    .set    noat;                   \
-    .set    noreorder;              \
-    OPERATE_REG(LW);                \
-    LW      K0, STK_OFFSET_SR(SP);  \
-    MTC0(K0, CP0_STATUS);           \
-    LW      K0, STK_OFFSET_EPC(SP); \
-    MTC0(K0, CP0_EPC);              \
-    ADDU    SP, STK_CTX_SIZE;       \
-    ERET;                           \
-    NOP;                            \
-    .set    at
+#define RESTORE_REG_ERET()              \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    OPERATE_REG(LW);                    \
+                                        \
+    LW      K0, STK_OFFSET_SR(SP);      \
+    MTC0(K0, CP0_STATUS);               \
+                                        \
+    LW      K0, STK_OFFSET_EPC(SP);     \
+    MTC0(K0, CP0_EPC);                  \
+                                        \
+    ADDU    SP, STK_CTX_SIZE;           \
+                                        \
+    ERET;                               \
+    NOP;                                \
+                                        \
+    .set    pop
 
 /*********************************************************************************************************
   Push the context: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc
 *********************************************************************************************************/
 
-#define STORE_REG_RET(RetAddr)      \
-    .set    noat;                   \
-    .set    noreorder;              \
-    SUBU    SP, STK_CTX_SIZE;       \
-    OPERATE_REG(SW);                \
-    MFC0(T0, CP0_STATUS);           \
-    SW      T0, STK_OFFSET_SR(SP);  \
-    SW      RetAddr, STK_OFFSET_EPC(SP); \
-    .set    at
+#define STORE_REG_RET(RetAddr)          \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    SUBU    SP, STK_CTX_SIZE;           \
+                                        \
+    OPERATE_REG(SW);                    \
+                                        \
+    MFC0(T0, CP0_STATUS);               \
+    SW      T0, STK_OFFSET_SR(SP);      \
+                                        \
+    SW      RetAddr, STK_OFFSET_EPC(SP);\
+                                        \
+    .set    pop
+
+/*********************************************************************************************************
+  TLB refill, 32 bit task
+*********************************************************************************************************/
+
+#define MIPS32_TLB_REFILL_HANDLE()      \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    MFC0    K1, CP0_CTXT;               \
+    LW      K0, 0(K1);                  \
+    LW      K1, 8(K1);                  \
+    MTC0    K0, CP0_TLBLO0;             \
+    MTC0    K1, CP0_TLBLO1;             \
+    EHB;                                \
+    TLBWR;                              \
+    ERET;                               \
+                                        \
+    .set    pop
+
+/*********************************************************************************************************
+  Cache error exception
+*********************************************************************************************************/
+
+#define MIPS_CACHE_ERROR_HANDLE()       \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    LA      K0 , archCacheErrorEntry;   \
+    JR      K0;                         \
+    NOP;                                \
+                                        \
+    .set    pop
+
+/*********************************************************************************************************
+  General exception
+*********************************************************************************************************/
+
+#define MIPS_EXCEPTION_HANDLE()         \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    LA      K0 , archExceptionEntry;    \
+    JR      K0;                         \
+    NOP;                                \
+                                        \
+    .set    pop
+
+/*********************************************************************************************************
+  Catch interrupt exceptions
+*********************************************************************************************************/
+
+#define MIPS_INTERRUPT_HANDLE()         \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    LA      K0 , archInterruptEntry;    \
+    JR      K0;                         \
+    NOP;                                \
+                                        \
+    .set    pop
 
 #endif                                                                  /*  __ASSEMBLY__                */
 
