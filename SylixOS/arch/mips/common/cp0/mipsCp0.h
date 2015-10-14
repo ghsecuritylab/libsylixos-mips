@@ -26,17 +26,17 @@
 #define mipsCp0RegRead(name, reg) \
 static LW_INLINE UINT32  mipsCp0##name##Read (VOID) \
 {\
-    UINT32 uiValue;\
-    asm volatile("mfc0   %0, "reg   : "=r"(uiValue));\
-    asm volatile("ehb"); \
+    UINT32  uiValue;\
+    MIPS_EXEC_INS("mfc0   %0, " reg : "=r"(uiValue));\
+    MIPS_EXEC_INS("ehb"); \
     return  (uiValue);\
 }
 
 #define mipsCp0RegWrite(name, reg) \
 static LW_INLINE VOID  mipsCp0##name##Write (UINT32  uiValue) \
 {\
-    asm volatile("mtc0   %0, "reg   : : "r"(uiValue));\
-    asm volatile("ehb"); \
+    MIPS_EXEC_INS("mtc0   %0, " reg : : "r"(uiValue));\
+    MIPS_EXEC_INS("ehb"); \
 }
 
 #define mipsCp0RegReadWrite(name, reg)\
@@ -52,6 +52,9 @@ mipsCp0RegReadWrite(Count, CP0_COUNT)
 mipsCp0RegReadWrite(Compare, CP0_COMPARE)
 mipsCp0RegReadWrite(PRId, CP0_PRID)
 mipsCp0RegReadWrite(Config, CP0_CONFIG)
+mipsCp0RegReadWrite(Config1, CP0_CONFIG1)
+mipsCp0RegReadWrite(Config2, CP0_CONFIG2)
+mipsCp0RegReadWrite(Config3, CP0_CONFIG3)
 mipsCp0RegReadWrite(EBase, CP0_EBASE)
 mipsCp0RegReadWrite(IntCtl, CP0_INTCTL)
 mipsCp0RegReadWrite(LLAddr, CP0_LLADDR)

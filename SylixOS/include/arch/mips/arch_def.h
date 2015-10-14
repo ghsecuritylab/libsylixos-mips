@@ -25,6 +25,7 @@
   MIPS 通用寄存器定义
 *********************************************************************************************************/
 
+#if defined(__ASSEMBLY__) || defined(ASSEMBLY)
 #define ZERO            $0                                              /* wired zero                   */
 #define AT              $at                                             /* assembler temp               */
 #define V0              $2                                              /* return reg 0                 */
@@ -58,11 +59,79 @@
 #define S8              $30                                             /* callee saved 8               */
 #define FP              S8                                              /* callee saved 8               */
 #define RA              $31                                             /* return address               */
+#else
+#define MIPS_ZERO       "$0"                                            /* wired zero                   */
+#define MIPS_AT         "$at"                                           /* assembler temp               */
+#define MIPS_V0         "$2"                                            /* return reg 0                 */
+#define MIPS_V1         "$3"                                            /* return reg 1                 */
+#define MIPS_A0         "$4"                                            /* arg reg 0                    */
+#define MIPS_A1         "$5"                                            /* arg reg 1                    */
+#define MIPS_A2         "$6"                                            /* arg reg 2                    */
+#define MIPS_A3         "$7"                                            /* arg reg 3                    */
+#define MIPS_T0         "$8"                                            /* caller saved 0               */
+#define MIPS_T1         "$9"                                            /* caller saved 1               */
+#define MIPS_T2         "$10"                                           /* caller saved 2               */
+#define MIPS_T3         "$11"                                           /* caller saved 3               */
+#define MIPS_T4         "$12"                                           /* caller saved 4               */
+#define MIPS_T5         "$13"                                           /* caller saved 5               */
+#define MIPS_T6         "$14"                                           /* caller saved 6               */
+#define MIPS_T7         "$15"                                           /* caller saved 7               */
+#define MIPS_S0         "$16"                                           /* callee saved 0               */
+#define MIPS_S1         "$17"                                           /* callee saved 1               */
+#define MIPS_S2         "$18"                                           /* callee saved 2               */
+#define MIPS_S3         "$19"                                           /* callee saved 3               */
+#define MIPS_S4         "$20"                                           /* callee saved 4               */
+#define MIPS_S5         "$21"                                           /* callee saved 5               */
+#define MIPS_S6         "$22"                                           /* callee saved 6               */
+#define MIPS_S7         "$23"                                           /* callee saved 7               */
+#define MIPS_T8         "$24"                                           /* caller saved 8               */
+#define MIPS_T9         "$25"                                           /* caller saved 9               */
+#define MIPS_K0         "$26"                                           /* kernel temp 0                */
+#define MIPS_K1         "$27"                                           /* kernel temp 1                */
+#define MIPS_GP         "$28"                                           /* global pointer               */
+#define MIPS_SP         "$29"                                           /* stack pointer                */
+#define MIPS_S8         "$30"                                           /* callee saved 8               */
+#define MIPS_FP         MIPS_S8                                         /* callee saved 8               */
+#define MIPS_RA         "$31"                                           /* return address               */
+#endif
 
 /*********************************************************************************************************
   MIPS 协处理器 0 寄存器定义
 *********************************************************************************************************/
 
+#if defined(__ASSEMBLY__) || defined(ASSEMBLY)
+#define CP0_INX         $0                                              /*  tlb index                   */
+#define CP0_RAND        $1                                              /*  tlb random                  */
+#define CP0_TLBLO       $2                                              /*  tlb entry low               */
+#define CP0_TLBLO0      $2                                              /*  tlb entry low 0             */
+#define CP0_TLBLO1      $3                                              /*  tlb entry low 1             */
+#define CP0_CTXT        $4                                              /*  tlb context                 */
+#define CP0_PAGEMASK    $5                                              /*  page mask                   */
+#define CP0_WIRED       $6                                              /*  lb wired entries            */
+#define CP0_HWRENA      $7
+#define CP0_BADVADDR    $8                                              /*  bad virtual address         */
+#define CP0_COUNT       $9                                              /*  count                       */
+#define CP0_TLBHI       $10                                             /*  tlb entry hi                */
+#define CP0_COMPARE     $11                                             /*  compare                     */
+#define CP0_STATUS      $12                                             /*  status register             */
+#define CP0_INTCTL      $12,1                                           /*  interrupts vector set       */
+#define CP0_CAUSE       $13                                             /*  exception cause             */
+#define CP0_EPC         $14                                             /*  exception pc                */
+#define CP0_PRID        $15
+#define CP0_EBASE       $15,1
+#define CP0_CONFIG      $16
+#define CP0_CONFIG1     $16,1
+#define CP0_CONFIG2     $16,2
+#define CP0_CONFIG3     $16,3
+#define CP0_LLADDR      $17
+#define CP0_WATCHLO     $18
+#define CP0_WATCHHI     $19
+#define CP0_ECC         $26
+#define CP0_CACHEERR    $27
+#define CP0_TAGLO       $28
+#define CP0_TAGHI       $29
+#define CP0_ERRPC       $30
+#else
 #define CP0_INX         "$0"                                            /*  tlb index                   */
 #define CP0_RAND        "$1"                                            /*  tlb random                  */
 #define CP0_TLBLO       "$2"                                            /*  tlb entry low               */
@@ -83,6 +152,9 @@
 #define CP0_PRID        "$15"
 #define CP0_EBASE       "$15,1"
 #define CP0_CONFIG      "$16"
+#define CP0_CONFIG1     "$16,1"
+#define CP0_CONFIG2     "$16,2"
+#define CP0_CONFIG3     "$16,3"
 #define CP0_LLADDR      "$17"
 #define CP0_WATCHLO     "$18"
 #define CP0_WATCHHI     "$19"
@@ -91,6 +163,9 @@
 #define CP0_TAGLO       "$28"
 #define CP0_TAGHI       "$29"
 #define CP0_ERRPC       "$30"
+#endif
+
+#define MIPS_EXEC_INS(ins)  __asm__ __volatile__ (ins)
 
 /*********************************************************************************************************
   Define the address offset of the general registers

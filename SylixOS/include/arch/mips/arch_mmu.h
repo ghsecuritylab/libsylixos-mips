@@ -53,7 +53,10 @@
 
 typedef UINT32  LW_PGD_TRANSENTRY;                                      /*  页目录类型                  */
 typedef UINT32  LW_PMD_TRANSENTRY;                                      /*  中间页目录类型              */
-typedef UINT32  LW_PTE_TRANSENTRY;                                      /*  页表条目类型                */
+typedef struct {
+    UINT32      PTE_uiEntryLO;                                          /*  EntryLO                     */
+    UINT32      PTE_uiSoftware;                                         /*  软件信息                    */
+} LW_PTE_TRANSENTRY;                                                    /*  页表条目类型                */
 
 
 #endif                                                                  /*  __MIPS_ARCH_MMU_H           */

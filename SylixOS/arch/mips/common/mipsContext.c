@@ -41,18 +41,18 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 {
     ARCH_REG_CTX      *pregctx;
     ARCH_FP_CTX       *pfpctx;
-    UINT32             uiCP0_STATUS;
+    UINT32             uiCP0Status;
     UINT32             uiGP;
 
-    uiCP0_STATUS  = mipsCp0StatusRead();
+    uiCP0Status  = mipsCp0StatusRead();
 
-    uiCP0_STATUS |= (1 << 0) |
-                    (1 << (8 + 7)) |
-                    (1 << (8 + 4));
+    uiCP0Status |= (1 << 0) |
+                   (1 << (8 + 7)) |
+                   (1 << (8 + 4));
 
-    uiCP0_STATUS |= 0x01;
+    uiCP0Status |= 0x01;
 
-    asm volatile("addi   %0, $28, 0" : "=r"(uiGP));
+    MIPS_EXEC_INS("addi   %0, " MIPS_GP ", 0" : "=r"(uiGP));
 
     if ((addr_t)pstkTop & 0x7) {                                        /*  保证出栈后 CPU SP 8 字节对齐*/
         pstkTop = (PLW_STACK)((addr_t)pstkTop - 4);                     /*  向低地址推进 4 字节         */
@@ -64,7 +64,7 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     pfpctx->FP_uiFP = (ARCH_REG_T)LW_NULL;
     pfpctx->FP_uiRA = (ARCH_REG_T)LW_NULL;
 
-    pregctx->REG_uiCP0_STATUS = uiCP0_STATUS;
+    pregctx->REG_uiCP0_STATUS = uiCP0Status;
 
     pregctx->REG_uiEPC = (ARCH_REG_T)pfuncTask;
 

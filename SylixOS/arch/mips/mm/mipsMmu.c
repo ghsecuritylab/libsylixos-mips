@@ -25,6 +25,8 @@
 *********************************************************************************************************/
 #if LW_CFG_VMM_EN > 0
 
+#include "mmu/mips32/mips32Mmu.h"
+
 /*********************************************************************************************************
 ** 函数名称: archCacheInit
 ** 功能描述: 初始化 CACHE
@@ -37,7 +39,17 @@
 *********************************************************************************************************/
 VOID  archMmuInit (CPCHAR  pcMachineName)
 {
+    LW_MMU_OP *pmmuop = API_VmmGetLibBlock();
 
+    _DebugFormat(__LOGMESSAGE_LEVEL, "%s MMU initialization.\r\n", pcMachineName);
+
+    if ((lib_strcmp(pcMachineName, MIPS_MACHINE_NONE) == 0) ||
+        (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0)) {
+        mips32MmuInit(pmmuop, pcMachineName);
+
+    } else {
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown machine name.\r\n");
+    }
 }
 
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
