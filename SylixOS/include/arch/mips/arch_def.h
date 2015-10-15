@@ -417,6 +417,20 @@
 #define M_ConfigK0      (0x7 << S_ConfigK0)
 
 /*********************************************************************************************************
+  Bits in the CP0 config register
+  Generic bits
+*********************************************************************************************************/
+
+#define MIPS_CACHABLE_NO_WA          0
+#define MIPS_CACHABLE_WA             1
+#define MIPS_UNCACHED                2
+#define MIPS_CACHABLE_NONCOHERENT    3
+#define MIPS_CACHABLE_CE             4
+#define MIPS_CACHABLE_COW            5
+#define MIPS_CACHABLE_CUW            6
+#define MIPS_CACHABLE_ACCELERATED    7
+
+/*********************************************************************************************************
  *  CP0 IntCtl Register
  *
  *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
@@ -453,9 +467,6 @@
 #define K_CachePriU     1                                               /* Unified primary              */
 #define K_CacheTerU     2                                               /* Unified Tertiary             */
 #define K_CacheSecU     3                                               /* Unified secondary            */
-
-#define MIPS_CACHABLE_NONCOHERENT    3
-#define MIPS_UNCACHED                2
 
 #endif                                                                  /*  ARCH_DEF_H_                 */
 /*********************************************************************************************************
