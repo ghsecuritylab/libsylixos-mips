@@ -24,7 +24,7 @@
   裁剪支持
 *********************************************************************************************************/
 #if LW_CFG_CACHE_EN > 0
-
+#include "cache/mips32/mips32Cache.h"
 /*********************************************************************************************************
 ** 函数名称: archCacheInit
 ** 功能描述: 初始化 CACHE
@@ -37,9 +37,16 @@
 *********************************************************************************************************/
 VOID  archCacheInit (CACHE_MODE  uiInstruction, CACHE_MODE  uiData, CPCHAR  pcMachineName)
 {
-    /*
-     * TODO
-     */
+    LW_CACHE_OP *pcacheop = API_CacheGetLibBlock();
+
+    _DebugFormat(__LOGMESSAGE_LEVEL, "%s L1 cache controller initialization.\r\n", pcMachineName);
+
+    if ((lib_strcmp(pcMachineName, MIPS_MACHINE_NONE) == 0) ||
+            (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0)) {
+        mips32CacheInit(pcacheop, uiInstruction, uiData, pcMachineName);
+    } else {
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown machine name.\r\n");
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: archCacheReset
@@ -51,9 +58,12 @@ VOID  archCacheInit (CACHE_MODE  uiInstruction, CACHE_MODE  uiData, CPCHAR  pcMa
 *********************************************************************************************************/
 VOID  archCacheReset (CPCHAR  pcMachineName)
 {
-    /*
-     * TODO
-     */
+    if ((lib_strcmp(pcMachineName, MIPS_MACHINE_NONE) == 0) ||
+            (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0)) {
+        mips32CacheReset(pcMachineName);
+    } else {
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown machine name.\r\n");
+    }
 }
 
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */

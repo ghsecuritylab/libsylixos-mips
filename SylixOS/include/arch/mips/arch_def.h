@@ -431,6 +431,74 @@
 #define MIPS_CACHABLE_ACCELERATED    7
 
 /*********************************************************************************************************
+ *  CP0 Config1 Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|  MMU Size |  IS |  IL |  IA |  DS |  DL |  DA |C|M|P|W|C|E|F| Config1
+ * | |           |     |     |     |     |     |     |2|D|C|R|A|P|P|
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_Config1More       31                                          /*  Additional Config registers */
+                                                                        /*  present (R)                 */
+#define M_Config1More       (0x1 << S_Config1More)
+#define S_Config1MMUSize    25                                          /*  Number of MMU entries-1 (R) */
+#define M_Config1MMUSize    (0x3f << S_Config1MMUSize)
+#define S_Config1IS         22                                          /*  Icache sets per way (R)     */
+#define M_Config1IS         (0x7 << S_Config1IS)
+#define S_Config1IL         19                                          /* Icache line size (R)         */
+#define M_Config1IL         (0x7 << S_Config1IL)
+#define S_Config1IA         16                                          /*  Icache associativity-1 (R)  */
+#define M_Config1IA         (0x7 << S_Config1IA)
+#define S_Config1DS         13                                          /*  Dcache sets per way (R)     */
+#define M_Config1DS         (0x7 << S_Config1DS)
+#define S_Config1DL         10                                          /*  Dcache line size (R)        */
+#define M_Config1DL         (0x7 << S_Config1DL)
+#define S_Config1DA         7                                           /*  Dcache associativity (R)    */
+#define M_Config1DA         (0x7 << S_Config1DA)
+#define S_Config1C2         6                                           /*  Coprocessor 2 present (R)   */
+#define M_Config1C2         (0x1 << S_Config1C2)
+#define S_Config1MD         5                                           /*  Denotes MDMX present (R) */
+#define M_Config1MD         (0x1 << S_Config1MD)
+#define S_Config1PC         4                                           /*  Denotes performance         */
+                                                                        /*  counters present (R)        */
+#define M_Config1PC         (0x1 << S_Config1PC)
+#define S_Config1WR         3                                           /*  Denotes watch registers     */
+                                                                        /*  present (R)                 */
+#define M_Config1WR         (0x1 << S_Config1WR)
+#define S_Config1CA         2                                           /*  Denotes MIPS-16 present (R) */
+#define M_Config1CA         (0x1 << S_Config1CA)
+#define S_Config1EP         1                                           /*  Denotes EJTAG present (R)   */
+#define M_Config1EP         (0x1 << S_Config1EP)
+#define S_Config1FP         0                                           /*  Denotes floating point      */
+                                                                        /*  present (R)                  */
+#define M_Config1FP         (0x1 << S_Config1FP)
+
+/*********************************************************************************************************
+ *  CP0 Config2 Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|           |     |     |     |     |     |     | | | | | |S|T| Config2
+ * | |           |     |     |     |     |     |     | | | | | |M|L|
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_Config2More       31                                          /*  Additional Config registers */
+                                                                        /*  present (R)                 */
+#define M_Config2More       (0x1 << S_Config2More)
+#define S_Config2SM         1                                           /*  Denotes SmartMIPS ASE       */
+                                                                        /*  present (R)                 */
+#define M_Config2SM         (0x1 << S_Config2SM)
+#define S_Config2TL         0                                           /*  Denotes Tracing Logic       */
+                                                                        /*  present (R)                 */
+#define M_Config2TL         (0x1 << S_Config2TL)
+
+
+/*********************************************************************************************************
  *  CP0 IntCtl Register
  *
  *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
@@ -467,6 +535,23 @@
 #define K_CachePriU     1                                               /* Unified primary              */
 #define K_CacheTerU     2                                               /* Unified Tertiary             */
 #define K_CacheSecU     3                                               /* Unified secondary            */
+
+/*********************************************************************************************************
+  Cache Operations available on all MIPS processors
+*********************************************************************************************************/
+
+#define INDEX_INVALIDATE_I      0x00
+#define INDEX_WRITEBACK_INV_D   0x01
+#define INDEX_LOAD_TAG_I        0x04
+#define INDEX_LOAD_TAG_D        0x05
+#define INDEX_STORE_TAG_I       0x08
+#define INDEX_STORE_TAG_D       0x09
+#define HIT_INVALIDATE_I        0x10
+#define HIT_INVALIDATE_D        0x11
+#define HIT_WRITEBACK_INV_D     0x15
+#define HIT_WRITEBACK_I         0x18
+#define HIT_WRITEBACK_D         0x19
+
 
 #endif                                                                  /*  ARCH_DEF_H_                 */
 /*********************************************************************************************************

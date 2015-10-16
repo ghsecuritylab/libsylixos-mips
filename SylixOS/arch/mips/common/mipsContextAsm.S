@@ -98,8 +98,8 @@ FUNC_DEF(archCrtCtxSwitch)
     JAL    _SchedCrSwp                                                  ;/*  _SchedCrSwp();              */
     NOP
 
-    LW     A0, 0(SP)                                                    ;/*  当前 CPU 信息出栈           */
-    ADDU   SP, 4
+    LW     A0 , 0(SP)                                                   ;/*  当前 CPU 信息出栈           */
+    ADDU   SP , 4
 
     LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)

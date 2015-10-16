@@ -128,7 +128,9 @@ name:
 #define SRAV            srav
 #define AND             and
 #define OR              or
+#define ORI             ori
 #define XOR             xor
+#define XORI            xori
 #define JR              jr
 #define MOV             move
 #define JALR            jalr

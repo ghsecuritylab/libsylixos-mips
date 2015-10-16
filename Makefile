@@ -174,6 +174,7 @@ SylixOS/arch/mips/dbg/mipsGdb.c \
 SylixOS/arch/mips/elf/mipsElf.c \
 SylixOS/arch/mips/elf/mipsUnwind.c \
 SylixOS/arch/mips/mm/cache/mipsCacheCommonAsm.S \
+SylixOS/arch/mips/mm/cache/mips32/misp32Cache.c \
 SylixOS/arch/mips/mm/mmu/mips32/mips32Mmu.c \
 SylixOS/arch/mips/mm/mipsCache.c \
 SylixOS/arch/mips/mm/mipsMmu.c \

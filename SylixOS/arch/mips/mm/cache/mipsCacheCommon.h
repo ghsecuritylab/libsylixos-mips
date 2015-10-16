@@ -27,17 +27,14 @@
 *********************************************************************************************************/
 #if LW_CFG_CACHE_EN > 0
 
-UINT32  armCacheTypeReg(VOID);
-VOID    armCacheRetireRR(VOID);
-VOID    armCacheRetireDefault(VOID);
-VOID    armICacheEnable(VOID);
-VOID    armDCacheEnable(VOID);
-VOID    armICacheDisable(VOID);
-VOID    armICacheInvalidate(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
-VOID    armICacheInvalidateAll(VOID);
-VOID    armDCacheInvalidate(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
-VOID    armDCacheFlush(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
-VOID    armDCacheClear(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
+VOID    mipsICacheEnable(VOID);
+VOID    mipsDCacheEnable(VOID);
+VOID    mipsICacheDisable(VOID);
+VOID    mipsICacheInvalidate(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
+VOID    mipsICacheInvalidateAll(VOID);
+VOID    mipsDCacheInvalidate(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
+VOID    mipsDCacheFlush(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
+VOID    mipsDCacheClear(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
 
 /*********************************************************************************************************
   CACHE 获得 pvAdrs 与 pvEnd 位置

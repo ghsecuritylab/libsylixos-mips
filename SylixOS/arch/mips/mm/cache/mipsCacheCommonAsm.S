@@ -44,15 +44,36 @@
     EXPORT_LABEL(mipsDCacheClear)
 
 ;/*********************************************************************************************************
+;  定义 CACHE NEED MACRO
+;*********************************************************************************************************/
+
+MACRO_DEF(SYNC_WB)
+    sync
+MACRO_END()
+
+MACRO_DEF(CACHE_OP op addr)
+    .set    noreorder
+    .set    mips32
+    cache   \op , 0(\addr)
+    .set    mips0
+    .set    reorder
+MACRO_END()
+
+;/*********************************************************************************************************
 ;  使能 CACHE
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheEnable)
-    JR     RA
+    JR      RA
     NOP
 FUNC_END(mipsICacheEnable)
 
 FUNC_DEF(mipsDCacheEnable)
+    MFC0(T0, CP0_CONFIG)
+    ORI     T0 , M_ConfigK0
+    XORI    T0 , M_ConfigK0
+    ORI     T0 , MIPS_CACHABLE_NONCOHERENT
+    MTC0(T0, CP0_CONFIG)
     JR     RA
     NOP
 FUNC_END(mipsDCacheEnable)
@@ -67,6 +88,11 @@ FUNC_DEF(mipsICacheDisable)
 FUNC_END(mipsICacheDisable)
 
 FUNC_DEF(mipsDCacheDisable)
+    MFC0(T0, CP0_CONFIG)
+    LI      T1 , -8
+    AND     T0 , T0 , T1
+    ORI     T0 , T0 , MIPS_UNCACHED
+    MTC0(T0, CP0_CONFIG)
     JR     RA
     NOP
 FUNC_END(mipsDCacheDisable)
@@ -76,43 +102,63 @@ FUNC_END(mipsDCacheDisable)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheInvalidateAll)
-    JR     RA
+    MTC0(ZERO, CP0_TAGLO)
+    MTC0(ZERO, CP0_TAGHI)
+    JR      RA
     NOP
 FUNC_END(mipsICacheInvalidateAll)
 
 ;/*********************************************************************************************************
-;  无效 CACHE R0=void *start; R1=void *end; R2=cache line size
+;  无效 CACHE A0=void *start; A1=void *end; A2=cache line size
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheInvalidate)
-    JR     RA
+1:
+    CACHE_OP    INDEX_INVALIDATE_I A0
+    ADD     A0 , A0 , A2
+    BLT     A0 , A1 , 1b
+    JR      RA
     NOP
 FUNC_END(mipsICacheInvalidate)
 
 ;/*********************************************************************************************************
-;  将指定虚拟地址的 DCACHE 无效  R0=void *start; R1=void *end; R2=cache line size
+;  将指定虚拟地址的 DCACHE 无效  A0=void *start; A1=void *end; A2=cache line size
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsDCacheInvalidate)
-    JR     RA
+1:
+    CACHE_OP    HIT_INVALIDATE_D A0
+    ADD     A0 , A0 , A2
+    BLT     A0 , A1 , 1b
+    JR      RA
     NOP
 FUNC_END(mipsDCacheInvalidate)
 
 ;/*********************************************************************************************************
-;  将指定虚拟地址的 DCACHE 回写  R0=void *start; R1=void *end; R2=cache line size
+;  将指定虚拟地址的 DCACHE 回写  A0=void *start; A1=void *end; A2=cache line size
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsDCacheFlush)
-    JR     RA
+1:
+    CACHE_OP    INDEX_WRITEBACK_INV_D A0
+    ADD     A0 , A0 , A2
+    BLT     A0 , A1 , 1b
+    SYNC_WB
+    JR      RA
     NOP
 FUNC_END(mipsDCacheFlush)
 
 ;/*********************************************************************************************************
-;  将指定虚拟地址的 DCACHE 回写并无效  R0=void *start; R1=void *end; R2=cache line size
+;  将指定虚拟地址的 DCACHE 回写并无效  A0=void *start; A1=void *end; A2=cache line size
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsDCacheClear)
-    JR     RA
+1:
+    CACHE_OP    HIT_WRITEBACK_INV_D A0
+    ADD     A0 , A0 , A2
+    BLT     A0 , A1 , 1b
+    SYNC_WB
+    JR      RA
     NOP
 FUNC_END(mipsDCacheClear)
 
