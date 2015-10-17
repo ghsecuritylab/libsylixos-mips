@@ -30,6 +30,7 @@
 VOID    mipsICacheEnable(VOID);
 VOID    mipsDCacheEnable(VOID);
 VOID    mipsICacheDisable(VOID);
+VOID    mipsDCacheDisable(VOID);
 VOID    mipsICacheInvalidate(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
 VOID    mipsICacheInvalidateAll(VOID);
 VOID    mipsDCacheInvalidate(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);

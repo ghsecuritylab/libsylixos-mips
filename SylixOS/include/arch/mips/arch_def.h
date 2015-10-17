@@ -448,7 +448,7 @@
 #define M_Config1MMUSize    (0x3f << S_Config1MMUSize)
 #define S_Config1IS         22                                          /*  Icache sets per way (R)     */
 #define M_Config1IS         (0x7 << S_Config1IS)
-#define S_Config1IL         19                                          /* Icache line size (R)         */
+#define S_Config1IL         19                                          /*  Icache line size (R)        */
 #define M_Config1IL         (0x7 << S_Config1IL)
 #define S_Config1IA         16                                          /*  Icache associativity-1 (R)  */
 #define M_Config1IA         (0x7 << S_Config1IA)
@@ -460,7 +460,7 @@
 #define M_Config1DA         (0x7 << S_Config1DA)
 #define S_Config1C2         6                                           /*  Coprocessor 2 present (R)   */
 #define M_Config1C2         (0x1 << S_Config1C2)
-#define S_Config1MD         5                                           /*  Denotes MDMX present (R) */
+#define S_Config1MD         5                                           /*  Denotes MDMX present (R)    */
 #define M_Config1MD         (0x1 << S_Config1MD)
 #define S_Config1PC         4                                           /*  Denotes performance         */
                                                                         /*  counters present (R)        */
@@ -473,7 +473,7 @@
 #define S_Config1EP         1                                           /*  Denotes EJTAG present (R)   */
 #define M_Config1EP         (0x1 << S_Config1EP)
 #define S_Config1FP         0                                           /*  Denotes floating point      */
-                                                                        /*  present (R)                  */
+                                                                        /*  present (R)                 */
 #define M_Config1FP         (0x1 << S_Config1FP)
 
 /*********************************************************************************************************
