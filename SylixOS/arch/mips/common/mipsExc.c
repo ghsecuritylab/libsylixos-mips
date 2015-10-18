@@ -105,47 +105,48 @@ VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 *********************************************************************************************************/
 VOID  archExceptionHandle (addr_t  ulRetAddr)
 {
-    REGISTER UINT32  uiCause   = mipsCp0CauseRead();
-    REGISTER UINT32  uiExcCode = ((uiCause & M_CauseExcCode) >> S_CauseExcCode);
+    REGISTER UINT32  uiCause     = mipsCp0CauseRead();
+    REGISTER UINT32  uiExcCode   = ((uiCause & M_CauseExcCode) >> S_CauseExcCode);
+    REGISTER addr_t  ulAbortAddr = mipsCp0BadVAddrRead();
     PLW_CLASS_TCB    ptcbCur;
 
     LW_TCB_GET_CUR(ptcbCur);
 
     switch (uiExcCode) {
     case EX_MOD:                                                        /* TLB modified                 */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_WRITE, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_WRITE, ptcbCur);
         break;
 
     case EX_TLBL:                                                       /* TLB exception(load or ifetch)*/
     case EX_TLBS:                                                       /* TLB exception (store)        */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_MAP, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_MAP, ptcbCur);
         break;
 
     case EX_ADEL:                                                       /* Address error(load or ifetch)*/
     case EX_ADES:                                                       /* Address error (store)        */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
         break;
 
     case EX_IBE:                                                        /* Instruction Bus Error        */
     case EX_DBE:                                                        /* Data Bus Error               */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_BUS, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BUS, ptcbCur);
         break;
 
     case EX_SYS:                                                        /* Syscall                      */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_SYS, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_SYS, ptcbCur);
         break;
 
     case EX_BP:                                                         /* Breakpoint                   */
     case EX_TR:                                                         /* Trap instruction             */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_BREAK, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BREAK, ptcbCur);
         break;
 
     case EX_RI:                                                         /* Reserved instruction         */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
         break;
 
     case EX_FPE:                                                        /* floating point exception     */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_FPE, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_FPE, ptcbCur);
         break;
 
     case EX_CPU:                                                        /* CoProcessor Unusable         */
@@ -156,7 +157,7 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     case EX_MCHECK:                                                     /* Machine check exception      */
     case EX_CacheErr:                                                   /* Cache error caused re-entry  */
                                                                         /* to Debug Mode                */
-        API_VmmAbortIsr(ulRetAddr, mipsCp0BadVAddrRead(), LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
         break;
 
     default:

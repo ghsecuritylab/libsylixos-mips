@@ -74,7 +74,7 @@ FUNC_DEF(mipsDCacheEnable)
     XORI    T0 , M_ConfigK0
     ORI     T0 , MIPS_CACHABLE_NONCOHERENT
     MTC0(T0, CP0_CONFIG)
-    JR     RA
+    JR      RA
     NOP
 FUNC_END(mipsDCacheEnable)
 
@@ -83,7 +83,7 @@ FUNC_END(mipsDCacheEnable)
 ;*********************************************************************************************************/
 
 FUNC_DEF(mipsICacheDisable)
-    JR     RA
+    JR      RA
     NOP
 FUNC_END(mipsICacheDisable)
 
@@ -93,7 +93,7 @@ FUNC_DEF(mipsDCacheDisable)
     AND     T0 , T0 , T1
     ORI     T0 , T0 , MIPS_UNCACHED
     MTC0(T0, CP0_CONFIG)
-    JR     RA
+    JR      RA
     NOP
 FUNC_END(mipsDCacheDisable)
 

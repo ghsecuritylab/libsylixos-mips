@@ -46,9 +46,13 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 
     uiCP0Status  = mipsCp0StatusRead();
 
-    uiCP0Status |= (1 << 0) |
-                   (1 << (8 + 7)) |
-                   (1 << (8 + 4));
+    uiCP0Status |= M_StatusIM7 |
+                   M_StatusIM6 |
+                   M_StatusIM5 |
+                   M_StatusIM4 |
+                   M_StatusIM3 |
+                   M_StatusIM2 |
+                   M_StatusIE;
 
     MIPS_EXEC_INS("addi   %0, " MIPS_GP ", 0" : "=r"(uiGP));
 
