@@ -46,8 +46,7 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 
     uiCP0Status  = mipsCp0StatusRead();
 
-    uiCP0Status |= M_StatusIM7 |
-                   M_StatusIM6 |
+    uiCP0Status |= M_StatusIM6 |
                    M_StatusIM5 |
                    M_StatusIM4 |
                    M_StatusIM3 |

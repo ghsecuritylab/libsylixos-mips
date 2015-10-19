@@ -613,7 +613,7 @@ static VOID  mips32MmuMakeTrans (PLW_MMU_CONTEXT     pmmuctx,
 *********************************************************************************************************/
 static VOID  mips32MmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
 {
-    mipsCp0ContextWrite((UINT32)_G_pvPTETable);                         /*  将 PTE 表写入 Contex 寄存器 */
+    mipsCp0ContextWrite((UINT32)_G_pvPTETable);                         /*  将 PTE 表写入 Context 寄存器*/
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuInit
