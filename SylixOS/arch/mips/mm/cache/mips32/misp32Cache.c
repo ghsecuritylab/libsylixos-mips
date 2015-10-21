@@ -395,8 +395,8 @@ static INT  mips32CacheClearPage (LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID p
 /*********************************************************************************************************
 ** 函数名称: mips32CacheTextUpdate
 ** 功能描述: 清空(回写内存) D CACHE 无效(访问不命中) I CACHE
-** 输　入  : pvAdrs                        虚拟地址
-**           stBytes                       长度
+** 输　入  : pvAdrs        虚拟地址
+**           stBytes       长度
 ** 输　出  : ERROR or OK
 ** 全局变量:
 ** 调用模块:

@@ -18,6 +18,7 @@
 **
 ** 描        述: MIPS 体系构架异常处理.
 *********************************************************************************************************/
+#define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
 #include "dtrace.h"
@@ -88,12 +89,32 @@ VOID  archIntHandle (ULONG  ulVector, BOOL  bPreemptive)
 *********************************************************************************************************/
 VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 {
-    /*
-     * TODO
-     */
-    while (1) {
+    UINT32  uiFiled             = 2 * sizeof(UINT32);
+    REGISTER UINT32  uiRegVal   = 0;
+#define PLEVEL  1
+    uiRegVal    = mipsCp0ConfigRead();
+    mipsCp0ConfigWrite((uiRegVal & ~M_ConfigK0) | MIPS_UNCACHED);
 
-    }
+    fdprintf(PLEVEL, "%s\n", "Cache error exception:");
+    fdprintf(PLEVEL, "cp0_errorepc == %0*lx\n", uiFiled, mipsCp0ERRPCRead());
+    uiRegVal    = mipsCp0CacheErrRead();
+
+    fdprintf(PLEVEL, "cp0_cacheerr == %08x\n", uiRegVal);
+    fdprintf(PLEVEL, "Decoded cp0_cacheerr: %s cache fault in %s reference.\n",
+            uiRegVal & M_CcaheLevel ? "secondary" : "primary",
+            uiRegVal & M_CcaheType ? "data" : "insn");
+    fdprintf(PLEVEL, "Error bits: %s%s%s%s%s%s%s\n",
+            uiRegVal & M_CcaheData ? "ED " : "",
+            uiRegVal & M_CcaheTag ? "ET " : "",
+            uiRegVal & M_CcaheECC ? "EE " : "",
+            uiRegVal & M_CcaheBoth ? "EB " : "",
+            uiRegVal & M_CcaheEI ? "EI " : "",
+            uiRegVal & M_CcaheE1 ? "E1 " : "",
+            uiRegVal & M_CcaheE0 ? "E0 " : "");
+
+    fdprintf(PLEVEL, "IDX: 0x%08x\n", uiRegVal & (M_CcaheE0 - 1));
+
+
 }
 /*********************************************************************************************************
 ** 函数名称: archExceptionHandle
