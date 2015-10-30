@@ -74,9 +74,28 @@ INT  archElfRelocateRel (Elf_Rel     *prel,
                          PCHAR        pcBuffer,
                          size_t       stBuffLen)
 {
-    /*
-     * TODO
-     */
+    Elf_Addr  *paddrWhere;
+#if 0
+    INT32      addrTmp;
+    Elf_Sword  swordAddend;
+    Elf_Sword  swordTopBits;
+
+    Elf_Addr  upper, lower, sign, j1, j2, H;
+#endif
+
+    paddrWhere = (Elf_Addr *)((size_t)pcTargetSec + prel->r_offset);    /*  计算重定位目标地址          */
+
+    switch (ELF_R_TYPE(prel->r_info)) {
+    case R_MIPS_REL32:
+        break;
+    case R_MIPS_NONE:
+        *paddrWhere += (Elf_Addr)addrSymVal;
+            break;
+    case R_MIPS_JUMP_SLOT:
+        *paddrWhere = (Elf_Addr)addrSymVal;
+        default:
+            _DebugFormat(__ERRORMESSAGE_LEVEL, "unknown relocate type %d.\r\n", ELF_R_TYPE(prel->r_info));
+    }
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -89,9 +108,6 @@ INT  archElfRelocateRel (Elf_Rel     *prel,
 *********************************************************************************************************/
 INT  archElfRGetJmpBuffItemLen (VOID)
 {
-    /*
-     * TODO
-     */
     return  (JMP_TABLE_ITEMLEN);
 }
 

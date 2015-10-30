@@ -323,7 +323,7 @@ static INT sja1000Send (SJA1000_CHAN *pcanchan, SJA1000_FRAME *pframe)
         return (PX_ERROR);
     }
 
-    SET_REG(pcanchan, TXBUF, frame_info);
+    SET_REG(pcanchan, TXBUF, pframe->frame_info);
 
     if (pframe->frame_info & 0x80) {                                    /* extended frame               */
         pframe->id = pframe->id << 3;
@@ -373,8 +373,8 @@ static INT sja1000Recv (SJA1000_CHAN *pcanchan, SJA1000_FRAME *pframe)
     frame_info = GET_REG(pcanchan, RXBUF);
 
     pframe->frame_info = frame_info;
-    if (frame_info & 0x80) {                                            /* extended frame               */
 
+    if (frame_info & 0x80) {                                            /* extended frame               */
         for (i = 0; i < 4; i++) {
             pframe->id = pframe->id << 8;
 
