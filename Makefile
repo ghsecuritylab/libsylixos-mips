@@ -1322,8 +1322,8 @@ COMPILE.cxx     = $(CXX) $(CXXFLAGS)
 #*********************************************************************************************************
 # compile -fPIC
 #*********************************************************************************************************
-COMPILE_PIC.c   = $(COMPILE.c) -fPIC
-COMPILE_PIC.cxx = $(COMPILE.cxx) -fPIC
+COMPILE_PIC.c   = $(COMPILE.c) -fpic
+COMPILE_PIC.cxx = $(COMPILE.cxx) -fpic 
 
 #*********************************************************************************************************
 # target
@@ -1481,7 +1481,7 @@ $(VPMPDM_A_TARGET): $(OBJS_VPMPDM)
 # link libvpmpdm.so object files
 #*********************************************************************************************************
 $(VPMPDM_S_TARGET): $(OBJS_VPMPDM)
-		$(LD) $(CPUFLAGS) -nostdlib -fPIC -shared -o $(VPMPDM_S_TARGET) $(OBJS_VPMPDM) -lgcc
+		$(LD) $(CPUFLAGS) -nostdlib -fpic -shared -o $(VPMPDM_S_TARGET) $(OBJS_VPMPDM) -lgcc
 
 #*********************************************************************************************************
 # link xinput.ko object files

@@ -1298,7 +1298,7 @@ static INT elfPhdrRead (LW_LD_EXEC_MODULE *pmodule,
             pmodule->EMOD_stARMExidxCount = pphdr->p_filesz / 8;
         }
 #endif                                                                  /*  LW_CFG_CPU_ARCH_ARM         */
-        if (PT_LOAD != pphdr->p_type && pphdr->p_filesz > 0) {
+        if (PT_LOAD != pphdr->p_type || pphdr->p_filesz == 0) {
             continue;
         }
 

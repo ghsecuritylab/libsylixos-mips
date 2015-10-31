@@ -148,26 +148,30 @@ static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
     LW_PTE_TRANSENTRY   stDescriptor;
     UINT32              uiPFN;
 
-    uiPFN = uiBaseAddr >> LW_CFG_VMM_PAGE_SHIFT;                        /*  计算 PFN                    */
+    if (ulFlag & LW_VMM_FLAG_ACCESS) {
 
-    stDescriptor.PTE_uiEntryLO = uiPFN << MIPS32_ENTRYLO_PFN_SHIFT;     /*  填充 PFN                    */
+        uiPFN = uiBaseAddr >> LW_CFG_VMM_PAGE_SHIFT;                    /*  计算 PFN                    */
 
-    if (ulFlag & LW_VMM_FLAG_VALID) {
+        stDescriptor.PTE_uiEntryLO = uiPFN << MIPS32_ENTRYLO_PFN_SHIFT; /*  填充 PFN                    */
+
         stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_V_BIT;             /*  填充 V 位                   */
-    }
 
-    if (ulFlag & LW_VMM_FLAG_WRITABLE) {
-        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_D_BIT;             /*  填充 D 位                   */
-    }
+        if (ulFlag & LW_VMM_FLAG_WRITABLE) {
+            stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_D_BIT;         /*  填充 D 位                   */
+        }
 
-    stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_G_BIT;                 /*  填充 G 位                   */
+        stDescriptor.PTE_uiEntryLO |= MIPS32_ENTRYLO_G_BIT;             /*  填充 G 位                   */
 
-    if (ulFlag & LW_VMM_FLAG_CACHEABLE) {                               /*  填充 C 位                   */
-        stDescriptor.PTE_uiEntryLO |= MIPS_CACHABLE_NONCOHERENT << MIPS32_ENTRYLO_C_SHIFT;
-    }
+        if (ulFlag & LW_VMM_FLAG_CACHEABLE) {                           /*  填充 C 位                   */
+            stDescriptor.PTE_uiEntryLO |= MIPS_CACHABLE_NONCOHERENT << MIPS32_ENTRYLO_C_SHIFT;
+        }
 
-    if (ulFlag & LW_VMM_FLAG_EXECABLE) {
-        stDescriptor.PTE_uiSoftware |= 1 << MIPS32_PTE_EXEC_SHIFT;      /*  填充软件的可执行位          */
+        if (ulFlag & LW_VMM_FLAG_EXECABLE) {
+            stDescriptor.PTE_uiSoftware |= 1 << MIPS32_PTE_EXEC_SHIFT;  /*  填充软件的可执行位          */
+        }
+    } else {
+        stDescriptor.PTE_uiEntryLO  = 0;
+        stDescriptor.PTE_uiSoftware = 0;
     }
 
     return  (stDescriptor);
@@ -343,7 +347,7 @@ static BOOL  mips32MmuPgdIsOk (LW_PGD_TRANSENTRY  pgdentry)
 *********************************************************************************************************/
 static BOOL  mips32MmuPteIsOk (LW_PTE_TRANSENTRY  pteentry)
 {
-    return  (pteentry.PTE_uiEntryLO ? LW_TRUE : LW_FALSE);
+    return  ((pteentry.PTE_uiEntryLO & MIPS32_ENTRYLO_V_BIT) ? LW_TRUE : LW_FALSE);
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuPgdAlloc
@@ -502,37 +506,36 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
 
         if (mips32MmuPteIsOk(stDescriptor)) {                           /*  二级描述符有效              */
 
-            if (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_V_BIT) {    /*  二级描述符有效              */
-                ULONG    ulFlag = 0;
-                UINT32   uiCache;
+            ULONG    ulFlag = 0;
+            UINT32   uiCache;
 
-                ulFlag |= LW_VMM_FLAG_VALID;                            /*  映射有效                    */
-                ulFlag |= LW_VMM_FLAG_ACCESS;                           /*  可以访问                    */
+            ulFlag |= LW_VMM_FLAG_VALID;                                /*  映射有效                    */
 
-                if (stDescriptor.PTE_uiSoftware & (1 << MIPS32_PTE_EXEC_SHIFT)) {
-                    ulFlag |= LW_VMM_FLAG_EXECABLE;                     /*  可以执行                    */
-                }
+            ulFlag |= LW_VMM_FLAG_ACCESS;                               /*  可以访问                    */
 
-                if (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_D_BIT) {/*  可写                        */
-                    ulFlag |= LW_VMM_FLAG_WRITABLE;
-                }
-
-                uiCache = (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_C_MASK)
-                           >> MIPS32_ENTRYLO_C_SHIFT;                   /*  获得 CACHE 属性             */
-                switch (uiCache) {
-                case MIPS_UNCACHED:                                     /*  不可以 CACHE                */
-                    break;
-
-                case MIPS_CACHABLE_NONCOHERENT:                         /*  可以 CACHE, 但不参与一致性  */
-                    ulFlag |= LW_VMM_FLAG_CACHEABLE;
-                    break;
-
-                default:
-                    break;
-                }
-
-                return  (ulFlag);
+            if (stDescriptor.PTE_uiSoftware & (1 << MIPS32_PTE_EXEC_SHIFT)) {
+                ulFlag |= LW_VMM_FLAG_EXECABLE;                         /*  可以执行                    */
             }
+
+            if (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_D_BIT) {    /*  可写                        */
+                ulFlag |= LW_VMM_FLAG_WRITABLE;
+            }
+
+            uiCache = (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_C_MASK)
+                       >> MIPS32_ENTRYLO_C_SHIFT;                       /*  获得 CACHE 属性             */
+            switch (uiCache) {
+            case MIPS_UNCACHED:                                         /*  不可以 CACHE                */
+                break;
+
+            case MIPS_CACHABLE_NONCOHERENT:                             /*  可以 CACHE, 但不参与一致性  */
+                ulFlag |= LW_VMM_FLAG_CACHEABLE;
+                break;
+
+            default:
+                break;
+            }
+
+            return  (ulFlag);
         }
     }
 
@@ -552,6 +555,10 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
 static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  ulFlag)
 {
     LW_PGD_TRANSENTRY  *p_pgdentry = mips32MmuPgdOffset(pmmuctx, ulAddr);/*  获得一级描述符地址         */
+
+    if (!(ulFlag & LW_VMM_FLAG_VALID)) {                                /*  无效的映射关系              */
+        return  (PX_ERROR);
+    }
 
     if (mips32MmuPgdIsOk(*p_pgdentry)) {                                /*  一级描述符有效              */
 
@@ -597,6 +604,10 @@ static VOID  mips32MmuMakeTrans (PLW_MMU_CONTEXT     pmmuctx,
                                  addr_t              ulPhysicalAddr,
                                  addr_t              ulFlag)
 {
+    if (!(ulFlag & LW_VMM_FLAG_VALID)) {                                /*  无效的映射关系              */
+        return;
+    }
+
     /*
      * 构建二级描述符并设置二级描述符
      */
