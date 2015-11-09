@@ -120,6 +120,14 @@ typedef SINT64   Elf64_Sxword;
 #define OLD_DT_HIOS     0x6fffffff
 #define DT_LOPROC       0x70000000
 #define DT_HIPROC       0x7fffffff
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+#define DT_MIPS_GOTSYM          0x70000013 /* First GOT entry in DYNSYM */
+#define DT_MIPS_LOCAL_GOTNO     0x7000000a /* Number of local GOT entries */
+#define DT_MIPS_SYMTABNO        0x70000011 /* Number of DYNSYM entries */
+#define DT_MIPS_RLD_MAP         0x70000016 /* Address of run time loader map.  */
+/* The address of .got.plt in an executable using the new non-PIC ABI.  */
+#define DT_MIPS_PLTGOT          0x70000032
+#endif
 
 /* e_machine */
 #define EM_NONE		0		/* e_machine */

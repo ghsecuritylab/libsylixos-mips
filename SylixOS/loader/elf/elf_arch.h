@@ -26,19 +26,27 @@
   体系结构相关的重定位函数接口声明
 *********************************************************************************************************/
 
-INT archElfRGetJmpBuffItemLen(VOID);                                    /*  获取跳转表项大小            */
+INT archElfRGetJmpBuffItemLen(PVOID  pmodule);                          /*  获取跳转表项大小            */
 
-INT archElfRelocateRela(Elf_Rela   *prela,
+INT archElfRelocateRela(PVOID       pmodule,
+                        Elf_Rela   *prela,
 				        Elf_Addr    addrSymVal,
 				        PCHAR       pcTargetSec,
 				        PCHAR       pcBuffer,
 				        size_t      stBuffLen);                         /*  RELA 项重定位               */
 
-INT archElfRelocateRel(Elf_Rel     *prel,
+INT archElfRelocateRel(PVOID        pmodule,
+                       Elf_Rel     *prel,
 				       Elf_Addr     addrSymVal,
 				       PCHAR        pcTargetSec,
 				       PCHAR        pcBuffer,
                        size_t       stBuffLen);                         /*  REL 项重定位                */
+
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+INT archMIPSGlobalGOTTABCreate(
+                        PVOID        pmodule,
+                        PVOID        pdyndir);                        /*  MIPS 全局GOT表创建           */
+#endif
 
 #endif                                                                  /*  __ELF_ARCH_H                */
 /*********************************************************************************************************

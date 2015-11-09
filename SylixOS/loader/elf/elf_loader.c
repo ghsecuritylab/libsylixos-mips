@@ -61,14 +61,17 @@ static const PCHAR              _G_pcFiniSecArr[] = {".fini_array"};
   module管理层提供的回调函数，用于依赖库加载
 *********************************************************************************************************/
 extern LW_LD_EXEC_MODULE *moduleLoadSub(LW_LD_EXEC_MODULE *pmodule, CPCHAR pchLibName, BOOL bCreate);
+#if !defined(LW_CFG_CPU_ARCH_MIPS)
 /*********************************************************************************************************
   最大依赖库数目
 *********************************************************************************************************/
 #define __LW_MAX_NEEDED_LIB     64
+#endif
 /*********************************************************************************************************
   是否将 entry 函数导入符号表
 *********************************************************************************************************/
 #define __LW_ENTRY_SYMBOL       1
+#if !defined(LW_CFG_CPU_ARCH_MIPS)
 /*********************************************************************************************************
    解析后的dynamic段数据结构
 *********************************************************************************************************/
@@ -97,6 +100,7 @@ typedef struct {
     Elf_Word     wdNeededArr[__LW_MAX_NEEDED_LIB];
     ULONG        ulNeededCnt;
 } ELF_DYN_DIR;
+#endif
 /*********************************************************************************************************
 ** 函数名称: elfSymHashSize
 ** 功能描述: 根据符号数量确定 hash 表大小.
@@ -207,7 +211,8 @@ static INT elfRelaRelocate (LW_LD_EXEC_MODULE *pmodule,
         }
 
         LD_DEBUG_MSG(("relocate %s :", pcSymName));
-        if (archElfRelocateRela(prela,
+        if (archElfRelocateRela(pmodule,
+                                prela,
                                 addrSymVal,
                                 pcTargetSect,
                                 pcJmpTable,
@@ -280,7 +285,8 @@ static INT elfRelRelocate (LW_LD_EXEC_MODULE *pmodule,
         }
 
         LD_DEBUG_MSG(("relocate %s :", pcSymName));
-        if (archElfRelocateRel(prel,
+        if (archElfRelocateRel(pmodule,
+                               prel,
                                symVal,
                                pcTargetSect,
                                pcJmpTable,
@@ -665,7 +671,7 @@ static INT elfModuleMemoryInit (LW_LD_EXEC_MODULE *pmodule, Elf_Shdr *pshdrArr)
      *  构造一个节用于保存跳转表
      */
     pshdrArr[pmodule->EMOD_ulSegCount].sh_size  = ulJmpItemCnt
-                                                * archElfRGetJmpBuffItemLen();
+                                                * archElfRGetJmpBuffItemLen(pmodule);
     pshdrArr[pmodule->EMOD_ulSegCount].sh_flags = SHF_ALLOC;
     pshdrArr[pmodule->EMOD_ulSegCount].sh_type  = SHT_NOBITS;
 
@@ -1155,6 +1161,25 @@ static INT dynPhdrParse (LW_LD_EXEC_MODULE *pmodule,
                 case DT_FINI:
                     pdyndir->addrFini      = pdyn->d_un.d_val;
                     break;
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+                case DT_PLTGOT:
+                    pdyndir->ulPLTGOT = (Elf_Addr)LW_LD_V2PADDR(addrMin,
+                                                        pmodule->EMOD_pvBaseAddr,
+                                                        pdyn->d_un.d_ptr);
+                    break;
+                case DT_MIPS_GOTSYM:
+                    pdyndir->ulMIPSGOTSym = pdyn->d_un.d_val;
+                    break;
+                case DT_MIPS_LOCAL_GOTNO:
+                    pdyndir->ulMIPSLocalGOTNO = pdyn->d_un.d_val;
+                    break;
+                case DT_MIPS_SYMTABNO:
+                    pdyndir->ulMIPSSymTABNO = pdyn->d_un.d_val;
+                    break;
+                case DT_MIPS_PLTGOT:
+                    pdyndir->ulMIPSPLTGOT = pdyn->d_un.d_val;
+                    break;
+#endif
                 }
             }
             break;
@@ -1350,6 +1375,7 @@ __out0:
 
     return  (iError);
 }
+
 /*********************************************************************************************************
 ** 函数名称: elfPhdrRelocate
 ** 功能描述: 重定位
@@ -1374,6 +1400,12 @@ static INT elfPhdrRelocate (LW_LD_EXEC_MODULE *pmodule, ELF_DYN_DIR  *pdyndir)
     pcBase = (PCHAR)LW_LD_V2PADDR(addrMin,
                                   pmodule->EMOD_pvBaseAddr,
                                   0);                                   /*  elf段0地址的加载地址        */
+
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+    if (archMIPSGlobalGOTTABCreate(pmodule, pdyndir) < 0) {
+        return  (PX_ERROR);
+    }
+#endif
 
     /*
      *  重定位
@@ -1407,7 +1439,8 @@ static INT elfPhdrRelocate (LW_LD_EXEC_MODULE *pmodule, ELF_DYN_DIR  *pdyndir)
                                            psym->st_value);
             }
 
-            if (archElfRelocateRel(prel,                                /*  重定位符号                  */
+            if (archElfRelocateRel(pmodule,
+                                   prel,                                /*  重定位符号                  */
                                    addrSymVal,
                                    pcBase,
                                    LW_NULL, 0) < 0) {
@@ -1444,7 +1477,8 @@ static INT elfPhdrRelocate (LW_LD_EXEC_MODULE *pmodule, ELF_DYN_DIR  *pdyndir)
                                            psym->st_value);
             }
 
-            if (archElfRelocateRela(prela,                              /*  重定位符号                  */
+            if (archElfRelocateRela(pmodule,
+                                    prela,                              /*  重定位符号                  */
                                     addrSymVal,
                                     pcBase,
                                     LW_NULL, 0) < 0) {

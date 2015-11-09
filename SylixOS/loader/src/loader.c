@@ -463,6 +463,13 @@ static INT initArrayCall (LW_LD_EXEC_MODULE *pmodule)
             for (i = 0; i < pmodTemp->EMOD_ulInitArrCnt; i++) {         /*  正顺序调用初始化函数        */
                 pfuncInit = pmodTemp->EMOD_ppfuncInitArray[i];
                 if (pfuncInit != LW_NULL && pfuncInit != (VOIDFUNCPTR)(~0)) {
+
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+                    /*
+                     * 当前函数指针放到T9($25)Register，为计算GOT服务
+                     */
+                    MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncInit));
+#endif
                     pfuncInit();
                 }
             }
@@ -509,6 +516,12 @@ static INT finiArrayCall (LW_LD_EXEC_MODULE *pmodule, BOOL  bRunFini)
             pmodTemp->EMOD_ulStatus = LW_LD_STATUS_FINIED;
 
             if (pmodTemp->EMOD_pfuncExit) {
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+                /*
+                 * 当前函数指针放到T9($25)Register，为计算GOT服务
+                 */
+                MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pmodTemp->EMOD_pfuncExit));
+#endif
                 pmodTemp->EMOD_pfuncExit();
             }
             

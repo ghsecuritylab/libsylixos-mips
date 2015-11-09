@@ -32,6 +32,10 @@
 #ifndef __LOADER_LIB_H
 #define __LOADER_LIB_H
 
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+#include "../elf/elf_type.h"
+#endif
+
 /*********************************************************************************************************
   进程最大文件描述符 
   (因为进程0 1 2标准文件与内核一样映射方式不用, 这里的标准文件为真实打开的文件, 所以没有 STD_UNFIX 操作.
@@ -155,6 +159,21 @@ typedef struct {
 
 #define __LW_LD_EXEC_MODULE_MAGIC   0x25ef68af
 
+#ifdef LW_CFG_CPU_ARCH_MIPS
+/*********************************************************************************************************
+  HI16_RELOC_INFO struct 提供一种方法把mipsElfHI16RelocateRela()信息传递给mipsElfLO16RelocateRela()
+*********************************************************************************************************/
+typedef struct hi16RelocInfo {
+    Elf_Addr *addr;
+    Elf_Addr value;
+    struct hi16RelocInfo *next;
+}HI16_RELOC_INFO;
+
+typedef struct{
+    HI16_RELOC_INFO *mipsHI16List;
+}MOD_MIPS_SPECIFIC;
+#endif
+
 typedef struct {
     ULONG                   EMOD_ulMagic;                               /*  用于识别本结构体            */
     ULONG                   EMOD_ulModType;                             /*  模块类型，KO还是SO文件      */
@@ -204,7 +223,53 @@ typedef struct {
     PVOID                   EMOD_pvARMExidx;                            /*  ARM.exidx 段内存地址        */
 #endif                                                                  /*  LW_CFG_CPU_ARCH_ARM         */
 
+#ifdef LW_CFG_CPU_ARCH_MIPS
+    MOD_MIPS_SPECIFIC       EMOD_MIPSARCH;                              /*  MIPS HI16 & LO16 定位使用   */
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+
 } LW_LD_EXEC_MODULE;
+
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+/*********************************************************************************************************
+  最大依赖库数目
+*********************************************************************************************************/
+#define __LW_MAX_NEEDED_LIB     64
+/*********************************************************************************************************
+   解析后的dynamic段数据结构
+*********************************************************************************************************/
+typedef struct {
+    Elf_Sym     *psymTable;                                             /*  符号表指针                  */
+    ULONG        ulSymCount;                                            /*  符号数目                    */
+    PCHAR        pcStrTable;                                            /*  字符串表指针                */
+    Elf_Rel     *prelTable;                                             /*  rel重定位表指针             */
+    ULONG        ulRelSize;                                             /*  重定位表大小                */
+    ULONG        ulRelCount;                                            /*  重定位表项数目              */
+    Elf_Rela    *prelaTable;                                            /*  rel重定位表指针             */
+    ULONG        ulRelaSize;                                            /*  重定位表大小                */
+    ULONG        ulRelaCount;                                           /*  重定位表项数目              */
+    Elf_Hash    *phash;                                                 /*  hash表指针                  */
+    PCHAR        pvJmpRTable;                                           /*  plt重定位表指针             */
+    ULONG        ulPltRel;                                              /*  plt重定位表项类型           */
+    ULONG        ulJmpRSize;                                            /*  plt重定位表大小             */
+    Elf_Addr    *paddrInitArray;                                        /*  初始化函数数组              */
+    Elf_Addr    *paddrFiniArray;                                        /*  结束函数数组                */
+    ULONG        ulInitArrSize;                                         /*  初始化函数数组大小          */
+    ULONG        ulFiniArrSize;                                         /*  结束函数数组大小            */
+    Elf_Addr     addrInit;                                              /*  初始化函数                  */
+    Elf_Addr     addrFini;                                              /*  结束函数                    */
+    Elf_Addr     addrMin;                                               /*  最小虚拟地址                */
+    Elf_Addr     addrMax;                                               /*  最大虚拟地址                */
+    Elf_Word     wdNeededArr[__LW_MAX_NEEDED_LIB];
+    ULONG        ulNeededCnt;
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+    Elf_Addr     ulPLTGOT;                                              /*  全局GOT的地址               */
+    ULONG        ulMIPSGOTSym;                                          /*  Dynsym 第一个GOT入口        */
+    ULONG        ulMIPSLocalGOTNO;                                      /*  MIPS Local GOT GOT入口数量  */
+    ULONG        ulMIPSSymTABNO;                                        /*  MIPS Dynsym 入口数量        */
+    ULONG        ulMIPSPLTGOT;                                          /*  MIPS .got.plt 地址          */
+#endif
+} ELF_DYN_DIR;
+#endif
 
 /*********************************************************************************************************
   内核进程控制块
