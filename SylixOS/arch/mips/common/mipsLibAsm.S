@@ -97,51 +97,161 @@ FUNC_END(archPageCopy)
 ;/*********************************************************************************************************
 ;  注意: setjmp 与 longjmp 上下文结构与线程上下文结构不同
 ;
-;  +---------------+
-;  |    R4 - R7    | (4 regs)
-;  +---------------+
-;  |    R8 - R10   | (3 regs)
-;  +---------------+
-;  |    FP(R11)    | (1 regs)
-;  +---------------+
-;  |    SP(R13)    | (1 regs)
-;  +---------------+
-;  |    LR(R14)    | (1 regs)
-;  +---------------+
+;  +-------+
+;  | a0-a3 |   Storage provided by ABI contract from calling function
+;  +-------+<---   Original SP
+;  |  RA   |   Storage for return address (8 bytes for alignment)
+;  +-------+
+;  | extra |   Optional additional storage requested by SETFRAME_EXTRA
+;  +-------+
+;  | r0-rN |   Storage for up to 4 additional local registers
+;  +-------+
+;  |(a0-a3)|   Storage provided by ABI contract to called function
+;  +-------+<---   Adjusted SP
+;
 ;*********************************************************************************************************/
 
+
 ;/*********************************************************************************************************
-;  sigsetjmp (参数为 jmp_buf, mask_saved) TODO
+;  sigsetjmp (参数为 jmp_buf, mask_saved)
 ;*********************************************************************************************************/
 
 FUNC_DEF(sigsetjmp)
+    SUBU    SP, 16
+    SW      RA, 12(SP)
+    SW      A0, 8(SP)
+    SW      A1, 4(SP)
+    JAL     __sigsetjmpSetup
+    NOP
+    LW      A1, 4(SP)
+    LW      A0, 8(SP)
+    LW      RA, 12(SP)
+    ADDU    SP, 16
+
+    SW      S0,  0(A0)                                                  ;/* Save registers in jump buffer*/
+    SW      S1,  4(A0)
+    SW      S2,  8(A0)
+    SW      S3, 12(A0)
+    SW      S4, 16(A0)
+    SW      S5, 20(A0)
+    SW      S6, 24(A0)
+    SW      S7, 28(A0)
+    SW      GP, 32(A0)
+    SW      SP, 36(A0)
+    SW      FP, 40(A0)
+    SW      RA, 44(A0)
+
+    MOV     V0, ZERO                                                    ;/* Return zero.                 */
     JR      RA
     NOP
 FUNC_END(sigsetjmp)
 
 ;/*********************************************************************************************************
-;  setjmp (参数为 jmp_buf) TODO
+;  setjmp (参数为 jmp_buf)，暂时不考虑FPU
 ;*********************************************************************************************************/
 
 FUNC_DEF(setjmp)
+    SUBU    SP, 12
+    SW      RA, 8(SP)
+    SW      A0, 4(SP)
+    JAL     __setjmpSetup
+    NOP
+    LW      A0, 4(SP)
+    LW      RA, 8(SP)
+    ADDU    SP, 12
+
+    SW      S0,  0(A0)                                                  ;/* Save registers in jump buffer*/
+    SW      S1,  4(A0)
+    SW      S2,  8(A0)
+    SW      S3, 12(A0)
+    SW      S4, 16(A0)
+    SW      S5, 20(A0)
+    SW      S6, 24(A0)
+    SW      S7, 28(A0)
+    SW      GP, 32(A0)
+    SW      SP, 36(A0)
+    SW      FP, 40(A0)
+    SW      RA, 44(A0)
+
+    MOV     V0, ZERO                                                    ;/* Return zero.                 */
     JR      RA
     NOP
 FUNC_END(setjmp)
 
 ;/*********************************************************************************************************
-;  siglongjmp (参数为 jmp_buf, retval) TODO
+;  siglongjmp (参数为 jmp_buf, retval)
 ;*********************************************************************************************************/
 
 FUNC_DEF(siglongjmp)
+    SUBU    SP, 16
+    SW      RA, 12(SP)
+    SW      A0, 8(SP)
+    SW      A1, 4(SP)
+    JAL     __siglongjmpSetup
+    NOP
+    LW      A1, 4(SP)
+    LW      A0, 8(SP)
+    LW      RA, 12(SP)
+    ADDU    SP, 16
+
+    LW      S0,  0(A0)
+    LW      S1,  4(A0)
+    LW      S2,  8(A0)
+    LW      S3, 12(A0)
+    LW      S4, 16(A0)
+    LW      S5, 20(A0)
+    LW      S6, 24(A0)
+    LW      S7, 28(A0)
+    LW      GP, 32(A0)
+    LW      SP, 36(A0)
+    LW      FP, 40(A0)
+    LW      RA, 44(A0)
+
+    MOV     V0, A1                                                      ;/* Return the result argument,  */
+    BNE     V0, 1, 2f                                                   ;/* or 1 if it is zero.          */
+    NOP
+    LI      V0, 1
+
+2:
     JR      RA
     NOP
 FUNC_END(siglongjmp)
 
 ;/*********************************************************************************************************
-;  longjmp (参数为 jmp_buf, retval) TODO
+;  longjmp (参数为 jmp_buf, retval)暂时不考虑FPU
 ;*********************************************************************************************************/
 
 FUNC_DEF(longjmp)
+    SUBU    SP, 16
+    SW      RA, 12(SP)
+    SW      A0, 8(SP)
+    SW      A1, 4(SP)
+    JAL     __longjmpSetup
+    NOP
+    LW      A1, 4(SP)
+    LW      A0, 8(SP)
+    LW      RA, 12(SP)
+    ADDU    SP, 16
+
+    LW      S0,  0(A0)
+    LW      S1,  4(A0)
+    LW      S2,  8(A0)
+    LW      S3, 12(A0)
+    LW      S4, 16(A0)
+    LW      S5, 20(A0)
+    LW      S6, 24(A0)
+    LW      S7, 28(A0)
+    LW      GP, 32(A0)
+    LW      SP, 36(A0)
+    LW      FP, 40(A0)
+    LW      RA, 44(A0)
+
+    MOV     V0, A1                                                      ;/* Return the result argument,  */
+    BNE     V0, 1, 2f                                                   ;/* or 1 if it is zero.          */
+    NOP
+    LI      V0, 1
+
+2:
     JR      RA
     NOP
 FUNC_END(longjmp)

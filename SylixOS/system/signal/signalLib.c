@@ -570,9 +570,21 @@ static VOID  __sigRunHandle (PLW_CLASS_SIGCONTEXT  psigctx,
               : LW_NULL;
               
         if (psigaction->sa_flags & SA_SIGINFO) {                        /*  需要 siginfo_t 信息         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+        /*
+         * 当前函数指针放到T9($25)Register，为计算GOT服务
+         */
+        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncHandle));
+#endif
             pfuncHandle(iSigNo, psiginfo, pvCtx);                       /*  执行信号句柄                */
         
         } else {
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+        /*
+         * 当前函数指针放到T9($25)Register，为计算GOT服务
+         */
+        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncHandle));
+#endif
             pfuncHandle(iSigNo, pvCtx);                                 /*  XXX 是否传入 pvCtx 参数 ?   */
         }
     
