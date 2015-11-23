@@ -42,13 +42,13 @@ PVOID  _PartitionAllocate (PLW_CLASS_PARTITION  p_part)
     ppmonoHeader = &p_part->PARTITION_pmonoFreeBlockList;
     
     if (p_part->PARTITION_pmonoFreeBlockList) {                         /*  ºÏ≤È «∑Ò¥Ê‘⁄ø’œ–øÈ          */
-    
         pmonoAllocate = _list_mono_allocate(ppmonoHeader);
         pvRet = (PVOID)pmonoAllocate;
     
         p_part->PARTITION_ulFreeBlockCounter--;                         /*  ø’œ–øÈºı“ª                  */
         
         return  (pvRet);
+    
     } else {
         return  (LW_NULL);
     }

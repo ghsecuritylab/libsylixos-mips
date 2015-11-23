@@ -78,7 +78,6 @@ static PVOID  getEndStack (VOID)
 
     return  ((PVOID)ptcbCur->TCB_pstkStackTop);
 }
-
 /*********************************************************************************************************
 ** 函数名称: backtrace
 ** 功能描述: 获得当前任务调用栈
@@ -92,7 +91,6 @@ static PVOID  getEndStack (VOID)
 LW_API
 int  backtrace (void **array, int size)
 {
-#if 1
     struct layout *current;
     void *__unbounded top_frame;
     void *__unbounded top_stack;
@@ -125,109 +123,8 @@ int  backtrace (void **array, int size)
     }
 
     return cnt;
-#else
-#define ABS(X) ((X)>=0?(X):(-(X)))
-    ULONG *pulFuncAddr;
-    ULONG *pulRAAddr;
-    ULONG *pulSPAddr;
-    UINT  uiRAOffset    = 0;
-    UINT  uiStatckSize  = 0;
-    UINT  uiCnt         = 0;
-
-    if (!array || size < 0) {
-        return uiCnt;
-    }
-
-    /*
-     * 获取当前RA和SP Register的Value
-     */
-    MIPS_EXEC_INS("move %0," MIPS_RA : "=r"(pulRAAddr));
-    MIPS_EXEC_INS("move %0," MIPS_SP : "=r"(pulSPAddr));
-
-    /*
-     * backtrace 是LEAF Function, 所以RA不会被占用, 因此不会将RA入栈
-     * 不用去找RA在SP中的offset值, 因此RA中的值就是call backtrace的下一条指令
-     */
-    /*
-     * 从当前函数的起始地址找堆栈大小
-     */
-    for (pulFuncAddr = (ULONG *)backtrace; ; ++pulFuncAddr) {
-        /*
-         * 0x2fbd is "addiu sp,sp", 指令是为函数开辟堆栈
-         */
-        if ((ULONG)(*pulFuncAddr & 0xffff0000) == 0x27bd0000) {
-            /*
-             * 取出堆栈大小
-             * mips堆栈是负增长
-             */
-            uiStatckSize = ABS((INT16)(*pulFuncAddr&0xffff));
-            if (uiStatckSize) {
-                break;
-            }
-        }else if ((ULONG)*pulFuncAddr == 0x3e00008) {
-            /*
-             * 0x3e00008 is "jr ra"
-             * 发现返回指令，说明已经找到头了，退出查找
-             */
-            break;
-        }
-    }
-
-    /*
-     * 找到了backtrace使用堆栈的大小, 就可以算出backtrace调用者的堆栈指针
-     */
-    pulSPAddr =(ULONG *)((ULONG)pulSPAddr + uiStatckSize);
-
-    /*
-     * 进行backtrace搜索
-     */
-    for (uiCnt = 0; uiCnt < size && pulRAAddr; uiCnt++) {
-        array[uiCnt] = pulRAAddr;
-
-        uiRAOffset = uiStatckSize = 0;
-
-        for (pulFuncAddr = pulRAAddr; uiRAOffset == 0 || uiStatckSize == 0; pulFuncAddr--) {
-            /*
-             * Get Instruction
-             */
-            switch (*pulFuncAddr&0xffff0000) {
-            /*
-             * 找到开辟堆栈的指令, 保存堆栈的值
-             */
-            case 0x27bd0000:
-                uiStatckSize = ABS((INT16)(*pulFuncAddr&0xffff));
-                break;
-
-            /*
-             * 0xafbf 是"sw ra (XX)sp"，这里就是ra存放的偏移地址
-             */
-            case 0xafbf0000:
-                uiRAOffset = (INT16)(*pulFuncAddr&0xffff);
-                break;
-
-            /*
-             * 0x3c1c 是"lui gp 找到C/C++ 函数的最后一层, 停止backtrace
-             */
-            case 0x3c1c0000:
-                return uiCnt + 1;
-                break;
-
-            default:
-                break;
-
-            }
-        }
-
-        /*
-         * 设置上一层调用者的调用本层函数的返回地址(ra的地址在上一层函数中)和堆栈地址
-         */
-        pulRAAddr =(ULONG *)((ULONG)pulRAAddr + uiRAOffset);
-        pulSPAddr =(ULONG *)((ULONG)pulSPAddr + uiStatckSize);
-    }
-
-    return uiCnt;
-#endif
 }
+
 #endif                                                                  /*  __GNUC__                    */
 /*********************************************************************************************************
   END

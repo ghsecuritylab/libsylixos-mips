@@ -49,7 +49,6 @@ VOID  _EventSetInit (VOID)
     pesTemp1->EVENTSET_ucType        = LW_TYPE_EVENT_UNUSED;
     pesTemp1->EVENTSET_plineWaitList = LW_NULL;
     pesTemp1->EVENTSET_usIndex       = 0;
-    LW_SPIN_INIT(&pesTemp1->EVENTSET_slLock);
     
     _INIT_LIST_MONO_HEAD(_K_resrcEventSet.RESRC_pmonoFreeHeader);
     
@@ -72,7 +71,6 @@ VOID  _EventSetInit (VOID)
         pesTemp1->EVENTSET_ucType        = LW_TYPE_EVENT_UNUSED;
         pesTemp1->EVENTSET_plineWaitList = LW_NULL;
         pesTemp1->EVENTSET_usIndex       = (UINT16)ulI;
-        LW_SPIN_INIT(&pesTemp1->EVENTSET_slLock);
         
         pmonoTemp1 = &pesTemp1->EVENTSET_monoResrcList;
         pmonoTemp2 = &pesTemp2->EVENTSET_monoResrcList;
@@ -86,7 +84,6 @@ VOID  _EventSetInit (VOID)
     pesTemp1->EVENTSET_ucType        = LW_TYPE_EVENT_UNUSED;
     pesTemp1->EVENTSET_plineWaitList = LW_NULL;
     pesTemp1->EVENTSET_usIndex       = (UINT16)ulI;
-    LW_SPIN_INIT(&pesTemp1->EVENTSET_slLock);
         
     pmonoTemp1 = &pesTemp1->EVENTSET_monoResrcList;
     

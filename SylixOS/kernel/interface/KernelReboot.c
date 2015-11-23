@@ -56,6 +56,7 @@ static addr_t   _K_ulRebootStartAddress;                                /*  重新
 ** 调用模块: 
 *********************************************************************************************************/
 #if LW_CFG_SMP_EN > 0
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
 
 static VOID  __makeOtherDown (VOID)
 {
@@ -77,6 +78,28 @@ static VOID  __makeOtherDown (VOID)
     } while (bNeedWait);
 }
 
+#else
+
+static VOID  __makeOtherDown (VOID)
+{
+    ULONG           i;
+    PLW_CLASS_TCB   ptcbIdle;
+    
+    for (i = 1; i < LW_NCPUS; i++) {                                    /*  除 0 以外的其他 CPU         */
+        ptcbIdle = _K_ptcbTCBIdTable[i];
+        if (LW_PRIO_IS_EQU(ptcbIdle->TCB_ucPriority, LW_PRIO_HIGHEST)) {
+            __KERNEL_ENTER();                                           /*  进入内核                    */
+            _SchedSetPrio(ptcbIdle, LW_PRIO_HIGHEST);
+            __KERNEL_EXIT();                                            /*  退出内核                    */
+            
+            while (!__LW_THREAD_IS_RUNNING(ptcbIdle)) {
+                LW_SPINLOCK_DELAY();
+            }
+        }
+    }
+}
+
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN      */
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
 /*********************************************************************************************************
 ** 函数名称: API_KernelReboot
@@ -117,6 +140,11 @@ VOID   API_KernelRebootEx (INT  iRebootType, addr_t  ulStartAddress)
 {
     INTREG  iregInterLevel;
     ULONG   ulI;
+    
+    if (iRebootType == LW_REBOOT_FORCE) {
+        archReboot(iRebootType, ulStartAddress);                        /*  调用体系架构重启操作        */
+        _BugHandle(LW_TRUE, LW_TRUE, "kernel reboot error!\r\n");       /*  不会运行到这里              */
+    }
 
     if (LW_CPU_GET_CUR_NESTING() || (API_ThreadIdSelf() != API_KernelGetExc())) {
         _excJobAdd(API_KernelRebootEx, (PVOID)iRebootType, (PVOID)ulStartAddress, 0, 0, 0, 0);

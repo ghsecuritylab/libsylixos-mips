@@ -116,15 +116,16 @@ VOID    API_SemaphoreShow (LW_OBJECT_HANDLE  ulId)
     }
     
     pevent = &_K_eventBuffer[usIndex];
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
+    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (pevent->EVENT_ucType == LW_TYPE_EVENT_UNUSED) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         fprintf(stderr, "\nInvalid semaphore id: 0x%08lx\n", ulId);
         _ErrorHandle(ERROR_KERNEL_HANDLE_NULL);                         /*  句柄类型错误                */
         return;
     }
     event = *pevent;                                                    /*  拷贝信息                    */
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     pcWaitType = (event.EVENT_ulOption & LW_OPTION_WAIT_PRIORITY)
                ? "PRIORITY" : "FIFO";
@@ -173,6 +174,7 @@ VOID    API_SemaphoreShow (LW_OBJECT_HANDLE  ulId)
     
     printf("\n");
 }
+
 #endif                                                                  /*  ((LW_CFG_SEMB_EN > 0) ||    */
                                                                         /*   (LW_CFG_SEMC_EN > 0) ||    */
                                                                         /*   (LW_CFG_SEMM_EN > 0)) &&   */

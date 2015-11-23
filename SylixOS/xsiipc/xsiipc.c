@@ -223,7 +223,7 @@ key_t  ftok(const char*  path, int  id)
 /*
  * ipc module init
  */
-void module_init (void)
+int module_init (void)
 {
     ipc_lock_mutex = API_SemaphoreMCreate("ipc_lock", LW_PRIO_DEF_CEILING,
                                           LW_OPTION_WAIT_PRIORITY | LW_OPTION_INHERIT_PRIORITY |
@@ -243,6 +243,8 @@ void module_init (void)
     ipc_msg_init();
     ipc_shm_init();
     ipc_proc_init(); /* init procfs file node */
+	
+	return  (ERROR_NONE);
 }
 
 /*

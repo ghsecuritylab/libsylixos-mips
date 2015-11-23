@@ -462,6 +462,12 @@ VOID  armCacheV7Init (LW_CACHE_OP *pcacheop,
     armL2Init(uiInstruction, uiData, pcMachineName);
 #endif                                                                  /*  LW_CFG_ARM_CACHE_L2 > 0     */
 
+#if LW_CFG_SMP_EN > 0
+    pcacheop->CACHEOP_ulOption = CACHE_TEXT_UPDATE_MP;
+#else
+    pcacheop->CACHEOP_ulOption = 0ul;
+#endif                                                                  /*  LW_CFG_SMP_EN               */
+
     uiCCSIDR                     = armCacheV7CCSIDR();
     pcacheop->CACHEOP_iCacheLine = ARMv7_CACHE_LINESIZE(uiCCSIDR);
     uiArmV7CacheLineSize         = (UINT32)pcacheop->CACHEOP_iCacheLine;

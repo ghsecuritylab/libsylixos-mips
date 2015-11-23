@@ -434,7 +434,7 @@ static INT  __ldTempFiller (LW_LD_EXEC_FILLER_ARG *pearg,
     offtRead  = (off_t)(ulMapPageAddr - ulMapStartAddr);                /*  内存地址偏移                */
     offtRead += pearg->EFILLA_oftOffset;                                /*  加上文件起始偏移            */
     
-    stReadLen = (size_t)(ulPageNum * LW_CFG_VMM_PAGE_SIZE);             /*  需要获取的数据大小          */
+    stReadLen = (size_t)(ulPageNum << LW_CFG_VMM_PAGE_SHIFT);           /*  需要获取的数据大小          */
     
     if (pearg->EFILLA_iFd >= 0) {
         ssize_t  sstNum = pread(pearg->EFILLA_iFd, 

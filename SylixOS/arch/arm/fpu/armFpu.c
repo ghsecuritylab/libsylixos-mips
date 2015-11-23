@@ -203,27 +203,23 @@ VOID  archFpuCtxShow (INT  iFd, PVOID pvFpuCtx)
 ** 功能描述: 系统发生 undef 异常时, 调用此函数. 
 **           只有某个任务或者中断, 真正使用浮点运算时 (即运行到浮点运算指令产生异常)
 **           这时才可以打开浮点运算库.
-** 输　入  : NONE
+** 输　入  : ptcbCur   当前任务 TCB
 ** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-INT  archFpuUndHandle (VOID)
+INT  archFpuUndHandle (PLW_CLASS_TCB  ptcbCur)
 {
-    PLW_CLASS_TCB   ptcbCur;
-    
-    LW_TCB_GET_CUR_SAFE(ptcbCur);
-    
     if (ARM_VFP_ISENABLE(_G_pfpuop)) {                                  /*  如果当前上下文 FPU 使能     */
         return  (PX_ERROR);                                             /*  此未定义指令与 FPU 无关     */
     }
     
     ptcbCur->TCB_ulOption |= LW_OPTION_THREAD_USED_FP;
-    
     ARM_VFP_ENABLE(_G_pfpuop);                                          /*  使能 FPU                    */
     
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
 /*********************************************************************************************************
   END

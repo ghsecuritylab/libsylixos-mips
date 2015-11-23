@@ -114,8 +114,6 @@ typedef struct {
     
     LW_HOOK_FUNC          HOOK_StkOverflow;                             /*  线程堆栈溢出                */
     LW_HOOK_FUNC          HOOK_FatalError;                              /*  段错误                      */
-    
-    LW_SPINLOCK_DEFINE   (HOOK_slLock);                                 /*  自旋锁                      */
 } LW_CLASS_HOOK;
 
 /*********************************************************************************************************
@@ -208,7 +206,6 @@ typedef struct {                                                        /*  事件
     UINT16               EVENTSET_usIndex;                              /*  数组中的索引                */
     CHAR                 EVENTSET_cEventSetName[LW_CFG_OBJECT_NAME_SIZE];
                                                                         /*  事件标志组名                */
-    LW_SPINLOCK_DEFINE  (EVENTSET_slLock);                              /*  自旋锁                      */
 } LW_CLASS_EVENTSET;
 typedef LW_CLASS_EVENTSET *PLW_CLASS_EVENTSET;
 
@@ -268,7 +265,6 @@ typedef struct {
     LW_CLASS_WAITQUEUE    EVENT_wqWaitList;                             /*  等待队列                    */
     UINT16                EVENT_usIndex;                                /*  缓冲区中的下标              */
     CHAR                  EVENT_cEventName[LW_CFG_OBJECT_NAME_SIZE];    /*  事件名                      */
-    LW_SPINLOCK_DEFINE   (EVENT_slLock);                                /*  自旋锁                      */
 } LW_CLASS_EVENT;
 typedef LW_CLASS_EVENT   *PLW_CLASS_EVENT;
 
@@ -307,7 +303,6 @@ typedef struct {
     LW_LIST_RING          COROUTINE_ringRoutine;                        /*  协程中的协程列表            */
     PVOID                 COROUTINE_pvArg;                              /*  协程运行参数                */
     BOOL                  COROUTINE_bIsNeedFree;                        /*  是否需要进行单独的释放操作  */
-    LW_SPINLOCK_DEFINE   (COROUTINE_slLock);                            /*  自旋锁                      */
 } LW_CLASS_COROUTINE;
 typedef LW_CLASS_COROUTINE     *PLW_CLASS_COROUTINE;
 
@@ -646,6 +641,7 @@ typedef struct __lw_tcb {
 #if LW_CFG_GDB_EN > 0
     addr_t               TCB_ulStepAddr;                                /*  单步地址，-1 表示非单步模式 */
     ULONG                TCB_ulStepInst;                                /*  单步地址指令备份            */
+    BOOL                 TCB_bStepClear;                                /*  单步断点是否被清除          */
 #endif
 
 /*********************************************************************************************************
@@ -804,7 +800,6 @@ typedef struct {
     UINT16               RMS_usIndex;                                   /*  下标                        */
 
     CHAR                 RMS_cRmsName[LW_CFG_OBJECT_NAME_SIZE];         /*  名字                        */
-    LW_SPINLOCK_DEFINE  (RMS_slLock);                                   /*  自旋锁                      */
 } LW_CLASS_RMS;
 typedef LW_CLASS_RMS    *PLW_CLASS_RMS;
 
@@ -880,7 +875,19 @@ typedef struct {
     volatile PLW_CLASS_TCB  CAND_ptcbCand;                              /*  候选运行线程                */
     volatile BOOL           CAND_bNeedRotate;                           /*  可能产生了优先级卷绕        */
 } LW_CLASS_CAND;
-typedef LW_CLASS_CAND  *PLW_CLASS_CAND;
+typedef LW_CLASS_CAND      *PLW_CLASS_CAND;
+
+/*********************************************************************************************************
+  内核锁结构
+*********************************************************************************************************/
+
+typedef struct {
+    LW_SPINLOCK_DEFINE     (KERN_slLock);
+    PVOID                   KERN_pvCpuOwner;
+    LW_OBJECT_HANDLE        KERN_ulKernelOwner;
+    CPCHAR                  KERN_ulKernelEnterFunc;
+} LW_CLASS_KERNLOCK;
+typedef LW_CLASS_KERNLOCK  *PLW_CLASS_KERNLOCK;
 
 #endif                                                                  /*  __SYLIXOS_KERNEL            */
 #endif                                                                  /*  __K_CLASS_H                 */

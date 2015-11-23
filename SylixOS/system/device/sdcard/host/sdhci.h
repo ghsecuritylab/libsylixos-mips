@@ -28,6 +28,7 @@
 2011.06.01  访问寄存器的与硬件平台相关的函数采用回调方式,由驱动实现.
             今天是六一儿童节,回想起咱的童年,哎,一去不复返.祝福天下的小朋友们茁壮成长,健康快乐.
 2014.11.14  为支持 SDIO 和加入 SDM 模块管理, 修改了相关数据结构. 同时删除了一些 API, 改为内部使用
+2015.11.20  增加对特殊总线位宽的支持.
 *********************************************************************************************************/
 
 #ifndef __SDHCI_H
@@ -132,6 +133,7 @@
 #define SDHCI_HCTRL_LED                 0x01
 #define SDHCI_HCTRL_4BITBUS             0x02
 #define SDHCI_HCTRL_HISPD               0x04
+#define SDHCI_HCTRL_8BITBUS             0x20                            /*  just in v3.0 spec           */
 #define SDHCI_HCTRL_DMA_MASK            0x18
 #define SDHCI_HCTRL_SDMA                0x00
 #define SDHCI_HCTRL_ADMA1               0x08
@@ -464,8 +466,15 @@ struct _sdhci_quirk_op;
 typedef struct _sdhci_quirk_op SDHCI_QUIRK_OP;
 
 typedef struct lw_sdhci_host_attr {
+
+    /*
+     * SDHCIHOST_pdrvfuncs 为控制器寄存器访问驱动函数
+     * 通常情况下驱动程序可不提供, 内部根据
+     * SDHCIHOST_iRegAccessType 使用相应的默认驱动
+     *
+     * 但为了最大的适应性, 驱动程序也可使用自己的寄存器访问驱动
+     */
     SDHCI_DRV_FUNCS *SDHCIHOST_pdrvfuncs;                               /*  标准主控驱动函数结构指针    */
-                                                                        /*  内部使用 驱动无需提供       */
     INT              SDHCIHOST_iRegAccessType;                          /*  寄存器访问类型              */
 #define SDHCI_REGACCESS_TYPE_IO         0
 #define SDHCI_REGACCESS_TYPE_MEM        1
@@ -497,6 +506,9 @@ typedef struct lw_sdhci_host_attr {
 #define SDHCI_QUIRK_FLG_DONOT_SET_VOLTAGE                     (1 << 7)  /*  不操作控制器的电压          */
 #define SDHCI_QUIRK_FLG_CANNOT_SDIO_INT                       (1 << 8)  /*  控制器不能发出 SDIO 中断    */
 #define SDHCI_QUIRK_FLG_RECHECK_INTS_AFTER_ISR                (1 << 9)  /*  中断服务后再次处理中断状态  */
+#define SDHCI_QUIRK_FLG_CAN_DATA_8BIT                         (1 << 10) /*  支持8位数据传输             */
+#define SDHCI_QUIRK_FLG_CAN_DATA_4BIT_DDR                     (1 << 11) /*  支持4位ddr数据传输          */
+#define SDHCI_QUIRK_FLG_CAN_DATA_8BIT_DDR                     (1 << 12) /*  支持8位ddr数据传输          */
 
     VOID            *SDHCIHOST_pvUsrSpec;                               /*  用户驱动特殊数据            */
 } LW_SDHCI_HOST_ATTR, *PLW_SDHCI_HOST_ATTR;
@@ -510,46 +522,52 @@ typedef struct lw_sdhci_host_attr {
 struct _sdhci_drv_funcs {
     UINT32        (*sdhciReadL)
                   (
+                  PLW_SDHCI_HOST_ATTR   psdhcihostattr,
                   ULONG                 ulReg
                   );
     UINT16        (*sdhciReadW)
                   (
+                  PLW_SDHCI_HOST_ATTR   psdhcihostattr,
                   ULONG                 ulReg
                   );
     UINT8         (*sdhciReadB)
                   (
+                  PLW_SDHCI_HOST_ATTR   psdhcihostattr,
                   ULONG                 ulReg
                   );
     VOID          (*sdhciWriteL)
                   (
+                  PLW_SDHCI_HOST_ATTR   psdhcihostattr,
                   ULONG                 ulReg,
                   UINT32                uiLword
                   );
     VOID          (*sdhciWriteW)
                   (
-                  ULONG                ulReg,
-                  UINT16               usWord
+                  PLW_SDHCI_HOST_ATTR   psdhcihostattr,
+                  ULONG                 ulReg,
+                  UINT16                usWord
                   );
     VOID          (*sdhciWriteB)
                   (
-                  ULONG                ulReg,
-                  UINT8                ucByte
+                  PLW_SDHCI_HOST_ATTR   psdhcihostattr,
+                  ULONG                 ulReg,
+                  UINT8                 ucByte
                   );
 };
 
 #define SDHCI_READL(pattr, lReg)           \
-        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciReadL)((pattr)->SDHCIHOST_ulBasePoint + lReg)
+        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciReadL)(pattr, lReg)
 #define SDHCI_READW(pattr, lReg)           \
-        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciReadW)((pattr)->SDHCIHOST_ulBasePoint + lReg)
+        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciReadW)(pattr, lReg)
 #define SDHCI_READB(pattr, lReg)           \
-        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciReadB)((pattr)->SDHCIHOST_ulBasePoint + lReg)
+        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciReadB)(pattr, lReg)
 
 #define SDHCI_WRITEL(pattr, lReg, uiLword) \
-        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciWriteL)((pattr)->SDHCIHOST_ulBasePoint + lReg, uiLword)
+        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciWriteL)(pattr, lReg, uiLword)
 #define SDHCI_WRITEW(pattr, lReg, usWord)  \
-        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciWriteW)((pattr)->SDHCIHOST_ulBasePoint + lReg, usWord)
+        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciWriteW)(pattr, lReg, usWord)
 #define SDHCI_WRITEB(pattr, lReg, ucByte)  \
-        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciWriteB)((pattr)->SDHCIHOST_ulBasePoint + lReg, ucByte)
+        ((pattr)->SDHCIHOST_pdrvfuncs->sdhciWriteB)(pattr, lReg, ucByte)
 
 /*********************************************************************************************************
   SD 标准主控为兼容一些不符合标准的怪异(quirk)行为 或 有些由硬件自行定义的特性 操作

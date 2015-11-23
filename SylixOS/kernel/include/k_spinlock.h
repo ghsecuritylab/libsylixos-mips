@@ -41,43 +41,36 @@
   
   2: 对资源的获取要有顺序, 否则就会出现多核死锁!
   
-     例如: 
-           LW_SPINLOCK_LOCK_IRQ();
+     例如: LW_SPINLOCK_LOCK_IRQ();
            __KERNEL_ENTER();
-           
            ...
-           
            LW_SPINLOCK_UNLOCK_IRQ();    ----- 危险!(其他 CPU 会立即获得 spinlock 保护资源的访问权)
-           ...                                     (然后其他 CPU 准备获取内核访问权时, 产生死锁! )
-           LW_SPINLOCK_LOCK_IRQ();      ----- 危险!
-           
-           ...
-           
-           LW_SPINLOCK_UNLOCK_IRQ();
-           __KERNEL_EXIT();
+                                                   (然后其他 CPU 准备获取内核访问权时, 产生死锁! )
            
     以上代码序列需要改成:
            
-           LW_SPINLOCK_LOCK_IRQ();      ----- (1)
-           __KERNEL_ENTER();            ----- (2)
-           
+           1:
+           LW_SPINLOCK_LOCK_IRQ();
+           __KERNEL_ENTER();
            ...
+           __KERNEL_EXIT();
+           LW_SPINLOCK_UNLOCK_IRQ();
            
-           KN_INT_ENABLE();             ----- 安全!
+           或者
+           
+           2:
+           __KERNEL_ENTER();
+           LW_SPINLOCK_LOCK_IRQ();
            ...
-           KN_INT_DISABLE();            ----- 安全!
+           LW_SPINLOCK_UNLOCK_IRQ();
+           __KERNEL_EXIT();
            
-           ...
-           LW_SPINLOCK_UNLOCK_IRQ();    ----- (3)
-           __KERNEL_EXIT();             ----- (4)
-           
-    在进入(锁定)内核后, 不能轻易的释放 spinlock, 这样可能引起多核的竞争, 只有在确定退出的前提下才能
-    释放!
+           但是必须注意在一个 spinlock 的使用上, 必须统一为 1 或者 2 的顺序.
     
   操作系统对多核大体分为两种互斥资源: 
   
-    1: 应用模块各自的 spinlock, 例如: 信号量, 消息队列, ... 
-    2: 内核核心数据结构 spinlock, 例如: 就绪任务队列, 中断控制等等核心数据. ...
+    1: 应用模块 spinlock
+    2: 内核数据 spinlock
     
     spinlock 获取的顺序一定是从 1 -> 2, 这样才能有效避免多核资源死锁.
     
@@ -100,7 +93,7 @@
     
     为了提高系统的效率, 需要在移植层判断 Owner 字段, 并进行重入处理.
     
-  注意3: 
+  注意 3: 
     SylixOS 系统提供了一组 QUICK 接口, 需要说明的是 LW_SPIN_UNLOCK_QUICK() 不会尝试调度, 因为程序判断
     在锁定 spinlock 的过程中, 绝不会发送任务状态迁移的操作, 或者接下来的程序将马上进行真正的调度尝试.
 *********************************************************************************************************/
@@ -153,16 +146,35 @@ INT     _SmpSpinUnlockTask(spinlock_t *psl);
 #define LW_SPIN_UNLOCK_TASK(psl)            _SmpSpinUnlockTask(psl)
 
 /*********************************************************************************************************
-  SMP 调度器切换完成后专用释放函数
+  SMP 内核锁操作.
 *********************************************************************************************************/
 
-struct __lw_tcb;
-VOID  _SmpSpinUnlockSched(spinlock_t *psl, struct __lw_tcb *ptcbOwner);
-#define LW_SPIN_UNLOCK_SCHED(psl, ptcb)     _SmpSpinUnlockSched(psl, ptcb)
+struct  __lw_tcb;
+VOID    _SmpKernelLock(VOID);
+VOID    _SmpKernelUnlock(VOID);
+
+VOID    _SmpKernelLockIgnIrq(VOID);
+VOID    _SmpKernelUnlockIgnIrq(VOID);
+
+VOID    _SmpKernelLockQuick(INTREG  *piregInterLevel);
+VOID    _SmpKernelUnlockQuick(INTREG  iregInterLevel);
+
+VOID    _SmpKernelUnlockSched(struct __lw_tcb *ptcbOwner);
+
+#define LW_SPIN_KERN_LOCK()                 _SmpKernelLock()
+#define LW_SPIN_KERN_UNLOCK()               _SmpKernelUnlock()
+
+#define LW_SPIN_KERN_LOCK_IGNIRQ()          _SmpKernelLockIgnIrq()
+#define LW_SPIN_KERN_UNLOCK_IGNIRQ()        _SmpKernelUnlockIgnIrq()
+
+#define LW_SPIN_KERN_LOCK_QUICK(pireg)      _SmpKernelLockQuick(pireg)
+#define LW_SPIN_KERN_UNLOCK_QUICK(ireg)     _SmpKernelUnlockQuick(ireg)
+
+#define LW_SPIN_KERN_UNLOCK_SCHED(ptcb)     _SmpKernelUnlockSched(ptcb)
 
 #else
 /*********************************************************************************************************
-  单处理器系统
+  单处理器伪自旋锁
 *********************************************************************************************************/
 
 VOID    _UpSpinInit(spinlock_t *psl);
@@ -202,12 +214,31 @@ VOID    _UpSpinUnlockIrqQuick(spinlock_t *psl, INTREG  iregInterLevel);
 #define LW_SPIN_UNLOCK_TASK(psl)            _UpSpinUnlock(psl)
 
 /*********************************************************************************************************
-  单处理器调度器切换完成后专用释放函数
+  单处理器内核锁操作
 *********************************************************************************************************/
 
-struct __lw_tcb;
-VOID  _UpSpinUnlockSched(spinlock_t *psl, struct __lw_tcb *ptcbOwner);
-#define LW_SPIN_UNLOCK_SCHED(psl, ptcb)     _UpSpinUnlockSched(psl, ptcb)
+struct  __lw_tcb;
+VOID    _UpKernelLock(VOID);
+VOID    _UpKernelUnlock(VOID);
+
+VOID    _UpKernelLockIgnIrq(VOID);
+VOID    _UpKernelUnlockIgnIrq(VOID);
+
+VOID    _UpKernelLockQuick(INTREG  *piregInterLevel);
+VOID    _UpKernelUnlockQuick(INTREG  iregInterLevel);
+
+VOID    _UpKernelUnlockSched(struct __lw_tcb *ptcbOwner);
+
+#define LW_SPIN_KERN_LOCK()                 _UpKernelLock()
+#define LW_SPIN_KERN_UNLOCK()               _UpKernelUnlock()
+
+#define LW_SPIN_KERN_LOCK_IGNIRQ()          _UpKernelLockIgnIrq()
+#define LW_SPIN_KERN_UNLOCK_IGNIRQ()        _UpKernelUnlockIgnIrq()
+
+#define LW_SPIN_KERN_LOCK_QUICK(pireg)      _UpKernelLockQuick(pireg)
+#define LW_SPIN_KERN_UNLOCK_QUICK(ireg)     _UpKernelUnlockQuick(ireg)
+
+#define LW_SPIN_KERN_UNLOCK_SCHED(ptcb)     _UpKernelUnlockSched(ptcb)
 
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 #endif                                                                  /*  __K_SPINLOCK_H              */

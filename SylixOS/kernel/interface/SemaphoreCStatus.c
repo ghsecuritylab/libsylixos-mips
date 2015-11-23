@@ -53,12 +53,12 @@ ULONG  API_SemaphoreCStatus (LW_OBJECT_HANDLE   ulId,
     usIndex = _ObjectGetIndex(ulId);
     
 #if LW_CFG_ARG_CHK_EN > 0
-    if (!_ObjectClassOK(ulId, _OBJECT_SEM_C)) {                             /*  类型是否正确            */
+    if (!_ObjectClassOK(ulId, _OBJECT_SEM_C)) {                         /*  类型是否正确                */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_KERNEL_HANDLE_NULL);
         return  (ERROR_KERNEL_HANDLE_NULL);
     }
-    if (_Event_Index_Invalid(usIndex)) {                                    /*  下标是否正正确          */
+    if (_Event_Index_Invalid(usIndex)) {                                /*  下标是否正正确              */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_KERNEL_HANDLE_NULL);
         return  (ERROR_KERNEL_HANDLE_NULL);
@@ -66,10 +66,9 @@ ULONG  API_SemaphoreCStatus (LW_OBJECT_HANDLE   ulId,
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMC)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
         return  (ERROR_EVENT_TYPE);
@@ -84,8 +83,7 @@ ULONG  API_SemaphoreCStatus (LW_OBJECT_HANDLE   ulId,
     if (pulThreadBlockNum) {
         *pulThreadBlockNum = _EventWaitNum(pevent);
     }
-    
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     return  (ERROR_NONE);
 }

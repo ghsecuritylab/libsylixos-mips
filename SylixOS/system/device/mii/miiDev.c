@@ -17,6 +17,9 @@
 ** 文件创建日期: 2010 年 08 月 13 日
 **
 ** 描        述: MII 总线库
+**
+** BUG:
+2015.09.22  修正未主动上报首次状态的错误, 避免首次状态的丢失.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -1199,8 +1202,9 @@ INT API_MiiPhyMonitorStart (VOID)
 LW_API  
 INT API_MiiPhyInit (PHY_DEV *pPhyDev)
 {
-    INT iRet = MII_OK;
-
+    INT 		iRet        = MII_OK;
+    UINT16		usPhyStatus = 0;
+	
     if (pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncRead  == LW_NULL ||
         pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncWrite == LW_NULL ||
         pPhyDev->PHY_pvMacDrv == LW_NULL) {
@@ -1230,11 +1234,24 @@ INT API_MiiPhyInit (PHY_DEV *pPhyDev)
         _DebugHandle(__LOGMESSAGE_LEVEL, "mii: found phy, but Link-Down.\r\n");
     }
 
+	usPhyStatus = pPhyDev->PHY_usPhyStatus;								/* Remember Link Status         */
+																		/* Get The New Status			*/
     if (MII_READ(pPhyDev->PHY_ucPhyAddr, MII_STAT_REG, &pPhyDev->PHY_usPhyStatus) != MII_OK) {
-                                                                        /* Remember Link Status         */
         return  (MII_ERROR);
     }
-
+	if ((pPhyDev->PHY_usPhyStatus & MII_SR_LINK_STATUS) !=
+		(usPhyStatus & MII_SR_LINK_STATUS)) {							/* Check Whether Status Changes */
+		MII_DEBUG_ADDR("mii: link change stat=0x%02x.\r\n",
+						pPhyDev->PHY_usPhyStatus);
+		/*
+		 * Tell the Mac Driver
+		 */
+		if (pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncLinkDown != LW_NULL) {
+			API_NetJobAdd((VOIDFUNCPTR)(pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncLinkDown),
+						  (PVOID)(pPhyDev->PHY_pvMacDrv), 0, 0, 0, 0, 0);
+		}
+	}
+			
     MII_PHY_FLAGS_SET(MII_PHY_INIT);
 
     return  (iRet);                                                     /*  MII_ERROR or MII_OK         */

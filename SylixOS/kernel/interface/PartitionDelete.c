@@ -102,13 +102,11 @@ ULONG  API_PartitionDeleteEx (LW_OBJECT_HANDLE   *pulId, BOOL  bForce)
     _DebugFormat(__LOGMESSAGE_LEVEL, "partition \"%s\" has been delete.\r\n", 
                  p_part->PARTITION_cPatitionName);
     
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
-    _Free_Partition_Object(p_part);                                     /*  交还控制块                  */
-    
     LW_SPIN_UNLOCK_QUICK(&p_part->PARTITION_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
     
-    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    __KERNEL_MODE_PROC(
+        _Free_Partition_Object(p_part);                                 /*  交还控制块                  */
+    );
     
     MONITOR_EVT_LONG1(MONITOR_EVENT_ID_PART, MONITOR_EVENT_REGION_DELETE, ulId, LW_NULL);
     
@@ -131,6 +129,7 @@ ULONG  API_PartitionDelete (LW_OBJECT_HANDLE   *pulId)
 {
     return  (API_PartitionDeleteEx(pulId, LW_FALSE));
 }
+
 #endif                                                                  /*  (LW_CFG_PARTITION_EN > 0)   */
                                                                         /*  (LW_CFG_MAX_PARTITIONS > 0) */
 /*********************************************************************************************************

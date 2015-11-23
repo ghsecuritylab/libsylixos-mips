@@ -189,11 +189,13 @@ LW_API PVOID        API_VmmMallocAreaAlign(size_t stSize, size_t stAlign,
 LW_API VOID         API_VmmFreeArea(PVOID  pvVirtualMem);               /*  回收虚拟连续内存            */
 
 LW_API ULONG        API_VmmExpandArea(PVOID  pvVirtualMem, size_t  stExpSize);
-
+                                                                        /*  扩展虚拟内存分区            */
 LW_API PVOID        API_VmmSplitArea(PVOID  pvVirtualMem, size_t  stSize);
-
+                                                                        /*  拆分虚拟内存分区            */
 LW_API ULONG        API_VmmMergeArea(PVOID  pvVirtualMem1, PVOID  pvVirtualMem2);
-
+                                                                        /*  合并虚拟内存分区            */
+LW_API ULONG        API_VmmMoveArea(PVOID  pvVirtualTo, PVOID  pvVirtualFrom);
+                                                                        /*  移动虚拟内存分区            */
 LW_API ULONG        API_VmmPCountInArea(PVOID  pvVirtualMem, ULONG  *pulPageNum);
                                                                         /*  统计缺页中断分配的内存页面  */
 

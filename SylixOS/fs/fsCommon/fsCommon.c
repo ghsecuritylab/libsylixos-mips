@@ -176,7 +176,7 @@ VOID  __fsDiskLinkCounterAdd (PLW_BLK_DEV  pblkd)
     PLW_BLK_DEV  pblkdPhy;
 
     __LW_ATOMIC_LOCK(iregInterLevel);
-    if (pblkd->BLKD_iLogic) {
+    if (pblkd->BLKD_pvLink) {
         pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;                     /*  获得物理设备连接            */
         pblkdPhy->BLKD_uiLinkCounter++;
         if (pblkdPhy->BLKD_uiLinkCounter == 1) {
@@ -202,13 +202,38 @@ VOID  __fsDiskLinkCounterDec (PLW_BLK_DEV  pblkd)
     PLW_BLK_DEV  pblkdPhy;
 
     __LW_ATOMIC_LOCK(iregInterLevel);
-    if (pblkd->BLKD_iLogic) {
+    if (pblkd->BLKD_pvLink) {
         pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;                     /*  获得物理设备连接            */
         pblkdPhy->BLKD_uiLinkCounter--;
     } else {
         pblkd->BLKD_uiLinkCounter--;
     }
     __LW_ATOMIC_UNLOCK(iregInterLevel);
+}
+/*********************************************************************************************************
+** 函数名称: __fsDiskLinkCounterGet
+** 功能描述: 获取物理磁盘链接数量
+** 输　入  : pblkd           块设备控制块
+** 输　出  : 物理磁盘连接数量
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+UINT  __fsDiskLinkCounterGet (PLW_BLK_DEV  pblkd)
+{
+    INTREG       iregInterLevel;
+    PLW_BLK_DEV  pblkdPhy;
+    UINT         uiRet;
+
+    __LW_ATOMIC_LOCK(iregInterLevel);
+    if (pblkd->BLKD_pvLink) {
+        pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;                     /*  获得物理设备连接            */
+        uiRet    = pblkdPhy->BLKD_uiLinkCounter;
+    } else {
+        uiRet    = pblkd->BLKD_uiLinkCounter;
+    }
+    __LW_ATOMIC_UNLOCK(iregInterLevel);
+
+    return  (uiRet);
 }
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
 /*********************************************************************************************************

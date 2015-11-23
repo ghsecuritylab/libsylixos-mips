@@ -77,16 +77,13 @@ ULONG  API_EventSetDelete (LW_OBJECT_HANDLE  *pulId)
 #endif
     pes = &_K_esBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pes->EVENTSET_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_EventSet_Type_Invalid(usIndex, LW_TYPE_EVENT_EVENTSET)) {
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "eventset handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENTSET_TYPE);
         return  (ERROR_EVENTSET_TYPE);
     }
-    
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     _ObjectCloseId(pulId);                                              /*  清除句柄                    */
     
@@ -103,9 +100,7 @@ ULONG  API_EventSetDelete (LW_OBJECT_HANDLE  *pulId)
     
     _Free_EventSet_Object(pes);                                         /*  交还缓冲区                  */
     
-    LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
-    
-    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     __LW_OBJECT_DELETE_HOOK(ulId);
     
@@ -115,6 +110,7 @@ ULONG  API_EventSetDelete (LW_OBJECT_HANDLE  *pulId)
 
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  (LW_CFG_EVENTSET_EN > 0)    */
                                                                         /*  (LW_CFG_MAX_EVENTSETS > 0)  */
 /*********************************************************************************************************

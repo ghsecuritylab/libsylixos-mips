@@ -18,8 +18,9 @@
 **
 ** 描        述: MIPS 相关定义.
 *********************************************************************************************************/
-#ifndef ARCH_DEF_H_
-#define ARCH_DEF_H_
+
+#ifndef __MIPS_ARCH_DEF_H
+#define __MIPS_ARCH_DEF_H
 
 /*********************************************************************************************************
   MIPS 通用寄存器定义
@@ -59,7 +60,8 @@
 #define S8              $30                                             /* callee saved 8               */
 #define FP              S8                                              /* callee saved 8               */
 #define RA              $31                                             /* return address               */
-#else
+
+#elif defined(__SYLIXOS_KERNEL)
 #define MIPS_ZERO       "$0"                                            /* wired zero                   */
 #define MIPS_AT         "$at"                                           /* assembler temp               */
 #define MIPS_V0         "$2"                                            /* return reg 0                 */
@@ -93,7 +95,7 @@
 #define MIPS_S8         "$30"                                           /* callee saved 8               */
 #define MIPS_FP         MIPS_S8                                         /* callee saved 8               */
 #define MIPS_RA         "$31"                                           /* return address               */
-#endif
+#endif                                                                  /* __ASSEMBLY__                 */
 
 /*********************************************************************************************************
   MIPS 协处理器 0 寄存器定义
@@ -131,7 +133,8 @@
 #define CP0_TAGLO       $28
 #define CP0_TAGHI       $29
 #define CP0_ERRPC       $30
-#else
+
+#elif defined(__SYLIXOS_KERNEL)
 #define CP0_INX         "$0"                                            /*  tlb index                   */
 #define CP0_RAND        "$1"                                            /*  tlb random                  */
 #define CP0_TLBLO       "$2"                                            /*  tlb entry low               */
@@ -163,7 +166,57 @@
 #define CP0_TAGLO       "$28"
 #define CP0_TAGHI       "$29"
 #define CP0_ERRPC       "$30"
-#endif
+#endif                                                                  /*  __ASSEMBLY__                */
+
+/*********************************************************************************************************
+  MIPS 协处理器 1 寄存器定义
+*********************************************************************************************************/
+
+#if defined(__ASSEMBLY__) || defined(ASSEMBLY)
+#define FP0             $f0                                             /*  return reg 0~3              */
+#define FP1             $f1
+#define FP2             $f2
+#define FP3             $f3
+#define FP4             $f4                                             /*  caller saved 0~7            */
+#define FP5             $f5
+#define FP6             $f6
+#define FP7             $f7
+#define FP8             $f8
+#define FP9             $f9
+#define FP10            $f10
+#define FP11            $f11
+#define FP12            $f12                                            /*  arg reg 0~3                 */
+#define FP13            $f13
+#define FP14            $f14
+#define FP15            $f15
+#define FP16            $f16                                            /*  caller saved 8~11           */
+#define FP17            $f17
+#define FP18            $f18
+#define FP19            $f19
+#define FP20            $f20                                            /*  callee saved 0~11           */
+#define FP21            $f21
+#define FP22            $f22
+#define FP23            $f23
+#define FP24            $f24
+#define FP25            $f25
+#define FP26            $f26
+#define FP27            $f27
+#define FP28            $f28
+#define FP29            $f29
+#define FP30            $f30
+#define FP31            $f31
+
+#define CP1_FIR         $0                                              /*  implementation/revision reg */
+#define CP1_FCCR        $25                                             /*  Condition Code reg          */
+#define CP1_FEXR        $26                                             /*  Exception reg               */
+#define CP1_FENR        $28                                             /*  Enables reg                 */
+#define CP1_STATUS      $31                                             /*  control/status reg          */
+#endif                                                                  /*  __ASSEMBLY__                */
+
+/*********************************************************************************************************
+  MIPS defines in kernel
+*********************************************************************************************************/
+#if defined(__SYLIXOS_KERNEL) || defined(__ASSEMBLY__) || defined(ASSEMBLY)
 
 #define MIPS_EXEC_INS(ins)  __asm__ __volatile__ (ins)
 
@@ -548,7 +601,221 @@
 #define S_CcaheE0       22
 #define M_CcaheE0       (0x1 << S_CcaheE0)
 
+/*********************************************************************************************************
+ *   CP1 Implementation Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |Reserved for Additional|3|P|D|S| Implementation|   Revision    | FIR
+ * |  Configuration Bits   |D|S| | |               |               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
 
+#define S_FIRConfigS    16
+#define M_FIRConfigS    (0x1 << S_FIRConfigS)
+#define S_FIRConfigD    17
+#define M_FIRConfigD    (0x1 << S_FIRConfigD)
+#define S_FIRConfigPS   18
+#define M_FIRConfigPS   (0x1 << S_FIRConfigPS)
+#define S_FIRConfig3D   19
+#define M_FIRConfig3D   (0x1 << S_FIRConfig3D)
+#define M_FIRConfigAll  (M_FIRConfigS | M_FIRConfigD | M_FIRConfigPS | M_FIRConfig3D)
+
+#define S_FIRImp        8
+#define M_FIRImp        (0xff << S_FIRImp)
+#define S_FIRRev        0
+#define M_FIRRev        (0xff << S_FIRRev)
+
+/*********************************************************************************************************
+ *   CP1 Condition Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                      0                        |      CC       | FCCR
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_FCCRCC        0
+#define M_FCCRCC        (0xff << S_FCCRCC)
+#define S_FCCRCC7       7
+#define M_FCCRCC7       (0x1 << S_FCCRCC7)
+#define S_FCCRCC6       6
+#define M_FCCRCC6       (0x1 << S_FCCRCC6)
+#define S_FCCRCC5       5
+#define M_FCCRCC5       (0x1 << S_FCCRCC5)
+#define S_FCCRCC4       4
+#define M_FCCRCC4       (0x1 << S_FCCRCC4)
+#define S_FCCRCC3       3
+#define M_FCCRCC3       (0x1 << S_FCCRCC3)
+#define S_FCCRCC2       2
+#define M_FCCRCC2       (0x1 << S_FCCRCC2)
+#define S_FCCRCC1       1
+#define M_FCCRCC1       (0x1 << S_FCCRCC1)
+#define S_FCCRCC0       0
+#define M_FCCRCC0       (0x1 << S_FCCRCC0)
+
+/*********************************************************************************************************
+ *   CP1 Exception Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |             0             |   Cause   |    0    |  Flags  | 0 | FEXR
+ * |                           |E|V|Z|O|U|I|         |V|Z|O|U|I|   |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_FEXRExc       12
+#define M_FEXRExc       (0x3f << S_FEXRExc)
+#define S_FEXRExcE      17
+#define M_FEXRExcE      (0x1 << S_FEXRExcE)
+#define S_FEXRExcV      16
+#define M_FEXRExcV      (0x1 << S_FEXRExcV)
+#define S_FEXRExcZ      15
+#define M_FEXRExcZ      (0x1 << S_FEXRExcZ)
+#define S_FEXRExcO      14
+#define M_FEXRExcO      (0x1 << S_FEXRExcO)
+#define S_FEXRExcU      13
+#define M_FEXRExcU      (0x1 << S_FEXRExcU)
+#define S_FEXRExcI      12
+#define M_FEXRExcI      (0x1 << S_FEXRExcI)
+
+#define S_FEXRFlg       2
+#define M_FEXRFlg       (0x1f << S_FEXRFlg)
+#define S_FEXRFlgV      6
+#define M_FEXRFlgV      (0x1 << S_FEXRFlgV)
+#define S_FEXRFlgZ      5
+#define M_FEXRFlgZ      (0x1 << S_FEXRFlgZ)
+#define S_FEXRFlgO      4
+#define M_FEXRFlgO      (0x1 << S_FEXRFlgO)
+#define S_FEXRFlgU      3
+#define M_FEXRFlgU      (0x1 << S_FEXRFlgU)
+#define S_FEXRFlgI      2
+#define M_FEXRFlgI      (0x1 << S_FEXRFlgI)
+
+/*********************************************************************************************************
+ *   CP1 Enables Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                   0                   | Enables |   0   |F|RM | FENR
+ * |                                       |V|Z|O|U|I|       |S|   |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_FENREna       7
+#define M_FENREna       (0x1f << S_FENREna)
+#define S_FENREnaV      11
+#define M_FENREnaV      (0x1 << S_FENREnaV)
+#define S_FENREnaZ      10
+#define M_FENREnaZ      (0x1 << S_FENREnaZ)
+#define S_FENREnaO      9
+#define M_FENREnaO      (0x1 << S_FENREnaO)
+#define S_FENREnaU      8
+#define M_FENREnaU      (0x1 << S_FENREnaU)
+#define S_FENREnaI      7
+#define M_FENREnaI      (0x1 << S_FENREnaI)
+
+#define S_FENRFS        2
+#define M_FENRFS        (0x1 << S_FENRFS)
+
+#define S_FENRRM        0
+#define M_FENRRM        (0x3 << S_FENRRM)
+
+/*********************************************************************************************************
+ *   CP1 Control/Status Register
+ *
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |     FCC     |F|C|Imp|  0  |   Cause   | Enables |  Flags  | RM| FCSR
+ * |7|6|5|4|3|2|1|S|C|   |     |E|V|Z|O|U|I|V|Z|O|U|I|V|Z|O|U|I|   |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*********************************************************************************************************/
+
+#define S_FCSRFCC7_1    25                                              /*  Floating point condition    */
+#define M_FCSRFCC7_1    (0x7f << S_FCSRFCC7_1)                          /*  codes 7..1 (R/W)            */
+#define S_FCSRCC7       31
+#define M_FCSRCC7       (0x1 << S_FCSRCC7)
+#define S_FCSRCC6       30
+#define M_FCSRCC6       (0x1 << S_FCSRCC6)
+#define S_FCSRCC5       29
+#define M_FCSRCC5       (0x1 << S_FCSRCC5)
+#define S_FCSRCC4       28
+#define M_FCSRCC4       (0x1 << S_FCSRCC4)
+#define S_FCSRCC3       27
+#define M_FCSRCC3       (0x1 << S_FCSRCC3)
+#define S_FCSRCC2       26
+#define M_FCSRCC2       (0x1 << S_FCSRCC2)
+
+#define S_FCSRCC1       25
+#define M_FCSRCC1       (0x1 << S_FCSRCC1)
+#define S_FCSRFS        24                                              /*  Flush denorms to zero (R/W) */
+#define M_FCSRFS        (0x1 << S_FCSRFS)
+
+#define S_FCSRCC0       23                                              /*  Floating point condition    */
+#define M_FCSRCC0       (0x1 << S_FCSRCC0)                              /*  code 0 (R/W)                */
+#define S_FCSRCC        S_FCSRCC0
+#define M_FCSRCC        M_FCSRCC0
+
+#define S_FCSRImpl      21                                              /*  Implementation-specific     */
+#define M_FCSRImpl      (0x3 << S_FCSRImpl)                             /*  control bits (R/W)          */
+
+#define S_FCSRExc       12                                              /*  Exception cause (R/W)       */
+#define M_FCSRExc       (0x3f << S_FCSRExc)
+#define S_FCSRExcE      17
+#define M_FCSRExcE      (0x1 << S_FCSRExcE)
+#define S_FCSRExcV      16
+#define M_FCSRExcV      (0x1 << S_FCSRExcV)
+#define S_FCSRExcZ      15
+#define M_FCSRExcZ      (0x1 << S_FCSRExcZ)
+#define S_FCSRExcO      14
+#define M_FCSRExcO      (0x1 << S_FCSRExcO)
+#define S_FCSRExcU      13
+#define M_FCSRExcU      (0x1 << S_FCSRExcU)
+#define S_FCSRExcI      12
+#define M_FCSRExcI      (0x1 << S_FCSRExcI)
+
+#define S_FCSREna       7                                               /*  Exception enable (R/W)      */
+#define M_FCSREna       (0x1f << S_FCSREna)
+#define S_FCSREnaV      11
+#define M_FCSREnaV      (0x1 << S_FCSREnaV)
+#define S_FCSREnaZ      10
+#define M_FCSREnaZ      (0x1 << S_FCSREnaZ)
+#define S_FCSREnaO      9
+#define M_FCSREnaO      (0x1 << S_FCSREnaO)
+#define S_FCSREnaU      8
+#define M_FCSREnaU      (0x1 << S_FCSREnaU)
+#define S_FCSREnaI      7
+#define M_FCSREnaI      (0x1 << S_FCSREnaI)
+
+#define S_FCSRFlg       2                                               /*  Exception flags (R/W)       */
+#define M_FCSRFlg       (0x1f << S_FCSRFlg)
+#define S_FCSRFlgV      6
+#define M_FCSRFlgV      (0x1 << S_FCSRFlgV)
+#define S_FCSRFlgZ      5
+#define M_FCSRFlgZ      (0x1 << S_FCSRFlgZ)
+#define S_FCSRFlgO      4
+#define M_FCSRFlgO      (0x1 << S_FCSRFlgO)
+#define S_FCSRFlgU      3
+#define M_FCSRFlgU      (0x1 << S_FCSRFlgU)
+#define S_FCSRFlgI      2
+#define M_FCSRFlgI      (0x1 << S_FCSRFlgI)
+
+#define S_FCSRRM        0                                               /*  Rounding mode (R/W)         */
+#define M_FCSRRM        (0x3 << S_FCSRRM)
+
+/*********************************************************************************************************
+  Values in the rounding mode field (of both FCSR and FCCR)
+*********************************************************************************************************/
+
+#define K_FCSRRM_RN     0
+#define K_FCSRRM_RZ     1
+#define K_FCSRRM_RP     2
+#define K_FCSRRM_RM     3
 
 /*********************************************************************************************************
   Virtual Address Definitions
@@ -586,8 +853,8 @@
 #define HIT_WRITEBACK_I         0x18
 #define HIT_WRITEBACK_D         0x19
 
-
-#endif                                                                  /*  ARCH_DEF_H_                 */
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
+#endif                                                                  /*  __ARCH_DEF_H                */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

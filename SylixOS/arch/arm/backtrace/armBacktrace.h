@@ -56,7 +56,7 @@ struct layout {
 };
 
 /*********************************************************************************************************
-  arm-none-eabi-gcc eg.
+  arm-sylixos-eabi-gcc eg.
 
   void func (void)
   {

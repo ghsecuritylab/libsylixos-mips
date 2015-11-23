@@ -368,6 +368,12 @@ VOID  armCacheV6Init (LW_CACHE_OP *pcacheop,
                       CACHE_MODE   uiData, 
                       CPCHAR       pcMachineName)
 {
+#if LW_CFG_SMP_EN > 0
+    pcacheop->CACHEOP_ulOption = CACHE_TEXT_UPDATE_MP;
+#else
+    pcacheop->CACHEOP_ulOption = 0ul;
+#endif                                                                  /*  LW_CFG_SMP_EN               */
+
     pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIPT;
     pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_VIPT;
     pcacheop->CACHEOP_iCacheLine = ARMv6_CACHE_LINE_SIZE;

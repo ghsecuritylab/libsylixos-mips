@@ -34,6 +34,14 @@ INT API_SdCoreDevSendAppOpCond(PLW_SDCORE_DEVICE  psdcoredevice,
                                UINT32             uiOCR,
                                LW_SDDEV_OCR      *puiOutOCR,
                                UINT8             *pucType);
+INT API_SdCoreDevSendExtCSD(PLW_SDCORE_DEVICE  psdcoredevice, UINT8 *pucExtCsd);
+INT API_SdCoreDevSwitch(PLW_SDCORE_DEVICE      psdcoredevice,
+                        UINT8                  ucCmdSet,
+                        UINT8                  ucIndex,
+                        UINT8                  ucValue);
+INT API_SdCoreDecodeExtCSD(PLW_SDCORE_DEVICE  psdcoredevice,
+                           LW_SDDEV_CSD      *psdcsd,
+                           LW_SDDEV_EXT_CSD  *psdextcsd);
 INT API_SdCoreDevSendRelativeAddr(PLW_SDCORE_DEVICE psdcoredevice, UINT32 *puiRCA);
 INT API_SdCoreDevSendAllCID(PLW_SDCORE_DEVICE psdcoredevice, LW_SDDEV_CID *psdcid);
 INT API_SdCoreDevSendAllCSD(PLW_SDCORE_DEVICE psdcoredevice, LW_SDDEV_CSD *psdcsd);

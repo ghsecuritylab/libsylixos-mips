@@ -223,7 +223,7 @@ static INT   __gmemMmap (PLW_GM_DEVICE  pgmdev, PLW_DEV_MMAP_AREA  pdmap)
     }
     
     ulPhysical  = (addr_t)(scrinfo.GMSI_pcMem);
-    ulPhysical += (addr_t)(pdmap->DMAP_offPages * LW_CFG_VMM_PAGE_SIZE);
+    ulPhysical += (addr_t)(pdmap->DMAP_offPages << LW_CFG_VMM_PAGE_SHIFT);
     
     if (API_VmmRemapArea(pdmap->DMAP_pvAddr, (PVOID)ulPhysical, 
                          pdmap->DMAP_stLen, pgmdev->GMDEV_ulMapFlags, 

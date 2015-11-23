@@ -88,7 +88,7 @@ VOID  API_VmmPhysicalShow (VOID)
     for (i = 0; i < LW_CFG_VMM_ZONE_NUM; i++) {
         pcDma  = (_G_vmzonePhysical[i].ZONE_uiAttr & LW_ZONE_ATTR_DMA) ? "true" : "false";
         stUsed = (_G_vmzonePhysical[i].ZONE_stSize 
-               - (size_t)(_G_vmzonePhysical[i].ZONE_ulFreePage * LW_CFG_VMM_PAGE_SIZE));
+               - (size_t)(_G_vmzonePhysical[i].ZONE_ulFreePage << LW_CFG_VMM_PAGE_SHIFT));
         stUsed = (stUsed / (_G_vmzonePhysical[i].ZONE_stSize / 100));   /*  ·ÀÖ¹Òç³ö                    */
         
 #if LW_CFG_CPU_WORD_LENGHT == 64
@@ -122,9 +122,9 @@ static VOID  __vmmVirtualPrint (PLW_VMM_PAGE  pvmpage)
     addr_t  ulVirtualAddr  = pvmpage->PAGE_ulPageAddr;
     
 #if LW_CFG_CPU_WORD_LENGHT == 64
-    printf("%16lx %16lx ", ulVirtualAddr, (pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+    printf("%16lx %16lx ", ulVirtualAddr, (pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
 #else
-    printf("%08lx %8lx ", ulVirtualAddr, (pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+    printf("%08lx %8lx ", ulVirtualAddr, (pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
 #endif                                                                  /*  LW_CFG_CPU_WORD_LENGHT adj  */
 
     if (pvmpage->PAGE_ulFlags & LW_VMM_FLAG_WRITABLE) {

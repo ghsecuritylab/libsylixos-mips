@@ -131,13 +131,13 @@ VOID  archUndHandle (addr_t  ulAddr, UINT32  uiCpsr)
     }
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
     
+    LW_TCB_GET_CUR(ptcbCur);
+    
 #if LW_CFG_CPU_FPU_EN > 0
-    if (archFpuUndHandle() == ERROR_NONE) {                             /*  进行 FPU 指令探测           */
+    if (archFpuUndHandle(ptcbCur) == ERROR_NONE) {                      /*  进行 FPU 指令探测           */
         return;
     }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
-
-    LW_TCB_GET_CUR(ptcbCur);
     
     API_VmmAbortIsr(ulAddr, ulAddr, LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
 }

@@ -96,14 +96,14 @@
 
 *********************************************************************************************************/
 
-#ifdef __CC_ARM                                                         /*  armcc or arm-none-eabi-gcc  */
+#if defined(__CC_ARM) || defined(LW_CFG_CPU_ARCH_ARM)                   /*  armcc & arm-sylixos-eabi-gcc*/
 #define LW_CFG_DOUBLE_MIX_ENDIAN            0                           /*  armcc default native-endian */
 
 #elif defined(__GNUC__) && defined(__arm__)
 
 #if !defined(__VFP_FP__) || \
     (defined(__VFP_FP__) && defined(__MAVERICK__))
-#define LW_CFG_DOUBLE_MIX_ENDIAN            1                           /*  arm-none-eabi-gcc           */
+#define LW_CFG_DOUBLE_MIX_ENDIAN            1                           /*  arm-sylixos-eabi-gcc        */
                                                                         /*  old mixed-endian            */
 #else
 #define LW_CFG_DOUBLE_MIX_ENDIAN            0                           /*  native-endian               */

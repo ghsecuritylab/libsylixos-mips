@@ -31,6 +31,7 @@
 2013.01.15  sigaction 安装的信号屏蔽字, 要允许不可屏蔽的信号.
 2014.05.21  将 killTrap 改为 sigTrap 可以发送参数.
 2014.10.31  加入诸多 POSIX 规定的信号函数.
+2015.11.16  trap 信号使用 kill 发送.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -822,22 +823,22 @@ INT  raise (INT  iSigNo)
     return  (kill(API_ThreadIdSelf(), iSigNo));
 }
 /*********************************************************************************************************
-** 函数名称: sigqueue_internal
+** 函数名称: sigqueue
 ** 功能描述: 发送队列类型信号, 如果是进程, 将发送给其主线程.
 ** 输　入  : ulId                    线程 id 或者 进程号
 **           iSigNo                  信号
-**           pvSigValue              信号 value
+**           sigvalue                信号 value
 ** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
                                            API 函数
 *********************************************************************************************************/
-static INT  sigqueue_internal (LW_OBJECT_HANDLE  ulId, INT   iSigNo, PVOID  pvSigValue)
+LW_API  
+INT  sigqueue (LW_OBJECT_HANDLE  ulId, INT   iSigNo, const union sigval  sigvalue)
 {
     REGISTER UINT16             usIndex;
     REGISTER PLW_CLASS_TCB      ptcb;
              LW_SEND_VAL        sendval;
-             union sigval       sigvalue;
              
 #if LW_CFG_MODULELOADER_EN > 0
     if (ulId < LW_CFG_MAX_THREADS) {                                    /*  进程号                      */
@@ -862,7 +863,7 @@ static INT  sigqueue_internal (LW_OBJECT_HANDLE  ulId, INT   iSigNo, PVOID  pvSi
     }
     
     if (LW_CPU_GET_CUR_NESTING() || (ulId == API_ThreadIdSelf())) {
-        _excJobAdd((VOIDFUNCPTR)sigqueue_internal, (PVOID)ulId, (PVOID)iSigNo, (PVOID)pvSigValue, 
+        _excJobAdd((VOIDFUNCPTR)sigqueue, (PVOID)ulId, (PVOID)iSigNo, (PVOID)sigvalue.sival_ptr, 
                    0, 0, 0);
         return  (ERROR_NONE);
     }
@@ -888,8 +889,6 @@ static INT  sigqueue_internal (LW_OBJECT_HANDLE  ulId, INT   iSigNo, PVOID  pvSi
         _ErrorHandle(ERROR_THREAD_OTHER_DELETE);
         return  (PX_ERROR);
     }
-
-    sigvalue.sival_ptr = pvSigValue;
     
     sendval = _doSigQueue(ptcb, iSigNo, sigvalue);
 
@@ -909,32 +908,45 @@ static INT  sigqueue_internal (LW_OBJECT_HANDLE  ulId, INT   iSigNo, PVOID  pvSi
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: sigqueue
-** 功能描述: 发送队列类型信号, 如果是进程, 将发送给其主线程.
-** 输　入  : ulId                    线程 id 或者 进程号
-**           iSigNo                  信号
-**           sigvalue                信号 value
+** 函数名称: sigTrap
+** 功能描述: 向指定任务发送信号, 同时停止自己. (本程序在异常上下文中执行)
+** 输　入  : ulIdSig                  线程 id (不允许为进程号)
+**           ulIdStop                 需要等待结束的线程
+**           pvSigValue               信号参数
 ** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
-                                           API 函数
 *********************************************************************************************************/
-LW_API  
-INT  sigqueue (LW_OBJECT_HANDLE  ulId, INT   iSigNo, const union sigval  sigvalue)
+static VOID  __sig_trap (LW_OBJECT_HANDLE  ulIdSig, LW_OBJECT_HANDLE  ulIdStop, PVOID  pvSigValue)
 {
-    return  (sigqueue_internal(ulId, iSigNo, sigvalue.sival_ptr));
+#if LW_CFG_SMP_EN > 0
+    BOOL  bIsRunning;
+    
+    for (;;) {
+        if (API_ThreadIsRunning(ulIdStop, &bIsRunning)) {
+            return;
+        }
+        if (!bIsRunning) {
+            break;
+        }
+        LW_SPINLOCK_DELAY();
+    }
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+    
+    kill(ulIdSig, SIGTRAP);
 }
 /*********************************************************************************************************
 ** 函数名称: sigTrap
 ** 功能描述: 向指定任务发送信号, 同时停止自己. (本程序在异常上下文中执行)
-** 输　入  : ulId                    线程 id (不允许为进程号)
+** 输　入  : ulId                     线程 id (不允许为进程号)
+**           sigvalue                 信号参数
 ** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-INT  sigTrap (LW_OBJECT_HANDLE  ulId, const union sigval  sigvalue)
+INT  sigTrap (LW_OBJECT_HANDLE    ulId, const union sigval  sigvalue)
 {
     REGISTER PLW_CLASS_TCB  ptcbCur;
     
@@ -948,7 +960,7 @@ INT  sigTrap (LW_OBJECT_HANDLE  ulId, const union sigval  sigvalue)
     _ThreadStop(ptcbCur);
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
-    _excJobAdd((VOIDFUNCPTR)sigqueue_internal, (PVOID)ulId, (PVOID)SIGTRAP, sigvalue.sival_ptr, 0, 0, 0);
+    _excJobAdd(__sig_trap, (PVOID)ulId, (PVOID)ptcbCur->TCB_ulId, sigvalue.sival_ptr, 0, 0, 0);
     
     return  (ERROR_NONE);
 }

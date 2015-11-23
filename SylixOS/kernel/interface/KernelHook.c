@@ -25,6 +25,7 @@
 2012.09.22  加入诸多电源管理的 HOOK.
 2013.03.16  加入进程回调.
 2014.08.10  加入系统错误回调.
+2015.11.21  修正 API_KernelHookGet() 类型.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -40,15 +41,10 @@
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG  API_KernelHookGet (LW_HOOK_FUNC  hookfuncPtr, ULONG  ulOpt)
+LW_HOOK_FUNC  API_KernelHookGet (ULONG  ulOpt)
 {
-             INTREG                iregInterLevel;
-#if LW_CFG_ARG_CHK_EN > 0
-    if (!hookfuncPtr) {
-        _ErrorHandle(ERROR_KERNEL_HOOK_NULL);
-        return  (ERROR_KERNEL_HOOK_NULL);
-    }
-#endif
+    INTREG         iregInterLevel;
+    LW_HOOK_FUNC   hookfuncPtr;
         
     iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核同时关闭中断        */
     
@@ -145,11 +141,11 @@ ULONG  API_KernelHookGet (LW_HOOK_FUNC  hookfuncPtr, ULONG  ulOpt)
     default:
         __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核同时打开中断        */
         _ErrorHandle(ERROR_KERNEL_OPT_NULL);
-        return  (ERROR_KERNEL_OPT_NULL);
+        return  (LW_NULL);
     }
     
     __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核同时打开中断        */
-    return  (ERROR_NONE);
+    return  (hookfuncPtr);
 }
 /*********************************************************************************************************
 ** 函数名称: API_KernelHookSet
@@ -165,13 +161,7 @@ ULONG  API_KernelHookGet (LW_HOOK_FUNC  hookfuncPtr, ULONG  ulOpt)
 LW_API  
 ULONG  API_KernelHookSet (LW_HOOK_FUNC  hookfuncPtr, ULONG  ulOpt)
 {
-             INTREG                iregInterLevel;
-#if LW_CFG_ARG_CHK_EN > 0
-    if (!hookfuncPtr) {
-        _ErrorHandle(ERROR_KERNEL_HOOK_NULL);
-        return  (ERROR_KERNEL_HOOK_NULL);
-    }
-#endif
+    INTREG      iregInterLevel;
     
     iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核同时关闭中断        */
     

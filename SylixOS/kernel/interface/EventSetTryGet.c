@@ -30,9 +30,7 @@
   MACRO
 *********************************************************************************************************/
 #define  __EVENTSET_NOT_READY() do {                          \
-             LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock,      \
-                                    iregInterLevel);          \
-             __KERNEL_EXIT();                                 \
+             __KERNEL_EXIT_IRQ(iregInterLevel);               \
              _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);         \
              return (ERROR_THREAD_WAIT_TIMEOUT);              \
          } while (0)
@@ -97,16 +95,13 @@ ULONG  API_EventSetTryGetEx (LW_OBJECT_HANDLE  ulId,
 #endif
     pes = &_K_esBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pes->EVENTSET_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_EventSet_Type_Invalid(usIndex, LW_TYPE_EVENT_EVENTSET)) {
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "eventset handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENTSET_TYPE);
         return  (ERROR_EVENTSET_TYPE);
     }
-    
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     switch (ucWaitType) {
     
@@ -120,8 +115,7 @@ ULONG  API_EventSetTryGetEx (LW_OBJECT_HANDLE  ulId,
                 pes->EVENTSET_ulEventSets = 0ul;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
 
         } else {
@@ -139,8 +133,7 @@ ULONG  API_EventSetTryGetEx (LW_OBJECT_HANDLE  ulId,
                 pes->EVENTSET_ulEventSets = 0ul;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
 
         } else {
@@ -158,8 +151,7 @@ ULONG  API_EventSetTryGetEx (LW_OBJECT_HANDLE  ulId,
                 pes->EVENTSET_ulEventSets  = __ARCH_ULONG_MAX;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
 
         } else {
@@ -177,8 +169,7 @@ ULONG  API_EventSetTryGetEx (LW_OBJECT_HANDLE  ulId,
                 pes->EVENTSET_ulEventSets  = __ARCH_ULONG_MAX;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
             
         } else {
@@ -187,8 +178,7 @@ ULONG  API_EventSetTryGetEx (LW_OBJECT_HANDLE  ulId,
         break;
         
     default:
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_EVENTSET_WAIT_TYPE);
         return  (ERROR_EVENTSET_WAIT_TYPE);
     }

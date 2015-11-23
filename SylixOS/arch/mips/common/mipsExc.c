@@ -89,32 +89,33 @@ VOID  archIntHandle (ULONG  ulVector, BOOL  bPreemptive)
 *********************************************************************************************************/
 VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 {
-    UINT32  uiFiled             = 2 * sizeof(UINT32);
-    REGISTER UINT32  uiRegVal   = 0;
-#define PLEVEL  1
-    uiRegVal    = mipsCp0ConfigRead();
+    REGISTER UINT32  uiFiled  = 2 * sizeof(UINT32);
+    REGISTER UINT32  uiRegVal = 0;
+
+    uiRegVal = mipsCp0ConfigRead();
     mipsCp0ConfigWrite((uiRegVal & ~M_ConfigK0) | MIPS_UNCACHED);
 
-    fdprintf(PLEVEL, "%s\n", "Cache error exception:");
-    fdprintf(PLEVEL, "cp0_errorepc == %0*lx\n", uiFiled, mipsCp0ERRPCRead());
-    uiRegVal    = mipsCp0CacheErrRead();
+    _PrintFormat("%s\r\n", "Cache error exception:");
+    _PrintFormat("cp0_errorepc == %lx\r\n", uiFiled, mipsCp0ERRPCRead());
 
-    fdprintf(PLEVEL, "cp0_cacheerr == %08x\n", uiRegVal);
-    fdprintf(PLEVEL, "Decoded cp0_cacheerr: %s cache fault in %s reference.\n",
-            uiRegVal & M_CcaheLevel ? "secondary" : "primary",
-            uiRegVal & M_CcaheType ? "data" : "insn");
-    fdprintf(PLEVEL, "Error bits: %s%s%s%s%s%s%s\n",
-            uiRegVal & M_CcaheData ? "ED " : "",
-            uiRegVal & M_CcaheTag ? "ET " : "",
-            uiRegVal & M_CcaheECC ? "EE " : "",
-            uiRegVal & M_CcaheBoth ? "EB " : "",
-            uiRegVal & M_CcaheEI ? "EI " : "",
-            uiRegVal & M_CcaheE1 ? "E1 " : "",
-            uiRegVal & M_CcaheE0 ? "E0 " : "");
+    uiRegVal = mipsCp0CacheErrRead();
 
-    fdprintf(PLEVEL, "IDX: 0x%08x\n", uiRegVal & (M_CcaheE0 - 1));
+    _PrintFormat("cp0_cacheerr == 0x%08x\r\n", uiRegVal);
 
+    _PrintFormat("Decoded cp0_cacheerr: %s cache fault in %s reference.\r\n",
+                 (uiRegVal & M_CcaheLevel) ? "secondary" : "primary",
+                 (uiRegVal & M_CcaheType) ? "data" : "insn");
 
+    _PrintFormat("Error bits: %s%s%s%s%s%s%s\r\n",
+                 (uiRegVal & M_CcaheData) ? "ED " : "",
+                 (uiRegVal & M_CcaheTag) ? "ET " : "",
+                 (uiRegVal & M_CcaheECC) ? "EE " : "",
+                 (uiRegVal & M_CcaheBoth) ? "EB " : "",
+                 (uiRegVal & M_CcaheEI) ? "EI " : "",
+                 (uiRegVal & M_CcaheE1) ? "E1 " : "",
+                 (uiRegVal & M_CcaheE0) ? "E0 " : "");
+
+    _PrintFormat("IDX: 0x%08x\r\n", uiRegVal & (M_CcaheE0 - 1));
 }
 /*********************************************************************************************************
 ** 函数名称: archExceptionHandle
@@ -129,11 +130,17 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     REGISTER UINT32  uiCause     = mipsCp0CauseRead();
     REGISTER UINT32  uiExcCode   = ((uiCause & M_CauseExcCode) >> S_CauseExcCode);
     REGISTER addr_t  ulAbortAddr = mipsCp0BadVAddrRead();
+
+#if LW_CFG_GDB_EN > 0
+    REGISTER UINT    uiBpType;
+#endif                                                                  /*  LW_CFG_GDB_EN > 0           */
+
     PLW_CLASS_TCB    ptcbCur;
 
     LW_TCB_GET_CUR(ptcbCur);
 
     switch (uiExcCode) {
+
     case EX_MOD:                                                        /* TLB modified                 */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_WRITE, ptcbCur);
         break;
@@ -159,6 +166,14 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
 
     case EX_BP:                                                         /* Breakpoint                   */
     case EX_TR:                                                         /* Trap instruction             */
+#if LW_CFG_GDB_EN > 0
+        uiBpType = archDbgTrapType(ulAbortAddr, LW_NULL);               /*  断点指令探测                */
+        if (uiBpType) {
+            if (API_DtraceBreakTrap(ulAbortAddr, uiBpType) == ERROR_NONE) {
+                break;                                                  /*  进入调试接口断点处理        */
+            }
+        }
+#endif                                                                  /*  LW_CFG_GDB_EN > 0           */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BREAK, ptcbCur);
         break;
 
@@ -171,6 +186,14 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
         break;
 
     case EX_CPU:                                                        /* CoProcessor Unusable         */
+#if LW_CFG_CPU_FPU_EN > 0
+        if (archFpuUndHandle(ptcbCur) == ERROR_NONE) {                  /*  进行 FPU 指令探测           */
+            break;
+        }
+#endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+        break;
+
     case EX_OV:                                                         /* OVerflow                     */
     case EX_C2E:                                                        /* COP2 exception               */
     case EX_MDMX:                                                       /* MDMX exception               */
@@ -182,9 +205,8 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
         break;
 
     default:
-        _DebugFormat(__ERRORMESSAGE_LEVEL, "Unknow exception: %d\r\n", uiExcCode);
-        while (1) {
-        }
+        _BugFormat(LW_TRUE, LW_TRUE, "Unknow exception: %d\r\n", uiExcCode);
+        break;
     }
 }
 /*********************************************************************************************************

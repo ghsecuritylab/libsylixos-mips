@@ -75,6 +75,8 @@ LW_API INT      API_VmmMsync(PVOID  pvAddr, size_t  stLen, INT  iInval);
 
 LW_API VOID     API_VmmMmapShow(VOID);
 
+LW_API INT      API_VmmMmapPCount(pid_t  pid, size_t  *pstPhySize);
+
 #if LW_CFG_MODULELOADER_EN > 0
 LW_API VOID     API_VmmMmapReclaim(pid_t  pid);
 #endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */

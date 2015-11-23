@@ -68,10 +68,9 @@ ULONG  API_EventSetSet (LW_OBJECT_HANDLE  ulId,
 #endif
     pes = &_K_esBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pes->EVENTSET_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_EventSet_Type_Invalid(usIndex, LW_TYPE_EVENT_EVENTSET)) {
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "eventset handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENTSET_TYPE);
         return  (ERROR_EVENTSET_TYPE);
@@ -88,13 +87,11 @@ ULONG  API_EventSetSet (LW_OBJECT_HANDLE  ulId,
         break;
     
     default:
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "ulOption invalidate.\r\n");
         _ErrorHandle(ERROR_EVENTSET_OPTION);
         return  (ERROR_EVENTSET_OPTION);
     }
-    
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     for (plineList  = pes->EVENTSET_plineWaitList;                      /*  表头指针                    */
          plineList != LW_NULL;
@@ -114,7 +111,6 @@ ULONG  API_EventSetSet (LW_OBJECT_HANDLE  ulId,
                                   ulId, ((PLW_CLASS_TCB)pesn->EVENTSETNODE_ptcbMe)->TCB_ulId, 
                                   ulEvent, ulOption, LW_NULL);
                 _EventSetThreadReady(pesn, ulEventRdy);
-                
             }
             break;
             
@@ -152,10 +148,7 @@ ULONG  API_EventSetSet (LW_OBJECT_HANDLE  ulId,
             break;
         }
     }
-    
-    LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
-    
-    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     return  (ERROR_NONE);
 }

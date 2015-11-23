@@ -459,7 +459,7 @@ static void  *xinput_scan (void *arg)
 /*
  * module_init
  */
-void module_init (void)
+int module_init (void)
 {
     LW_CLASS_THREADATTR threadattr;
     char    prio_str[128];
@@ -470,11 +470,11 @@ void module_init (void)
     xinput_proc_init();
 
     if (xinput_drv()) {
-        return;
+        return  (PX_ERROR);
     }
 
     if (xinput_devadd()) {
-        return;
+        return  (PX_ERROR);
     }
 
     LW_SPIN_INIT(&xinput_sl);
@@ -492,7 +492,7 @@ void module_init (void)
 
     xinput_thread = API_ThreadCreate("t_xinput", xinput_scan, &threadattr, NULL);
 
-    return;
+    return  (ERROR_NONE);
 }
 
 void module_exit (void)

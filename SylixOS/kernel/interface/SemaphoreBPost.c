@@ -63,19 +63,15 @@ ULONG  API_SemaphoreBPost (LW_OBJECT_HANDLE  ulId)
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMB)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
         return  (ERROR_EVENT_TYPE);
     }
     
     if (_EventWaitNum(pevent)) {
-        
-        __KERNEL_ENTER();                                               /*  进入内核                    */
-        
         if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {         /*  优先级等待队列              */
             _EVENT_DEL_Q_PRIORITY(ppringList);                          /*  检查需要激活的队列          */
                                                                         /*  激活优先级等待线程          */
@@ -85,10 +81,10 @@ ULONG  API_SemaphoreBPost (LW_OBJECT_HANDLE  ulId)
             _EVENT_DEL_Q_FIFO(ppringList);                              /*  检查需要激活的FIFO队列      */
                                                                         /*  激活FIFO等待线程            */
             ptcb = _EventReadyFifoLowLevel(pevent, LW_NULL, ppringList);
-    
         }
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
         
+        KN_INT_ENABLE(iregInterLevel);                                  /*  使能中断                    */
+
         _EventReadyHighLevel(ptcb, LW_THREAD_STATUS_SEM);               /*  处理 TCB                    */
         
         MONITOR_EVT_LONG2(MONITOR_EVENT_ID_SEMB, MONITOR_EVENT_SEM_POST, 
@@ -100,12 +96,11 @@ ULONG  API_SemaphoreBPost (LW_OBJECT_HANDLE  ulId)
     } else {                                                            /*  没有线程等待                */
         if (pevent->EVENT_ulCounter == LW_FALSE) {                      /*  检查是否还有空间加          */
             pevent->EVENT_ulCounter = (ULONG)LW_TRUE;
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);  
-                                                                        /*  打开中断, 同时打开 spinlock */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
+        
         } else {                                                        /*  已经满了                    */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);  
-                                                                        /*  打开中断, 同时打开 spinlock */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             _ErrorHandle(ERROR_EVENT_FULL);
             return  (ERROR_EVENT_FULL);
         }

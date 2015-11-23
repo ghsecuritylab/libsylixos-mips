@@ -124,7 +124,13 @@
                                                                         /*  [11:08]f-grp3 for drv streng*/
                                                                         /*  [07:04]f-grp2 for cmd system*/
                                                                         /*  [03:00]f-grp1 for access mod*/
+#define SD_SWITCH_CMD_SET       0x00
+#define SD_SWITCH_SET_BITS      0x01
+#define SD_SWITCH_CLEAR_BITS    0x02
+#define SD_SWITCH_WRITE_BYTE    0x03
 
+#define SD_SWITCH_CHECK         0
+#define SD_SWITCH_SWITCH        1
 
 #define SD_EXFUNC_34			34
 #define SD_EXFUNC_35			35
@@ -180,6 +186,47 @@
 #define APP_SD_SEND_OP_COND     41                                      /*  bcr 			        R3  */
 #define APP_SET_CLR_CARD_DETECT 42                                      /*  ac  [0]SET_CD		    R1  */
 #define APP_SEND_SCR	        51                                      /*  adtc 			        R1  */
+
+/*********************************************************************************************************
+  EXT CSD ”Ú¥˙¬Î
+*********************************************************************************************************/
+
+#define EXT_CSD_BUS_WIDTH               183
+#define EXT_CSD_HS_TIMING               185
+#define EXT_CSD_CARD_TYPE               196
+#define EXT_CSD_REV                     192
+#define EXT_CSD_SEC_CNT                 212
+#define BOOT_SIZE_MULTI                 226
+
+/*********************************************************************************************************
+  EXT CSD ”Ú∂®“Â
+*********************************************************************************************************/
+#define MMC_CMD_SEND_EXT_CSD            8
+
+#define EXT_CSD_CMD_SET_NORMAL          (1<<0)
+#define EXT_CSD_CMD_SET_SECURE          (1<<1)
+#define EXT_CSD_CMD_SET_CPSECURE        (1<<2)
+
+#define EXT_CSD_CARD_TYPE_26            (1<<0)
+#define EXT_CSD_CARD_TYPE_52            (1<<1)
+#define EXT_CSD_CARD_TYPE_52_DDR_18_30  (1<<2)
+#define EXT_CSD_CARD_TYPE_52_DDR_12     (1<<3)
+
+#define EXT_CSD_BUS_WIDTH_1             0
+#define EXT_CSD_BUS_WIDTH_4             1
+#define EXT_CSD_BUS_WIDTH_8             2
+#define EXT_CSD_BUS_WIDTH_4_DDR         5
+#define EXT_CSD_BUS_WIDTH_8_DDR         6
+
+#define MMC_HS_TIMING                   0x00000100
+#define MMC_HS_52MHZ                    (0x1<<1)
+#define MMC_HS_52MHZ_1_8V_3V_IO         (0x1<<2)
+#define MMC_HS_52MHZ_1_2V_IO            (0x1<<3)
+
+#define MMC_MODE_HS                     0x001
+#define MMC_MODE_HS_52MHz               0x010
+#define MMC_MODE_HS_52MHz_DDR_18_3V     0x020
+#define MMC_MODE_HS_52MHz_DDR_12V       0x040
 
 #endif                                                                  /*  __SDSTD_H                   */
 /*********************************************************************************************************

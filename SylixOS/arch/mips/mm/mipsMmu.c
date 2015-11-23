@@ -41,8 +41,7 @@ VOID  archMmuInit (CPCHAR  pcMachineName)
 
     _DebugFormat(__LOGMESSAGE_LEVEL, "%s MMU initialization.\r\n", pcMachineName);
 
-    if ((lib_strcmp(pcMachineName, MIPS_MACHINE_NONE) == 0) ||
-        (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0)) {
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0) {
         mips32MmuInit(pmmuop, pcMachineName);
 
     } else {

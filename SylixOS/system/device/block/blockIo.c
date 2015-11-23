@@ -16,7 +16,7 @@
 **
 ** 文件创建日期: 2008 年 09 月 26 日
 **
-** 描        述: 系统块设备底层接口, 主要用于 FATFS
+** 描        述: 系统块设备底层接口, 仅供 FATFS 使用, 由于数据长度转换问题, 其他模块禁止使用.
 
 ** BUG:
 2009.03.21  逻辑设备没有物理复位, FIOUNMOUNT & 电源控制 & 弹出操作将被忽略.
@@ -300,7 +300,7 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
     switch (iCmd) {
     
     case FIOUNMOUNT:                                                    /*  卸载磁盘                    */
-        if (pblkd->BLKD_iLogic) {
+        if (pblkd->BLKD_pvLink) {
             pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;
             __LW_ATOMIC_LOCK(iregInterLevel);
             if (pblkdPhy->BLKD_uiLinkCounter == 1) {                    /*  物理设备仅当前一次挂载      */
@@ -317,7 +317,7 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
         return  (ERROR_NONE);                                           /*  多次挂载逻辑设备不需此操作  */
         
     case FIODISKINIT:
-        if (pblkd->BLKD_iLogic) {
+        if (pblkd->BLKD_pvLink) {
             pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;
             __LW_ATOMIC_LOCK(iregInterLevel);
             pblkdPhy->BLKD_uiInitCounter++;                             /*  增加初始化次数              */
@@ -355,7 +355,7 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
         
     case LW_BLKD_CTRL_POWER:
         if (lArg == LW_BLKD_POWER_ON) {                                 /*  打开电源                    */
-            if (pblkd->BLKD_iLogic) {
+            if (pblkd->BLKD_pvLink) {
                 pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;
                 __LW_ATOMIC_LOCK(iregInterLevel);
                 pblkdPhy->BLKD_uiPowerCounter++;                        /*  增加电源打开次数            */
@@ -369,7 +369,7 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
                 break;
             }
         } else {                                                        /*  断开电源                    */
-            if (pblkd->BLKD_iLogic) {
+            if (pblkd->BLKD_pvLink) {
                 pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;
                 if (pblkdPhy->BLKD_uiPowerCounter) {
                     __LW_ATOMIC_LOCK(iregInterLevel);
@@ -389,7 +389,7 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
     
     case LW_BLKD_CTRL_EJECT:
         if (pblkd->BLKD_bRemovable == LW_TRUE) {                        /*  允许移除                    */
-            if (pblkd->BLKD_iLogic) {
+            if (pblkd->BLKD_pvLink) {
                 pblkdPhy = (PLW_BLK_DEV)pblkd->BLKD_pvLink;
                 if (pblkdPhy->BLKD_uiLinkCounter == 1) {                /*  物理设备仅当前一次挂载      */
                     break;

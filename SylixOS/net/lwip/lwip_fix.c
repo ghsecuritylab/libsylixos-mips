@@ -424,7 +424,7 @@ err_t  sys_mbox_new (sys_mbox_t *pmbox, INT  size)
         return  (ERR_MEM);
     
     } else {
-        hMsgQueueSendLock = API_SemaphoreBCreate("lwip_msg_sendlock", LW_TRUE,
+        hMsgQueueSendLock = API_SemaphoreBCreate("lwip_msg_send", LW_TRUE,
                                                  LW_OPTION_WAIT_FIFO | 
                                                  LW_OPTION_OBJECT_GLOBAL, LW_NULL);
         if (hMsgQueueSendLock == LW_OBJECT_HANDLE_INVALID) {

@@ -21,6 +21,7 @@
 ** BUG:
 2011.01.10  增加SPI模式下的相关定义.
 2014.11.16  增加两个适配器 ioctl 命令, 用户停止/启动时钟.
+2015.09.22  增加8位和DDR总线设置的命令.
 *********************************************************************************************************/
 
 #ifndef __SDBUS_H
@@ -228,7 +229,7 @@ typedef struct lw_sd_data {
 #define SD_DAT_IS_STREAM(pSdDat)    ((pSdDat)->SDDAT_uiFlags  & SD_DAT_STREAM)
 #define SD_DAT_IS_WRITE(pSdDat)     (((pSdDat)->SDDAT_uiFlags & SD_DAT_WRITE) == SD_DAT_WRITE)
 #define SD_DAT_IS_READ(pSdDat)      (((pSdDat)->SDDAT_uiFlags & SD_DAT_READ)  == SD_DAT_READ)
-#define SD_DAT_IS_BOTHRW(pSdDat)    (((pSdDat)->SDDAT_uiFlags &           \
+#define SD_DAT_IS_BOTHRW(pSdDat)    (((pSdDat)->SDDAT_uiFlags &        \
                                       (SD_DAT_WRITE | SD_DAT_READ)) == \
                                       (SD_DAT_WRITE | SD_DAT_READ))
 
@@ -260,6 +261,9 @@ typedef struct lw_sd_adapter {
     INT                     SDADAPTER_iBusWidth;                        /*  总线位宽                    */
 #define SDBUS_WIDTH_1       0
 #define SDBUS_WIDTH_4       2
+#define SDBUS_WIDTH_8       4
+#define SDBUS_WIDTH_4_DDR   8
+#define SDBUS_WIDTH_8_DDR   16
 
     LW_LIST_LINE_HEADER     SDADAPTER_plineDevHeader;                   /*  设备链表                    */
 } LW_SD_ADAPTER, *PLW_SD_ADAPTER;
@@ -299,6 +303,9 @@ typedef struct lw_sd_funcs {
 
 #define SDARG_SETBUSWIDTH_1       SDBUS_WIDTH_1
 #define SDARG_SETBUSWIDTH_4       SDBUS_WIDTH_4
+#define SDARG_SETBUSWIDTH_8       SDBUS_WIDTH_8
+#define SDARG_SETBUSWIDTH_4_DDR   SDBUS_WIDTH_4_DDR
+#define SDARG_SETBUSWIDTH_8_DDR   SDBUS_WIDTH_8_DDR
 
 #endif                                                                  /*  LW_CFG_DEVICE_EN            */
 #endif                                                                  /*  __SDBUS_H                   */

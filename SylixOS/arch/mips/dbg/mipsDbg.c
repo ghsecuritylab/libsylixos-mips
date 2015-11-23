@@ -29,20 +29,35 @@
 #include "../mm/cache/mipsCacheCommon.h"
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 /*********************************************************************************************************
+  MIPS 断点使用 break 指令.
+*********************************************************************************************************/
+#define MIPS_BREAKPOINT_INS     0x0000000D
+#define MIPS_ABORTPOINT_INS     0x0001000D
+/*********************************************************************************************************
 ** 函数名称: archDbgBpInsert
 ** 功能描述: 插入一个断点.
 ** 输　入  : ulAddr         断点地址
 **           stSize         断点大小
 **           pulIns         返回的之前的指令
+**           bLocal         是否仅更新当前 CPU I-CACHE
 ** 输　出  : NONE
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns)
+VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns, BOOL  bLocal)
 {
-    /*
-     * TODO
-     */
+    ULONG ulIns = MIPS_BREAKPOINT_INS;
+
+    lib_memcpy((PCHAR)pulIns, (PCHAR)ulAddr, stSize);                   /*  memcpy 避免对齐问题         */
+    lib_memcpy((PCHAR)ulAddr, (PCHAR)&ulIns, stSize);
+
+#if LW_CFG_CACHE_EN > 0
+    if (bLocal) {
+        API_CacheLocalTextUpdate((PVOID)ulAddr, stSize);
+    } else {
+        API_CacheTextUpdate((PVOID)ulAddr, stSize);
+    }
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 }
 /*********************************************************************************************************
 ** 函数名称: archDbgAbInsert
@@ -56,9 +71,12 @@ VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns)
 *********************************************************************************************************/
 VOID  archDbgAbInsert (addr_t  ulAddr, ULONG  *pulIns)
 {
-    /*
-     * TODO
-     */
+    *pulIns = *(ULONG *)ulAddr;
+    *(ULONG *)ulAddr = MIPS_ABORTPOINT_INS;
+
+#if LW_CFG_CACHE_EN > 0
+    API_CacheTextUpdate((PVOID)ulAddr, sizeof(ULONG));
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 }
 /*********************************************************************************************************
 ** 函数名称: archDbgBpRemove
@@ -66,15 +84,22 @@ VOID  archDbgAbInsert (addr_t  ulAddr, ULONG  *pulIns)
 ** 输　入  : ulAddr         断点地址
 **           stSize         断点大小
 **           pulIns         返回的之前的指令
+**           bLocal         是否仅更新当前 CPU I-CACHE
 ** 输　出  : NONE
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-VOID  archDbgBpRemove (addr_t  ulAddr, size_t stSize, ULONG  ulIns)
+VOID  archDbgBpRemove (addr_t  ulAddr, size_t stSize, ULONG  ulIns, BOOL  bLocal)
 {
-    /*
-     * TODO
-     */
+    lib_memcpy((PCHAR)ulAddr, (PCHAR)&ulIns, stSize);
+
+#if LW_CFG_CACHE_EN > 0
+    if (bLocal) {
+        API_CacheLocalTextUpdate((PVOID)ulAddr, stSize);
+    } else {
+        API_CacheTextUpdate((PVOID)ulAddr, stSize);
+    }
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 }
 /*********************************************************************************************************
 ** 函数名称: archDbgBpPrefetch
@@ -87,9 +112,9 @@ VOID  archDbgBpRemove (addr_t  ulAddr, size_t stSize, ULONG  ulIns)
 *********************************************************************************************************/
 VOID  archDbgBpPrefetch (addr_t  ulAddr)
 {
-    /*
-     * TODO
-     */
+    volatile UINT8  ucByte = *(UINT8 *)ulAddr;                          /*  读取断点处数据              */
+
+    *(UINT8 *)ulAddr = ucByte;                                          /*  执行一次写操作, 产生页面中断*/
 }
 /*********************************************************************************************************
 ** 函数名称: archDbgTrapType
@@ -102,10 +127,17 @@ VOID  archDbgBpPrefetch (addr_t  ulAddr)
 *********************************************************************************************************/
 UINT  archDbgTrapType (addr_t  ulAddr, PVOID   pvArch)
 {
-    /*
-     * TODO
-     */
-    return  (0);
+    switch (*(ULONG *)ulAddr) {
+
+    case MIPS_BREAKPOINT_INS:
+        return  (LW_TRAP_BRKPT);
+
+    case MIPS_ABORTPOINT_INS:
+        return  (LW_TRAP_ABORT);
+
+    default:
+        return  (LW_TRAP_INVAL);
+    }
 }
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
 /*********************************************************************************************************

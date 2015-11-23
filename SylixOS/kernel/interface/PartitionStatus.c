@@ -91,6 +91,7 @@ ULONG  API_PartitionStatus (LW_OBJECT_HANDLE    ulId,
     
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  (LW_CFG_PARTITION_EN > 0)   */
                                                                         /*  (LW_CFG_MAX_PARTITIONS > 0) */
 /*********************************************************************************************************

@@ -66,7 +66,10 @@
 BOOL  _CandTableTryAdd(PLW_CLASS_TCB  ptcb, PLW_CLASS_PCB  ppcb);
 VOID  _CandTableTryDel(PLW_CLASS_TCB  ptcb, PLW_CLASS_PCB  ppcb);
 VOID  _CandTableUpdate(PLW_CLASS_CPU  pcpu);
+
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
 VOID  _CandTableRemove(PLW_CLASS_CPU  pcpu);
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 
 /*********************************************************************************************************
   加入 / 退出就绪表

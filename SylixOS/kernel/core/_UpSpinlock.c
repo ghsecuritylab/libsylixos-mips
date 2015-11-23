@@ -247,23 +247,6 @@ VOID  _UpSpinUnlockIrqQuick (spinlock_t *psl, INTREG  iregInterLevel)
     
     KN_INT_ENABLE(iregInterLevel);
 }
-/*********************************************************************************************************
-** 函数名称: _UpSpinUnlockSched
-** 功能描述: 单处理器调度器切换完成后专用释放函数 (关中断状态下被调用)
-** 输　入  : psl           自旋锁
-**           ptcbOwner     锁的持有者
-** 输　出  : NONE
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-VOID  _UpSpinUnlockSched (spinlock_t *psl, PLW_CLASS_TCB ptcbOwner)
-{
-    PLW_CLASS_CPU   pcpuCur = LW_CPU_GET_CUR();
-    
-    if (!pcpuCur->CPU_ulInterNesting) {
-        __THREAD_LOCK_DEC(ptcbOwner);                                   /*  解锁任务在当前 CPU          */
-    }
-}
 
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 /*********************************************************************************************************

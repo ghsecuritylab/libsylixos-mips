@@ -428,7 +428,7 @@ static INT  __shmPhymemAlloc (PLW_SHM_NODE  pshmn)
         ulPageNum++;
     }
     
-    stRealSize = (size_t)(ulPageNum * LW_CFG_VMM_PAGE_SIZE);
+    stRealSize = (size_t)(ulPageNum << LW_CFG_VMM_PAGE_SHIFT);
     if (stRealSize == 0) {
         _ErrorHandle(EINVAL);
         return  (PX_ERROR);
@@ -986,7 +986,7 @@ static INT   __shmMmap (PLW_SHM_NODE  pshmn, PLW_DEV_MMAP_AREA  pdmap)
     pshmn->SHMN_ulMapCnt++;                                             /*  mmap 计数++                 */
 
     ulPhysical  = (addr_t)pshmn->SHMN_pvPhyMem;
-    ulPhysical += (addr_t)(pdmap->DMAP_offPages * LW_CFG_VMM_PAGE_SIZE);                                   
+    ulPhysical += (addr_t)(pdmap->DMAP_offPages << LW_CFG_VMM_PAGE_SHIFT);                                   
     
     if (API_VmmRemapArea(pdmap->DMAP_pvAddr, (PVOID)ulPhysical, 
                          pdmap->DMAP_stLen, pdmap->DMAP_ulFlag,         /*  直接使用 mmap 指定的 flag   */

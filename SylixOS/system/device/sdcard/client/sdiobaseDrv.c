@@ -263,6 +263,7 @@ static INT  __sdiobasePreInit (SDIO_INIT_DATA *pinitdata, PLW_SDCORE_DEVICE psdc
     bspDelayUs(100000);
     API_SdCoreDevCtl(psdcoredev, SDBUS_CTRL_POWERON, 0);
     API_SdCoreDevCtl(psdcoredev, SDBUS_CTRL_SETCLK, SDARG_SETCLK_LOW);
+    API_SdCoreDevCtl(psdcoredev, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_1);
 
     API_SdioCoreDevReset(psdcoredev);
 

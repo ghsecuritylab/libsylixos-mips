@@ -52,7 +52,6 @@ ULONG  API_SemaphorePostBPend (LW_OBJECT_HANDLE  ulIdPost,
     REGISTER ULONG                 ulObjectClass;
              ULONG                 ulError;
     
-    REGISTER PLW_CLASS_EVENT       peventPost;
     REGISTER PLW_CLASS_EVENT       pevent;
     REGISTER UINT8                 ucPriorityIndex;
     REGISTER PLW_LIST_RING        *ppringList;
@@ -87,30 +86,26 @@ ULONG  API_SemaphorePostBPend (LW_OBJECT_HANDLE  ulIdPost,
         return  (ERROR_KERNEL_HANDLE_NULL);
     }
 #endif
-    peventPost = &_K_eventBuffer[usIndex];
+
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    ulError = API_SemaphorePost(ulIdPost);                              /*  释放信号量                  */
+    if (ulError) {
+        __KERNEL_EXIT();
+        return  (ulError);
+    }
     
     usIndex = _ObjectGetIndex(ulId);
-    
-    /*
-     *  锁定 post 信号量自旋锁, 等待的过程中, 其他的 CPU 不可能操作 Post 信号量.
-     */
-    LW_SPIN_LOCK(&peventPost->EVENT_slLock);                            /*  锁住 spinlock               */
-    
-    /*
-     *  SylixOS 自旋锁可重入!
-     */
-    API_SemaphorePost(ulIdPost);                                        /*  释放信号量                  */
     
 __wait_again:
 #if LW_CFG_ARG_CHK_EN > 0
     if (!_ObjectClassOK(ulId, _OBJECT_SEM_B)) {
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
+        __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         ulError = ERROR_KERNEL_HANDLE_NULL;
         goto    __wait_over;
     }
     if (_Event_Index_Invalid(usIndex)) {
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
+        __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         ulError = ERROR_KERNEL_HANDLE_NULL;
         goto    __wait_over;
@@ -118,30 +113,23 @@ __wait_again:
 #endif
     pevent = &_K_eventBuffer[usIndex];
 
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMB)) {
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         ulError = ERROR_EVENT_TYPE;
         goto    __wait_over;
     }
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     if (pevent->EVENT_ulCounter) {                                      /*  事件有效                    */
         pevent->EVENT_ulCounter = LW_FALSE;
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         ulError = ERROR_NONE;
         goto    __wait_over;
     }
     
     if (ulTimeout == LW_OPTION_NOT_WAIT) {                              /*  不等待                      */
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         ulError = ERROR_THREAD_WAIT_TIMEOUT;                            /*  超时                        */
         goto    __wait_over;
     }
@@ -167,9 +155,8 @@ __wait_again:
         _EventWaitFifo(pevent, ppringList);                             /*  加入 FIFO 等待表            */
     }
     
-    LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                          /*  释放 post 信号量自旋锁      */
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
-
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
+    
     ulEventOption = pevent->EVENT_ulOption;
     
     MONITOR_EVT_LONG2(MONITOR_EVENT_ID_SEMB, MONITOR_EVENT_SEM_PEND, 
@@ -190,12 +177,9 @@ __wait_again:
     }
     
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {               /*  等待超时                    */
-        LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);     /*  关闭中断, 锁住 spinlock     */
-        __KERNEL_ENTER();                                               /*  进入内核                    */
+        iregInterLevel = __KERNEL_ENTER_IRQ();                          /*  进入内核                    */
         if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_CLEAR) {         /*  是否在上面瞬间被激活        */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             ulError = ERROR_NONE;                                       /*  正常                        */
             goto    __wait_over;
         }
@@ -205,13 +189,14 @@ __wait_again:
         } else {
             _EventTimeoutFifo(pevent, ppringList);                      /*  等待超时恢复                */
         }
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         ulError = ERROR_THREAD_WAIT_TIMEOUT;                            /*  超时                        */
         
     } else {
         if (ptcbCur->TCB_ucIsEventDelete == LW_EVENT_EXIST) {           /*  事件是否存在                */
             ulError = ERROR_NONE;                                       /*  正常                        */
+        
         } else {
             ulError = ERROR_EVENT_WAS_DELETED;                          /*  已经被删除                  */
         }
@@ -250,7 +235,6 @@ ULONG  API_SemaphorePostCPend (LW_OBJECT_HANDLE  ulIdPost,
     REGISTER ULONG                 ulObjectClass;
              ULONG                 ulError;
     
-    REGISTER PLW_CLASS_EVENT       peventPost;
     REGISTER PLW_CLASS_EVENT       pevent;
     REGISTER UINT8                 ucPriorityIndex;
     REGISTER PLW_LIST_RING        *ppringList;
@@ -285,30 +269,26 @@ ULONG  API_SemaphorePostCPend (LW_OBJECT_HANDLE  ulIdPost,
         return  (ERROR_KERNEL_HANDLE_NULL);
     }
 #endif
-    peventPost = &_K_eventBuffer[usIndex];
+
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    ulError = API_SemaphorePost(ulIdPost);                              /*  释放信号量                  */
+    if (ulError) {
+        __KERNEL_EXIT();
+        return  (ulError);
+    }
     
     usIndex = _ObjectGetIndex(ulId);
-    
-    /*
-     *  锁定 post 信号量自旋锁, 等待的过程中, 其他的 CPU 不可能操作 Post 信号量.
-     */
-    LW_SPIN_LOCK(&peventPost->EVENT_slLock);                            /*  锁住 spinlock               */
-    
-    /*
-     *  SylixOS 自旋锁可重入!
-     */
-    API_SemaphorePost(ulIdPost);                                        /*  释放信号量                  */
     
 __wait_again:
 #if LW_CFG_ARG_CHK_EN > 0
     if (!_ObjectClassOK(ulId, _OBJECT_SEM_C)) {
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
+        __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         ulError = ERROR_KERNEL_HANDLE_NULL;
         goto    __wait_over;
     }
     if (_Event_Index_Invalid(usIndex)) {
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
+        __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         ulError = ERROR_KERNEL_HANDLE_NULL;
         goto    __wait_over;
@@ -316,30 +296,23 @@ __wait_again:
 #endif
     pevent = &_K_eventBuffer[usIndex];
 
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMC)) {
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         ulError = ERROR_EVENT_TYPE;
         goto    __wait_over;
     }
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     if (pevent->EVENT_ulCounter) {                                      /*  事件有效                    */
         pevent->EVENT_ulCounter--;
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         ulError = ERROR_NONE;
         goto    __wait_over;
     }
     
     if (ulTimeout == LW_OPTION_NOT_WAIT) {                              /*  不等待                      */
-        LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                      /*  释放 post 信号量自旋锁      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         ulError = ERROR_THREAD_WAIT_TIMEOUT;                            /*  超时                        */
         goto    __wait_over;
     }
@@ -365,8 +338,7 @@ __wait_again:
         _EventWaitFifo(pevent, ppringList);                             /*  加入 FIFO 等待表            */
     }
     
-    LW_SPIN_UNLOCK(&peventPost->EVENT_slLock);                          /*  释放 post 信号量自旋锁      */
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
 
     ulEventOption = pevent->EVENT_ulOption;
     
@@ -388,12 +360,9 @@ __wait_again:
     }
     
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {               /*  等待超时                    */
-        LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);     /*  关闭中断, 锁住 spinlock     */
-        __KERNEL_ENTER();                                               /*  进入内核                    */
+        iregInterLevel = __KERNEL_ENTER_IRQ();                          /*  进入内核                    */
         if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_CLEAR) {         /*  是否在上面瞬间被激活        */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             ulError = ERROR_NONE;                                       /*  正常                        */
             goto    __wait_over;
         }
@@ -403,13 +372,14 @@ __wait_again:
         } else {
             _EventTimeoutFifo(pevent, ppringList);                      /*  等待超时恢复                */
         }
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         ulError = ERROR_THREAD_WAIT_TIMEOUT;                            /*  超时                        */
         
     } else {
         if (ptcbCur->TCB_ucIsEventDelete == LW_EVENT_EXIST) {           /*  事件是否存在                */
             ulError = ERROR_NONE;                                       /*  正常                        */
+        
         } else {
             ulError = ERROR_EVENT_WAS_DELETED;                          /*  已经被删除                  */
         }

@@ -34,6 +34,7 @@ INT      __fsCheckFileName(CPCHAR  pcName);                             /*  文件
 
 VOID     __fsDiskLinkCounterAdd(PLW_BLK_DEV  pblkd);                    /*  物理连接计数操作            */
 VOID     __fsDiskLinkCounterDec(PLW_BLK_DEV  pblkd);
+UINT     __fsDiskLinkCounterGet(PLW_BLK_DEV  pblkd);
 
 #endif
 /*********************************************************************************************************

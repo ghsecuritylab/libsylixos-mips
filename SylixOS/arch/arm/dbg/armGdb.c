@@ -684,7 +684,7 @@ static ULONG   thumbGetNextPc (GDB_REG_SET *pRegs)
         }
     }
 
-    return (ULONG)((UINT32)uiNPc & ~1);
+    return  (ULONG)((UINT32)uiNPc & ~1);
 
 }
 /*********************************************************************************************************
@@ -697,14 +697,16 @@ static ULONG   thumbGetNextPc (GDB_REG_SET *pRegs)
 *********************************************************************************************************/
 ULONG  archGdbGetNextPc (GDB_REG_SET *pRegs)
 {
-    ULONG ulNextPc;
-    if (pRegs->regArr[ARM_REG_INDEX_CPSR].GDBRA_ulValue & (1<<5)) {     /* 根据cpsr判断当前指令状态     */
+    ULONG   ulNextPc;
+    
+    if (pRegs->regArr[ARM_REG_INDEX_CPSR].GDBRA_ulValue & (1 << 5)) {   /* 根据cpsr判断当前指令状态     */
         ulNextPc = thumbGetNextPc(pRegs);
+    
     } else {
         ulNextPc = armGetNextPc(pRegs);
     }
 
-    return ulNextPc;
+    return  (ulNextPc);
 }
 
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */

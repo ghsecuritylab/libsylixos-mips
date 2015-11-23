@@ -53,6 +53,8 @@ INT  _CpuActive (PLW_CLASS_CPU   pcpu)
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
+
 INT  _CpuInactive (PLW_CLASS_CPU   pcpu)
 {
     INT             i;
@@ -92,6 +94,8 @@ INT  _CpuInactive (PLW_CLASS_CPU   pcpu)
     
     return  (ERROR_NONE);
 }
+
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 /*********************************************************************************************************
 ** 函数名称: _CpuGetNesting
 ** 功能描述: 获取 CPU 当前中断嵌套值

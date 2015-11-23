@@ -83,6 +83,7 @@ PVOID  API_PartitionGet (LW_OBJECT_HANDLE  ulId)
     
     return  (pvRet);
 }
+
 #endif                                                                  /*  (LW_CFG_PARTITION_EN > 0)   */
                                                                         /*  (LW_CFG_MAX_PARTITIONS > 0) */
 /*********************************************************************************************************

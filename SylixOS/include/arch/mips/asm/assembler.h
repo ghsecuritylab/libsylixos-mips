@@ -139,6 +139,7 @@ name:
 #define BAL             bal
 #define BLT             blt
 #define BLEZ            blez
+#define BEQ             beq
 
 #define LONG            .word
 #define LONGSIZE        4
@@ -161,6 +162,14 @@ name:
 
 #define MFC0(dst, src)                  \
     mfc0    dst, src;                   \
+    ehb
+
+#define CTC1(src, dst)                  \
+    ctc1    src, dst;                   \
+    ehb
+
+#define CFC1(dst, src)                  \
+    cfc1    dst, src;                   \
     ehb
 
 /*********************************************************************************************************

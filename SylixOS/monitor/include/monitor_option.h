@@ -17,6 +17,9 @@
 ** 文件创建日期: 2013 年 08 月 17 日
 **
 ** 描        述: SylixOS 内核事件监控器事件类型.
+**
+** BUG:
+2015.11.12  去掉一些过于频繁的事件.
 *********************************************************************************************************/
 
 #ifndef __MONITOR_OPTION_H
@@ -28,11 +31,8 @@
 
 #define MONITOR_EVENT_ID_INT            0
 
-#define MONITOR_EVENT_INT_ENTER         0                               /*  进入中断子事件              */
-#define MONITOR_EVENT_INT_EXIT          1                               /*  退出中断子事件              */
-
-#define MONITOR_EVENT_INT_VECT_EN       2                               /*  中断向量使能                */
-#define MONITOR_EVENT_INT_VECT_DIS      3                               /*  中断向量禁能                */
+#define MONITOR_EVENT_INT_VECT_EN       0                               /*  中断向量使能                */
+#define MONITOR_EVENT_INT_VECT_DIS      1                               /*  中断向量禁能                */
 
 /*********************************************************************************************************
   调度事件
@@ -49,9 +49,7 @@
 
 #define MONITOR_EVENT_ID_KERNEL         2
 
-#define MONITOR_EVENT_KERNEL_ENTER      0                               /*  进入内核                    */
-#define MONITOR_EVENT_KERNEL_EXIT       1                               /*  退出内核                    */
-#define MONITOR_EVENT_KERNEL_TICK       2                               /*  内核时钟                    */
+#define MONITOR_EVENT_KERNEL_TICK       0                               /*  内核时钟                    */
 
 /*********************************************************************************************************
   线程事件

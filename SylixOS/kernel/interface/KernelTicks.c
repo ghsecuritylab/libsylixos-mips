@@ -154,7 +154,7 @@ VOID  API_KernelTicksContext (VOID)
              PLW_CLASS_CPU  pcpu;
              PLW_CLASS_TCB  ptcb;
              
-    LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);                  /*  锁定内核并关闭中断          */
+    LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);                           /*  锁定内核并关闭中断          */
     
 #if LW_CFG_RTC_EN > 0
     __kernelTODUpdate();                                                /*  更新 TOD 时间               */
@@ -190,7 +190,7 @@ VOID  API_KernelTicksContext (VOID)
     
     _SchedTick();                                                       /*  处理所有 CPU 线程的时间片   */
     
-    LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);                 /*  退出内核并打开中断          */
+    LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                          /*  退出内核并打开中断          */
 }
 /*********************************************************************************************************
   END

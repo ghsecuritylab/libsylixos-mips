@@ -123,6 +123,7 @@ VOID  API_PowerMCpuSet (ULONG  ulNCpus, UINT  uiPowerLevel)
         }
     }
     if (ulActCnt > ulNCpus) {                                           /*  需要关闭一些 CPU            */
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
         ULONG   ulDownCnt = ulActCnt - ulNCpus;
         for (i = 1; i < LW_NCPUS; i++) {
             if (API_CpuIsUp(i)) {
@@ -133,7 +134,8 @@ VOID  API_PowerMCpuSet (ULONG  ulNCpus, UINT  uiPowerLevel)
                 break;
             }
         }
-    
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
+
     } else if (ulActCnt < ulNCpus) {                                    /*  需要打开一些 CPU            */
         ULONG   ulUpCnt = ulNCpus - ulActCnt;
         for (i = 1; i < LW_NCPUS; i++) {

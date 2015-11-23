@@ -98,6 +98,12 @@ VOID  __tshellSysVarInit (VOID)
     API_TShellExec("LC_ALL=");                                          /*  推荐不要使用此变量          */
     API_TShellExec("PATH_LOCALE=" _PATH_LOCALE);                        /*  注意:需要从 BSD 系统将 UTF-8*/
                                                                         /*  目录拷贝到这里              */
+    /*
+     *  调试
+     */
+#if LW_CFG_GDB_EN > 0
+    API_TShellExec("DEBUG_CPU=-1");                                     /*  是否将被调对象锁定到一个 CPU*/
+#endif                                                                  /*  LW_CFG_GDB_EN > 0           */
     
     /*
      *  终端

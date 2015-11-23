@@ -154,7 +154,7 @@ ULONG  API_DiskCacheCreate (PLW_BLK_DEV   pblkdDisk,
      *  创建回写锁
      */
     if (!_G_ulDiskCacheListLock) {
-        _G_ulDiskCacheListLock = API_SemaphoreMCreate("diskcachelist_lock", 
+        _G_ulDiskCacheListLock = API_SemaphoreMCreate("dcachelist_lock", 
                                                       LW_PRIO_DEF_CEILING,
                                                       LW_OPTION_WAIT_PRIORITY | 
                                                       LW_OPTION_DELETE_SAFE | 
@@ -233,7 +233,7 @@ ULONG  API_DiskCacheCreate (PLW_BLK_DEV   pblkdDisk,
     /*
      *  创建操作互斥信号量
      */
-    pdiskcDiskCache->DISKC_hDiskCacheLock = API_SemaphoreMCreate("diskcache_lock", 
+    pdiskcDiskCache->DISKC_hDiskCacheLock = API_SemaphoreMCreate("dcache_lock", 
                                             LW_PRIO_DEF_CEILING,
                                             LW_OPTION_WAIT_PRIORITY | LW_OPTION_DELETE_SAFE | 
                                             LW_OPTION_INHERIT_PRIORITY | LW_OPTION_OBJECT_GLOBAL,

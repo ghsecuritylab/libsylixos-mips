@@ -103,7 +103,7 @@ static VOID __vmmAbortCacheRefresh (BOOL    bSwapNeedLoad,
 #if LW_CFG_CACHE_EN > 0
     PLW_MMU_VIRTUAL_DESC    pvirdesc = __vmmVirtualDesc();
     BOOL                    bFlush   = LW_FALSE;
-    size_t                  stSize   = (size_t)(ulAllocPageNum * LW_CFG_VMM_PAGE_SIZE);
+    size_t                  stSize   = (size_t)(ulAllocPageNum << LW_CFG_VMM_PAGE_SHIFT);
     
     if (API_CacheLocation(DATA_CACHE) == CACHE_LOCATION_VIVT) {         /*  如果是虚拟地址 cache        */
         API_CacheClear(DATA_CACHE, (PVOID)pvirdesc->ulVirtualSwitch,
@@ -114,7 +114,7 @@ static VOID __vmmAbortCacheRefresh (BOOL    bSwapNeedLoad,
     }
     
     if (bSwapNeedLoad) {                                                /*  swap load 有可能是代码      */
-        if (bFlush) {
+        if (bFlush && (LW_NCPUS == 1)) {
             API_CacheInvalidate(INSTRUCTION_CACHE, (PVOID)ulVirtualPageAlign, stSize);
                                                                         /*  已经回写, 只需要无效 I-CACHE*/
         } else {
@@ -146,7 +146,7 @@ static PLW_VMM_PAGE  __vmmAbortPageGet (addr_t  ulAbortAddr)
         
         if ((ulAbortAddr >= pvmpageVirtual->PAGE_ulPageAddr) &&
             (ulAbortAddr <  (pvmpageVirtual->PAGE_ulPageAddr + 
-                             (pvmpageVirtual->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE)))) {
+                             (pvmpageVirtual->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT)))) {
             break;
         }
     }

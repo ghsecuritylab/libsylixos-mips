@@ -27,20 +27,11 @@ __check_defined = \
     $(if $(value $1),, \
       $(error Undefined $1$(if $(value 2), ($(strip $2)))))
 
-$(call check_defined, CONFIG_MK_EXIST, Please configure this project in RealCoder or \
+$(call check_defined, CONFIG_MK_EXIST, Please configure this project in RealEvo-IDE or \
 create a config.mk file!)
 $(call check_defined, SYLIXOS_BASE_PATH, SylixOS base project path)
 $(call check_defined, TOOLCHAIN_PREFIX, the prefix name of toolchain)
 $(call check_defined, DEBUG_LEVEL, debug level(debug or release))
-
-#*********************************************************************************************************
-# configure area you can set the following config to you own system
-# FPUFLAGS (-mfloat-abi=softfp -mfpu=vfpv3 ...)
-# CPUFLAGS (-mcpu=arm920t ...)
-# NOTICE: libsylixos, BSP and other kernel modules projects CAN NOT use vfp!
-#*********************************************************************************************************
-FPUFLAGS =
-CPUFLAGS = -march=24kf -EL -mabi=32 -Wa,-mips32r2  -G 0
 
 #*********************************************************************************************************
 # toolchain select
@@ -172,7 +163,10 @@ SylixOS/arch/mips/common/mipsLibAsm.S \
 SylixOS/arch/mips/dbg/mipsDbg.c \
 SylixOS/arch/mips/dbg/mipsGdb.c \
 SylixOS/arch/mips/elf/mipsElf.c \
-SylixOS/arch/mips/elf/mipsUnwind.c \
+SylixOS/arch/mips/fpu/fpu32/mipsVfp32.c \
+SylixOS/arch/mips/fpu/fpu32/mipsVfp32Asm.S \
+SylixOS/arch/mips/fpu/mipsFpu.c \
+SylixOS/arch/mips/mm/cache/mipsCacheCommon.c \
 SylixOS/arch/mips/mm/cache/mipsCacheCommonAsm.S \
 SylixOS/arch/mips/mm/cache/mips32/misp32Cache.c \
 SylixOS/arch/mips/mm/mmu/mips32/mips32Mmu.c \
@@ -186,7 +180,8 @@ SylixOS/arch/mips/mpcore/mipsSpinlock.c
 #*********************************************************************************************************
 DEBUG_SRCS = \
 SylixOS/debug/dtrace/dtrace.c \
-SylixOS/debug/gdb/gdbserver.c
+SylixOS/debug/gdb/gdbserver.c \
+SylixOS/debug/hwdbg/openocd.c 
 
 #*********************************************************************************************************
 # drv source
@@ -194,8 +189,8 @@ SylixOS/debug/gdb/gdbserver.c
 DRV_SRCS = \
 SylixOS/driver/can/sja1000.c \
 SylixOS/driver/int/i8259a.c \
-SylixOS/driver/timer/i8254.c \
-SylixOS/driver/sio/16c550.c 
+SylixOS/driver/sio/16c550.c \
+SylixOS/driver/timer/i8254.c 
 
 #*********************************************************************************************************
 # file system source
@@ -234,7 +229,9 @@ SylixOS/fs/nfs/mount_xdr.c \
 SylixOS/fs/nfs/nfs_clnt.c \
 SylixOS/fs/nfs/nfs_sylixos.c \
 SylixOS/fs/nfs/nfs_xdr.c \
+SylixOS/fs/oemDisk/oemBlkIo.c \
 SylixOS/fs/oemDisk/oemDisk.c \
+SylixOS/fs/oemDisk/oemFdisk.c \
 SylixOS/fs/procFs/procFs.c \
 SylixOS/fs/procFs/procFsLib.c \
 SylixOS/fs/procFs/procBsp/procBsp.c \
@@ -322,6 +319,7 @@ SylixOS/kernel/core/_Sched.c \
 SylixOS/kernel/core/_SchedCand.c \
 SylixOS/kernel/core/_SmpIpi.c \
 SylixOS/kernel/core/_SmpSpinlock.c \
+SylixOS/kernel/core/_SmpSpinlockKernel.c \
 SylixOS/kernel/core/_StackCheckInit.c \
 SylixOS/kernel/core/_ThreadAffinity.c \
 SylixOS/kernel/core/_ThreadFpu.c \
@@ -337,6 +335,7 @@ SylixOS/kernel/core/_ThreadVarLib.c \
 SylixOS/kernel/core/_TimerInit.c \
 SylixOS/kernel/core/_TimeTick.c \
 SylixOS/kernel/core/_UpSpinlock.c \
+SylixOS/kernel/core/_UpSpinlockKernel.c \
 SylixOS/kernel/core/_WakeupLine.c \
 SylixOS/kernel/interface/CoroutineCreate.c \
 SylixOS/kernel/interface/CoroutineDelete.c \
@@ -1322,8 +1321,20 @@ COMPILE.cxx     = $(CXX) $(CXXFLAGS)
 #*********************************************************************************************************
 # compile -fPIC
 #*********************************************************************************************************
-COMPILE_PIC.c   = $(COMPILE.c) -fpic
-COMPILE_PIC.cxx = $(COMPILE.cxx) -fpic 
+COMPILE_PIC.c   = $(COMPILE.c) -fPIC -mabicalls
+COMPILE_PIC.cxx = $(COMPILE.cxx) -fPIC -mabicalls
+
+#*********************************************************************************************************
+# compile -mlong-calls
+#*********************************************************************************************************
+COMPILE_LONGCALLS.c   = $(COMPILE.c) -mlong-calls
+COMPILE_LONGCALLS.cxx = $(COMPILE.cxx) -mlong-calls
+
+#*********************************************************************************************************
+# compile -mabicalls
+#*********************************************************************************************************
+COMPILE_ABICALLS.c   = $(COMPILE.c) -mabicalls
+COMPILE_ABICALLS.cxx = $(COMPILE.cxx) -mabicalls
 
 #*********************************************************************************************************
 # target
@@ -1384,19 +1395,11 @@ $(OBJPATH)/%.o: %.cpp
 		$(COMPILE.cxx) $< -o $@
 
 #*********************************************************************************************************
-# compile VFP source files # Modify Ryan.xin 20150901
+# compile VFP source files
 #*********************************************************************************************************
-# $(OBJPATH)/SylixOS/arch/arm/fpu/vfp9/armVfp9Asm.o: ./SylixOS/arch/arm/fpu/vfp9/armVfp9Asm.S
-#		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
-#		$(COMPILE_VFP.S) $< -o $@
-
-#$(OBJPATH)/SylixOS/arch/arm/fpu/vfp11/armVfp11Asm.o: ./SylixOS/arch/arm/fpu/vfp11/armVfp11Asm.S
-#		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
-#		$(COMPILE_VFP.S) $< -o $@
-#
-#$(OBJPATH)/SylixOS/arch/arm/fpu/vfpv3/armVfpV3Asm.o: ./SylixOS/arch/arm/fpu/vfpv3/armVfpV3Asm.S
-#		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
-#		$(COMPILE_VFP.S) $< -o $@
+$(OBJPATH)/SylixOS/arch/mips/fpu/fpu32/mipsVfp32Asm.S: ./SylixOS/arch/mips/fpu/fpu32/mipsVfp32Asm.S
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_VFP.S) $< -o $@
 
 #*********************************************************************************************************
 # link libsylixos.a object files
@@ -1425,13 +1428,20 @@ $(TARGET): $(OBJS)
 		cp SylixOS/hosttools/makesymbol/makesymbol.sh $(OUTDIR)
 		cp SylixOS/hosttools/makesymbol/nm.exe $(OUTDIR)
 		make -C $(OUTDIR)
-
+		
+#*********************************************************************************************************
+# compile -mabicalls code
+#*********************************************************************************************************
+$(OBJPATH)/SylixOS/dsohandle/dsohandle.o: ./SylixOS/dsohandle/dsohandle.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_ABICALLS.c) $< -o $@
+		
 #*********************************************************************************************************
 # link libdsohandle.a object files
 #*********************************************************************************************************
 $(DSOH_TARGET): $(OBJS_DSOH)
 		$(AR) $(ARFLAGS) $(DSOH_TARGET) $(OBJS_DSOH)
-
+		
 #*********************************************************************************************************
 # compile PIC code
 #*********************************************************************************************************
@@ -1481,8 +1491,43 @@ $(VPMPDM_A_TARGET): $(OBJS_VPMPDM)
 # link libvpmpdm.so object files
 #*********************************************************************************************************
 $(VPMPDM_S_TARGET): $(OBJS_VPMPDM)
-		$(LD) $(CPUFLAGS) -nostdlib -fpic -shared -o $(VPMPDM_S_TARGET) $(OBJS_VPMPDM) -lgcc
+		$(LD) $(CPUFLAGS) -nostdlib -fPIC -mabicalls -shared -o $(VPMPDM_S_TARGET) $(OBJS_VPMPDM) -lgcc
 
+#*********************************************************************************************************
+# compile -mlong-calls code
+#*********************************************************************************************************
+$(OBJPATH)/SylixOS/xinput/xdev.o: ./SylixOS/xinput/xdev.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xinput/xinput.o: ./SylixOS/xinput/xinput.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xinput/xproc.o: ./SylixOS/xinput/xproc.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xsiipc/msg.o: ./SylixOS/xsiipc/msg.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xsiipc/proc.o: ./SylixOS/xsiipc/proc.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xsiipc/sem.o: ./SylixOS/xsiipc/sem.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xsiipc/shm.o: ./SylixOS/xsiipc/shm.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
+$(OBJPATH)/SylixOS/xsiipc/xsiipc.o: ./SylixOS/xsiipc/xsiipc.c
+		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
+		$(COMPILE_LONGCALLS.c) $< -o $@
+		
 #*********************************************************************************************************
 # link xinput.ko object files
 #*********************************************************************************************************

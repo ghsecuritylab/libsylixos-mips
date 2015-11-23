@@ -67,6 +67,9 @@ typedef UINT    CACHE_MODE;                                             /*  CACH
 *********************************************************************************************************/
 
 typedef struct {
+    ULONG           CACHEOP_ulOption;                                   /*  cache 选项                  */
+#define CACHE_TEXT_UPDATE_MP        0x01                                /*  每一个核是否都要 text update*/
+
     INT             CACHEOP_iILoc;                                      /*  指令 cache 位置             */
     INT             CACHEOP_iDLoc;                                      /*  数据 cache 位置             */
 #define CACHE_LOCATION_VIVT         0                                   /*  虚拟地址 CACHE              */
@@ -129,6 +132,7 @@ LW_API ULONG        API_CacheInvalidatePage(LW_CACHE_TYPE cachetype, PVOID pvAdr
 LW_API ULONG        API_CacheClear(LW_CACHE_TYPE cachetype, PVOID  pvAdrs, size_t  stBytes);
 LW_API ULONG        API_CacheClearPage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs, size_t stBytes);
 LW_API ULONG        API_CacheTextUpdate(PVOID  pvAdrs, size_t  stBytes);
+LW_API ULONG        API_CacheLocalTextUpdate(PVOID  pvAdrs, size_t  stBytes);
 
 LW_API PVOID        API_CacheDmaMalloc(size_t   stBytes);
 LW_API PVOID        API_CacheDmaMallocAlign(size_t   stBytes, size_t  stAlign);
@@ -166,6 +170,7 @@ LW_API VOID         API_CacheFuncsSet(VOID);
 #define cacheClear                  API_CacheClear
 #define cacheClearPage              API_CacheClearPage
 #define cacheTextUpdate             API_CacheTextUpdate
+#define cacheLocalTextUpdate        API_CacheLocalTextUpdate
 
 #define cacheDmaMalloc              API_CacheDmaMalloc
 #define cacheDmaMallocAlign         API_CacheDmaMallocAlign

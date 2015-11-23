@@ -547,7 +547,7 @@ VOID  API_VmmDmaFree (PVOID  pvDmaMem)
 
 #if LW_CFG_CACHE_EN > 0
     API_CacheClear(DATA_CACHE, (PVOID)pvmpage->PAGE_ulPageAddr,
-                   (size_t)(pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+                   (size_t)(pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
     
     __vmmLibPageMap(pvmpage->PAGE_ulPageAddr,
@@ -667,7 +667,7 @@ VOID  API_VmmIoUnmap (PVOID  pvVirtualAddr)
     
 #if LW_CFG_CACHE_EN > 0
     API_CacheClear(DATA_CACHE, (PVOID)pvmpageVirtual->PAGE_ulPageAddr,
-                   (size_t)(pvmpageVirtual->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+                   (size_t)(pvmpageVirtual->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
     
     __vmmLibPageMap(pvmpageVirtual->PAGE_ulPageAddr,

@@ -39,6 +39,7 @@
                                        (不得在中断中调用)
 *********************************************************************************************************/
 #if (LW_CFG_EVENTSET_EN > 0) && (LW_CFG_MAX_EVENTS > 0)
+
 LW_API
 ULONG  API_EventSetGetName (LW_OBJECT_HANDLE  ulId, PCHAR  pcName)
 {

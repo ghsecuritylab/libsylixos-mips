@@ -79,9 +79,11 @@ struct sd_host {
 #define SDHOST_TYPE_SPI                 1
 
     INT           SDHOST_iCapbility;                                /*  主动支持的特性                  */
-#define SDHOST_CAP_HIGHSPEED    (1 << 0)                            /*  支持高速传输                    */
-#define SDHOST_CAP_DATA_4BIT    (1 << 1)                            /*  支持4位数据传输                 */
-#define SDHOST_CAP_DATA_8BIT    (1 << 2)                            /*  支持8位数据传输                 */
+#define SDHOST_CAP_HIGHSPEED            (1 << 0)                    /*  支持高速传输                    */
+#define SDHOST_CAP_DATA_4BIT            (1 << 1)                    /*  支持4位数据传输                 */
+#define SDHOST_CAP_DATA_8BIT            (1 << 2)                    /*  支持8位数据传输                 */
+#define SDHOST_CAP_DATA_4BIT_DDR        (1 << 3)                    /*  支持4位ddr数据传输              */
+#define SDHOST_CAP_DATA_8BIT_DDR        (1 << 4)                    /*  支持8位ddr数据传输              */
 
     VOID          (*SDHOST_pfuncSpicsEn)(SD_HOST *psdhost);
     VOID          (*SDHOST_pfuncSpicsDis)(SD_HOST *psdhost);

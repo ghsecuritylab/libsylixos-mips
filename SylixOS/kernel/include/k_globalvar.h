@@ -238,7 +238,7 @@ __KERNEL_EXT  const  ULONG            _K_ulNCpus;
 #endif                                                                  /*  __KERNEL_MAIN_FILE          */
 __KERNEL_EXT  LW_CLASS_CPU            _K_cpuTable[LW_CFG_MAX_PROCESSORS];   
                                                                         /*  每个 CPU 的内容             */
-__KERNEL_EXT  LW_SPINLOCK_DEFINE     (_K_slKernel);                     /*  内核 spinlock               */
+__KERNEL_EXT  LW_CLASS_KERNLOCK       _K_klKernel;                      /*  内核锁                      */
 /*********************************************************************************************************
   原子操作锁
 *********************************************************************************************************/

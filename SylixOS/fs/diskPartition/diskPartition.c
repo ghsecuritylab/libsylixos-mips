@@ -26,6 +26,7 @@
 2009.11.09  将分区类型宏定义放在头文件中.
 2009.12.01  当无法分析分区表时, 将分区类型设置为 LW_DISK_PART_TYPE_EMPTY 标志.
 2011.11.21  升级文件系统, 这里自主定义 MBR_Table.
+2015.10.21  更新块设备操作接口.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -82,21 +83,11 @@ physical HDD:                              |   HDD    |
 #define __DISK_PART_STARTSECTOR             0x8
 #define __DISK_PART_NSECTOR                 0xc
 /*********************************************************************************************************
-  函数声明
+  宏操作
 *********************************************************************************************************/
-INT   __blockIoDevCreate(PLW_BLK_DEV  pblkdNew);
-VOID  __blockIoDevDelete(INT  iIndex);
-PLW_BLK_DEV  __blockIoDevGet(INT  iIndex);
-INT   __blockIoDevReset(INT  iIndex);
-INT   __blockIoDevIoctl(INT  iIndex, INT  iCmd, LONG  lArg);
-INT   __blockIoDevRead(INT     iIndex, 
-                       VOID   *pvBuffer, 
-                       ULONG   ulStartSector, 
-                       ULONG   ulSectorCount);
-INT   __blockIoDevWrite(INT     iIndex, 
-                        VOID   *pvBuffer, 
-                        ULONG   ulStartSector, 
-                        ULONG   ulSectorCount);
+#define BLK_READ(pblk, buf, sec, num)   (pblk)->BLKD_pfuncBlkRd((pblk), (buf), (sec), (num))
+#define BLK_RESET(pblk)                 (pblk)->BLKD_pfuncBlkReset((pblk))
+#define BLK_IOCTL(pblk, cmd, arg)       (pblk)->BLKD_pfuncBlkIoctl((pblk), (cmd), (arg))
 /*********************************************************************************************************
 ** 函数名称: __logicDiskWrt
 ** 功能描述: 写单分区逻辑磁盘
@@ -224,7 +215,7 @@ static VOID  __logicDiskInit (PLW_BLK_DEV  pblkdLogic, PLW_BLK_DEV  pblkdPhysica
 /*********************************************************************************************************
 ** 函数名称: __diskPartitionScan
 ** 功能描述: 分析单级分区表信息
-** 输　入  : iIndex            扩设备驱动索引
+** 输　入  : pblkd             块设备
 **           pdpt              分区信息
 **           uiCounter         分区计数器
 **           ulStartSector     起始扇区
@@ -233,7 +224,7 @@ static VOID  __logicDiskInit (PLW_BLK_DEV  pblkdLogic, PLW_BLK_DEV  pblkdPhysica
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-static INT  __diskPartitionScan (INT                 iIndex, 
+static INT  __diskPartitionScan (PLW_BLK_DEV         pblkd,
                                  ULONG               ulBytesPerSector,
                                  PLW_DISKPART_TABLE  pdpt, 
                                  UINT                uiCounter,
@@ -260,8 +251,8 @@ static INT  __diskPartitionScan (INT                 iIndex,
     }
     lib_bzero(pucBuffer, (size_t)ulBytesPerSector);
     
-    if (__blockIoDevRead(iIndex, (PVOID)pucBuffer, 
-                         ulStartSector, 1) < 0) {                       /*  读取首扇区                  */
+    if (BLK_READ(pblkd, (PVOID)pucBuffer,
+                 ulStartSector, 1) < 0) {                               /*  读取首扇区                  */
         __SHEAP_FREE(pucBuffer);
         return  (PX_ERROR);
     }
@@ -278,23 +269,9 @@ static INT  __diskPartitionScan (INT                 iIndex,
         ucActiveFlag = pucBuffer[iPartInfoStart];                       /*  激活标志                    */
         ucPartType   = pucBuffer[iPartInfoStart + __DISK_PART_TYPE];    /*  分区文件系统类型            */
         
-        switch (ucPartType) {
-        
-        case LW_DISK_PART_TYPE_EMPTY:                                   /*  空闲分区                    */
-            break;
-            
-        case LW_DISK_PART_TYPE_FAT12:                                   /*  有效文件系统类型            */
-        case LW_DISK_PART_TYPE_FAT16:
-        case LW_DISK_PART_TYPE_FAT16_BIG:
-        case LW_DISK_PART_TYPE_HPFS_NTFS:
-        case LW_DISK_PART_TYPE_WIN95_FAT32:
-        case LW_DISK_PART_TYPE_WIN95_FAT32LBA:
-        case LW_DISK_PART_TYPE_WIN95_FAT16LBA:
+        if (LW_DISK_PART_IS_VALID(ucPartType)) {
             pdoLogic = &pdpt->DPT_dpoLogic[uiCounter];                  /*  逻辑分区信息                */
             
-            /*
-             *  记录重要分区信息
-             */
             pdoLogic->DPO_dpnEntry.DPN_ulStartSector = ulStartSector +
                 LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
             pdoLogic->DPO_dpnEntry.DPN_ulNSector = 
@@ -307,20 +284,15 @@ static INT  __diskPartitionScan (INT                 iIndex,
             }
             pdoLogic->DPO_dpnEntry.DPN_ucPartType = ucPartType;         /*  记录分区类型                */
             
-            pdoLogic->DPT_pblkdDisk = __blockIoDevGet(iIndex);          /*  记录下层设备                */
+            pdoLogic->DPT_pblkdDisk = pblkd;                            /*  记录下层设备                */
             
             __logicDiskInit(&pdoLogic->DPO_blkdLogic,
                             pdoLogic->DPT_pblkdDisk,
                             pdoLogic->DPO_dpnEntry.DPN_ulNSector);      /*  初始化逻辑设备控制块        */
             
             uiCounter++;                                                /*  分区数量++                  */
-            break;
-            
-        case LW_DISK_PART_TYPE_EXTENDED:                                /*  扩展分区类型                */
-        case LW_DISK_PART_TYPE_WIN95_EXTENDED:
-            /*
-             *  注意, 一张分区表内最多只能拥有 1 个扩展分区.
-             */
+
+        } else if (LW_DISK_PART_IS_EXTENDED(ucPartType)) {
             if (ulStartSector == 0ul) {                                 /*  是否位于主分区表            */
                 ulExtStartSector = LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
                 ulStartSector    = ulExtStartSector;
@@ -329,7 +301,7 @@ static INT  __diskPartitionScan (INT                 iIndex,
                 ulStartSector   += ulExtStartSector;
             }
             
-            iError = __diskPartitionScan(iIndex, ulBytesPerSector, 
+            iError = __diskPartitionScan(pblkd, ulBytesPerSector,
                                          pdpt, uiCounter, 
                                          ulStartSector, 
                                          ulExtStartSector);             /*  递归查询扩展分区            */
@@ -339,10 +311,6 @@ static INT  __diskPartitionScan (INT                 iIndex,
             } else {
                 uiCounter = (UINT)iError;                               /*  iError 为新的 uiCounter     */
             }
-            break;
-            
-        default:                                                        /*  其他类型忽略                */
-            break;
         }
         
         if (uiCounter >= LW_CFG_MAX_DISKPARTS) {                        /*  不能再保存更多分区信息      */
@@ -372,9 +340,8 @@ static INT  __diskPartitionScan (INT                 iIndex,
 LW_API 
 INT  API_DiskPartitionScan (PLW_BLK_DEV  pblkd, PLW_DISKPART_TABLE  pdptDisk)
 {
-    REGISTER INT                    iBlkdIndex;
-    REGISTER INT                    iError;
-             ULONG                  ulBytesPerSector;
+    REGISTER INT    iError;
+             ULONG  ulBytesPerSector;
              
     if (pblkd == LW_NULL) {
         _ErrorHandle(EINVAL);
@@ -382,42 +349,29 @@ INT  API_DiskPartitionScan (PLW_BLK_DEV  pblkd, PLW_DISKPART_TABLE  pdptDisk)
     }
     lib_bzero(pdptDisk, sizeof(LW_DISKPART_TABLE));
     
-    iBlkdIndex = __blockIoDevCreate(pblkd);                             /*  加入块设备驱动表            */
-    if (iBlkdIndex == -1) {
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "block device invalidate.\r\n");
-        _ErrorHandle(ERROR_IOS_DEVICE_NOT_FOUND);
-        return  (PX_ERROR);
-    } else if (iBlkdIndex == -2) {
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "block device table full.\r\n");
-        _ErrorHandle(ERROR_IOS_DRIVER_GLUT);
-        return  (PX_ERROR);
-    }
-    __blockIoDevIoctl(iBlkdIndex, LW_BLKD_CTRL_POWER, LW_BLKD_POWER_ON);/*  打开电源                    */
+    BLK_IOCTL(pblkd, LW_BLKD_CTRL_POWER, LW_BLKD_POWER_ON);             /*  打开电源                    */
+    BLK_RESET(pblkd);                                                   /*  复位磁盘接口                */
     
-    __blockIoDevReset(iBlkdIndex);                                      /*  复位磁盘接口                */
-    
-    iError = __blockIoDevIoctl(iBlkdIndex, FIODISKINIT, 0);             /*  初始化磁盘                  */
+    iError = BLK_IOCTL(pblkd, FIODISKINIT, 0);                          /*  初始化磁盘                  */
     if (iError < 0) {
-        __blockIoDevDelete(iBlkdIndex);
         _DebugHandle(__ERRORMESSAGE_LEVEL, "can not initialize disk.\r\n");
         _ErrorHandle(ERROR_IO_DEVICE_ERROR);
         return  (iError);
     }
     
-    iError = __blockIoDevIoctl(iBlkdIndex, LW_BLKD_GET_SECSIZE, 
-                               (LONG)&ulBytesPerSector);                /*  获得磁盘 sector size        */
-    if (iError < 0) {
-        __blockIoDevDelete(iBlkdIndex);
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "sector size invalidate.\r\n");
-        _ErrorHandle(ERROR_IO_DEVICE_ERROR);
-        return  (iError);
+    if (pblkd->BLKD_ulBytesPerSector) {
+        ulBytesPerSector = pblkd->BLKD_ulBytesPerSector;
+    } else {
+        iError = BLK_IOCTL(pblkd, LW_BLKD_GET_SECSIZE, &ulBytesPerSector);
+        if (iError < 0) {
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "sector size invalidate.\r\n");
+            _ErrorHandle(ERROR_IO_DEVICE_ERROR);
+            return  (iError);
+        }
     }
     
-    iError = __diskPartitionScan(iBlkdIndex, ulBytesPerSector, 
+    iError = __diskPartitionScan(pblkd, ulBytesPerSector,
                                  pdptDisk, 0, 0, 0);                    /*  分析磁盘分区表              */
-    
-    __blockIoDevDelete(iBlkdIndex);                                     /*  从块设备驱动表中卸载        */
-    
     if (iError >= 0) {
         pdptDisk->DPT_ulNPart = (ULONG)iError;                          /*  记录分区数量                */
     

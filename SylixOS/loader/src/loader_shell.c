@@ -59,7 +59,7 @@
 *********************************************************************************************************/
 #if LW_CFG_MODULELOADER_EN > 0
 #include "pwd.h"
-#include "../include/loader_vppatch.h"
+#include "../include/loader_lib.h"
 #include "../include/loader_symbol.h"
 /*********************************************************************************************************
   进程列表
@@ -652,7 +652,7 @@ static INT  __tshellModuleShow (INT  iArgC, PCHAR  *ppcArgV)
 #if LW_CFG_VMM_EN > 0
             ulPages = 0;
             if (API_VmmPCountInArea(pmodTemp->EMOD_pvBaseAddr, &ulPages) == ERROR_NONE) {
-                stTotalMem += (size_t)(ulPages * LW_CFG_VMM_PAGE_SIZE);
+                stTotalMem += (size_t)(ulPages << LW_CFG_VMM_PAGE_SHIFT);
             }
 #else
             stTotalMem += pmodTemp->EMOD_stLen;
@@ -663,6 +663,7 @@ static INT  __tshellModuleShow (INT  iArgC, PCHAR  *ppcArgV)
         if (stTotalMem) {                                               /*  至少存在一个模块            */
             pmodTemp = _LIST_ENTRY(pvproc->VP_ringModules, LW_LD_EXEC_MODULE, EMOD_ringModules);
             ulPages  = 0;
+            
 #if LW_CFG_VMM_EN > 0
             iNum = __moduleVpPatchVmem(pmodTemp, pvVmem, LW_LD_VMEM_MAX);
             if (iNum > 0) {
@@ -670,7 +671,7 @@ static INT  __tshellModuleShow (INT  iArgC, PCHAR  *ppcArgV)
                     if (API_VmmPCountInArea(pvVmem[i], 
                                             &ulPages) == ERROR_NONE) {
                         stTotalMem += (size_t)(ulPages 
-                                    *  LW_CFG_VMM_PAGE_SIZE);
+                                   << LW_CFG_VMM_PAGE_SHIFT);
                     }
                 }
                 lib_strlcpy(cVpVersion, __moduleVpPatchVersion(pmodTemp), sizeof(cVpVersion));
@@ -684,6 +685,14 @@ static INT  __tshellModuleShow (INT  iArgC, PCHAR  *ppcArgV)
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
         }
         LW_VP_UNLOCK(pvproc);
+        
+#if LW_CFG_VMM_EN > 0
+        {
+            size_t  stMmapSize = 0;
+            API_VmmMmapPCount(pvproc->VP_pid, &stMmapSize);             /*  计算 mmap 内存实际消耗量    */
+            stTotalMem += stMmapSize;
+        }
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 
         printf("VPROCESS: %-20s pid:%4d TOTAL MEMORY: %zu ",
                pcProcessName,
@@ -801,7 +810,7 @@ static INT  __tshellVProcShow (INT  iArgC, PCHAR  *ppcArgV)
 #if LW_CFG_VMM_EN > 0
             ulPages = 0;
             if (API_VmmPCountInArea(pmodTemp->EMOD_pvBaseAddr, &ulPages) == ERROR_NONE) {
-                stTotalMem += (size_t)(ulPages * LW_CFG_VMM_PAGE_SIZE);
+                stTotalMem += (size_t)(ulPages << LW_CFG_VMM_PAGE_SHIFT);
             }
 #else
             stTotalMem += pmodTemp->EMOD_stLen;
@@ -820,7 +829,7 @@ static INT  __tshellVProcShow (INT  iArgC, PCHAR  *ppcArgV)
                     if (API_VmmPCountInArea(pvVmem[i], 
                                             &ulPages) == ERROR_NONE) {
                         stTotalMem += (size_t)(ulPages 
-                                    *  LW_CFG_VMM_PAGE_SIZE);
+                                   <<  LW_CFG_VMM_PAGE_SHIFT);
                     }
                 }
             }
@@ -832,6 +841,14 @@ static INT  __tshellVProcShow (INT  iArgC, PCHAR  *ppcArgV)
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
         }
         LW_VP_UNLOCK(pvproc);
+        
+#if LW_CFG_VMM_EN > 0
+        {
+            size_t  stMmapSize = 0;
+            API_VmmMmapPCount(pvproc->VP_pid, &stMmapSize);             /*  计算 mmap 内存实际消耗量    */
+            stTotalMem += stMmapSize;
+        }
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
         
         uid = 0;
         gid = 0;

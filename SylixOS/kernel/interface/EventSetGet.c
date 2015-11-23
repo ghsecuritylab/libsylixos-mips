@@ -36,9 +36,7 @@
   MACRO
 *********************************************************************************************************/
 #define  __EVENTSET_NOT_READY() do {                          \
-             LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock,      \
-                                    iregInterLevel);          \
-             __KERNEL_EXIT();                                 \
+             __KERNEL_EXIT_IRQ(iregInterLevel);               \
              _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);         \
              return (ERROR_THREAD_WAIT_TIMEOUT);              \
          } while (0)
@@ -127,16 +125,13 @@ __wait_again:
 #endif
     pes = &_K_esBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pes->EVENTSET_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_EventSet_Type_Invalid(usIndex, LW_TYPE_EVENT_EVENTSET)) {
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "eventset handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENTSET_TYPE);
         return  (ERROR_EVENTSET_TYPE);
     }
-
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
 
     switch (ucWaitType) {
     
@@ -150,8 +145,7 @@ __wait_again:
                 pes->EVENTSET_ulEventSets = 0ul;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
             
         } else {
@@ -160,7 +154,6 @@ __wait_again:
             }                                                           /*  阻塞线程                    */
             __KERNEL_TIME_GET_NO_SPINLOCK(ulTimeSave, ULONG);           /*  记录系统时间                */
             _EventSetBlock(pes, &esnNode, ulEvent, ucWaitType, ulWaitTime);
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
         }
         break;
     
@@ -174,8 +167,7 @@ __wait_again:
                 pes->EVENTSET_ulEventSets = 0ul;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
         
         } else {
@@ -184,7 +176,6 @@ __wait_again:
             }                                                           /*  阻塞线程                    */
             __KERNEL_TIME_GET_NO_SPINLOCK(ulTimeSave, ULONG);           /*  记录系统时间                */
             _EventSetBlock(pes, &esnNode, ulEvent, ucWaitType, ulWaitTime);
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
         }
         break;
         
@@ -198,8 +189,7 @@ __wait_again:
                 pes->EVENTSET_ulEventSets  = __ARCH_ULONG_MAX;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
         
         } else {
@@ -208,7 +198,6 @@ __wait_again:
             }                                                           /*  阻塞线程                    */
             __KERNEL_TIME_GET_NO_SPINLOCK(ulTimeSave, ULONG);           /*  记录系统时间                */
             _EventSetBlock(pes, &esnNode, ulEvent, ucWaitType, ulWaitTime);
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
         }
         break;
     
@@ -222,8 +211,7 @@ __wait_again:
                 pes->EVENTSET_ulEventSets  = __ARCH_ULONG_MAX;
             }
             ptcbCur->TCB_ulEventSets = ulEventRdy;
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
         
         } else {
@@ -232,16 +220,16 @@ __wait_again:
             }                                                           /*  阻塞线程                    */
             __KERNEL_TIME_GET_NO_SPINLOCK(ulTimeSave, ULONG);           /*  记录系统时间                */
             _EventSetBlock(pes, &esnNode, ulEvent, ucWaitType, ulWaitTime);
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);/*  打开中断, 同时打开 spinlock */
         }
         break;
     
     default:                                                            /*  方法出错                    */
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_EVENTSET_WAIT_TYPE);
         return  (ERROR_EVENTSET_WAIT_TYPE);
     }
+    
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
     
     ulEventSetOption = pes->EVENTSET_ulOption;
     
@@ -262,20 +250,17 @@ __wait_again:
         goto    __wait_again;
     }
     
-    LW_SPIN_LOCK_QUICK(&pes->EVENTSET_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {               /*  等待超时                    */
         ptcbCur->TCB_ucWaitTimeout =  LW_WAIT_TIME_CLEAR;
         _EventSetUnlink(&esnNode);
-        LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);
         return  (ERROR_THREAD_WAIT_TIMEOUT);
     
     } else {
-        __KERNEL_EXIT();                                                /*  退出内核                    */
-        
         ulEventRdy = ptcbCur->TCB_ulEventSets;                          /*  获得相关位                  */
+        
         if (ptcbCur->TCB_ucIsEventDelete == LW_EVENT_EXIST) {           /*  事件是否存在                */
             __EVENTSET_SAVE_RET();
             if ((ulOption & LW_OPTION_EVENTSET_RESET) ||
@@ -300,14 +285,13 @@ __wait_again:
                     }
                     break;
                 }
-                LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, 
-                                     iregInterLevel);                   /*  打开中断, 同时打开 spinlock */
             }
+            
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
         
         } else {
-            LW_SPIN_UNLOCK_QUICK(&pes->EVENTSET_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             _ErrorHandle(ERROR_EVENTSET_WAS_DELETED);                   /*  已经被删除                  */
             return  (ERROR_EVENTSET_WAS_DELETED);
         }

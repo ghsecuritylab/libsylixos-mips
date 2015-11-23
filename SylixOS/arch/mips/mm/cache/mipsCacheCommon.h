@@ -48,7 +48,7 @@ VOID    mipsDCacheClear(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
         } while (0)
 
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
-#endif                                                                  /*  __MIPSCACHECOMMON_H          */
+#endif                                                                  /*  __MIPSCACHECOMMON_H         */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

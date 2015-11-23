@@ -404,6 +404,7 @@ PLW_CLASS_HEAP  _HeapDelete (PLW_CLASS_HEAP  pheap, BOOL  bIsCheckUsed)
             _Free_Heap_Object(pheap);                                   /*  ÊÍ·Å¿ØÖÆ¿é                  */
         );
         return  (LW_NULL);
+    
     } else {
         return  (pheap);
     }

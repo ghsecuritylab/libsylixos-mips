@@ -66,6 +66,9 @@ VOID  API_TimerHTicks (VOID)
     
     __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核同时打开中断        */
     
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
+    MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncRoutine));
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
     pfuncRoutine(pvRoutineArg);
     
     iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核同时关闭中断        */

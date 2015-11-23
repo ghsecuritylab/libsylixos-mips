@@ -361,7 +361,7 @@ VOID  __vmmPhysicalPageFlush (PLW_VMM_PAGE  pvmpage)
         API_CacheFlushPage(DATA_CACHE, 
                            (PVOID)pvmpage->PAGE_ulMapPageAddr, 
                            (PVOID)pvmpage->PAGE_ulPageAddr,
-                           (size_t)(pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+                           (size_t)(pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
     }
 }
 /*********************************************************************************************************
@@ -392,7 +392,7 @@ VOID  __vmmPhysicalPageInvalidate (PLW_VMM_PAGE  pvmpage)
         API_CacheInvalidatePage(DATA_CACHE, 
                                 (PVOID)pvmpage->PAGE_ulMapPageAddr, 
                                 (PVOID)pvmpage->PAGE_ulPageAddr,
-                                (size_t)(pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+                                (size_t)(pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
     }
 }
 /*********************************************************************************************************
@@ -423,7 +423,7 @@ VOID  __vmmPhysicalPageClear (PLW_VMM_PAGE  pvmpage)
         API_CacheClearPage(DATA_CACHE, 
                            (PVOID)pvmpage->PAGE_ulMapPageAddr, 
                            (PVOID)pvmpage->PAGE_ulPageAddr,
-                           (size_t)(pvmpage->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE));
+                           (size_t)(pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
     }
 }
 /*********************************************************************************************************

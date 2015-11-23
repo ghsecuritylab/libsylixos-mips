@@ -67,11 +67,8 @@ ULONG  API_SemaphoreMStatusEx (LW_OBJECT_HANDLE   ulId,
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK(&pevent->EVENT_slLock);                                /*  锁定 spinlock               */
-    
     __KERNEL_ENTER();                                                   /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MUTEX)) {
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
@@ -96,8 +93,6 @@ ULONG  API_SemaphoreMStatusEx (LW_OBJECT_HANDLE   ulId,
             *pulOwnerId = 0ul;
         }
     }
-    
-    LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                              /*  打开 spinlock               */
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     return  (ERROR_NONE);

@@ -98,9 +98,9 @@ ULONG  API_KernelStartParam (CPCHAR  pcParam)
         
         } else if (lib_strncmp(pcTok, "kfpu=", 5) == 0) {               /*  是否使能内核浮点支持        */
             if (pcTok[5] == 'n') {
-                _K_bInterFpuEn = LW_FALSE;
+                LW_KERN_FPU_EN_SET(LW_FALSE);
             } else {
-                _K_bInterFpuEn = LW_TRUE;
+                LW_KERN_FPU_EN_SET(LW_TRUE);
             }
         
         } else if (lib_strncmp(pcTok, "heapchk=", 8) == 0) {            /*  是否进行堆内存越界检查      */

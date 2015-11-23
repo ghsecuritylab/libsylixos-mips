@@ -517,12 +517,12 @@ static VOID  __ptimerCallback (LW_OBJECT_ID  ulTimer)
     
     usIndex = _ObjectGetIndex(ulTimer);
     
-    LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);
+    LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);
     ptmr          = &_K_tmrBuffer[usIndex];
     sigeventTimer = ptmr->TIMER_sigevent;
     ulThreadId    = ptmr->TIMER_ulThreadId;
     ptmr->TIMER_u64Overrun++;
-    LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);
+    LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);
     
 #if LW_CFG_TIMERFD_EN > 0
     if (ptmr->TIMER_pvTimerfd) {

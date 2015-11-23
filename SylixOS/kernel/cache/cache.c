@@ -90,6 +90,7 @@ static CACHE_MODE   _G_uiDCacheMode = CACHE_DISABLED;
   全局结构变量定义 
 *********************************************************************************************************/
 LW_CACHE_OP     _G_cacheopLib = {                                       /*  the cache primitives        */
+    0,
     CACHE_LOCATION_VIVT,
     CACHE_LOCATION_VIVT,
     32,
@@ -526,8 +527,8 @@ static INT __cacheTextUpdate (LW_CACHE_TU_ARG *ptuarg)
 LW_API  
 ULONG    API_CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
 {
-    INTREG          iregInterLevel;
-    ULONG           ulError;
+    INTREG  iregInterLevel;
+    ULONG   ulError;
 
 #if LW_CFG_SMP_EN > 0
     LW_CACHE_TU_ARG tuarg;
@@ -539,18 +540,40 @@ ULONG    API_CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
 #if LW_CFG_SMP_EN > 0
-    tuarg.TUA_pvAddr = pvAdrs;
-    tuarg.TUA_stSize = stBytes;
+    if (_G_cacheopLib.CACHEOP_ulOption & CACHE_TEXT_UPDATE_MP) {
+        tuarg.TUA_pvAddr = pvAdrs;
+        tuarg.TUA_stSize = stBytes;
     
-    iregInterLevel = KN_INT_DISABLE();
-    
-    _SmpCallFuncAllOther(__cacheTextUpdate, &tuarg, 
-                         LW_NULL, LW_NULL, IPIM_OPT_NORMAL);            /*  通知其他的 CPU              */
-    
-    KN_INT_ENABLE(iregInterLevel);
+        iregInterLevel = KN_INT_DISABLE();
+        _SmpCallFuncAllOther(__cacheTextUpdate, &tuarg, 
+                             LW_NULL, LW_NULL, IPIM_OPT_NORMAL);        /*  通知其他的 CPU              */
+        KN_INT_ENABLE(iregInterLevel);
+    }
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
     return  (ulError);
+}
+/*********************************************************************************************************
+** 函数名称: API_CacheLocalTextUpdate
+** 功能描述: 清空(回写内存) D CACHE 无效(访问不命中) I CACHE (仅对当前 CPU 有效)
+** 输　入  : pvAdrs                        虚拟地址
+**           stBytes                       长度
+** 输　出  : BSP 函数返回值
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+ULONG    API_CacheLocalTextUpdate (PVOID  pvAdrs, size_t  stBytes)
+{
+    INTREG  iregInterLevel;
+    
+    __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
+    (_G_cacheopLib.CACHEOP_pfuncTextUpdate == LW_NULL) ? ERROR_NONE :
+    (_G_cacheopLib.CACHEOP_pfuncTextUpdate)(pvAdrs, stBytes);
+    __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
+    
+    return  (ERROR_NONE);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheDmaMalloc

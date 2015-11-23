@@ -41,7 +41,7 @@ VOID  _ThreadFpuSwith (BOOL bIntSwitch)
     LW_TCB_GET_CUR(ptcbCur);
     LW_TCB_GET_HIGH(ptcbHigh);
     
-    if (_K_bInterFpuEn) {                                               /*  中断状态支持 FPU            */
+    if (LW_KERN_FPU_EN_GET()) {                                         /*  中断状态支持 FPU            */
         /*
          *  由于内核支持 FPU 所以, 中断函数会保存当前任务的 FPU 上下文
          *  所以如果是中断环境的调度函数, 则不需要保存当前任务 FPU 上下文
@@ -80,7 +80,7 @@ VOID  _ThreadFpuSwith (BOOL bIntSwitch)
 *********************************************************************************************************/
 VOID  _ThreadFpuSave (PLW_CLASS_TCB   ptcbCur, BOOL bIntSwitch)
 {
-    if (_K_bInterFpuEn) {                                               /*  中断状态支持 FPU            */
+    if (LW_KERN_FPU_EN_GET()) {                                         /*  中断状态支持 FPU            */
         /*
          *  由于内核支持 FPU 所以, 中断函数会保存当前任务的 FPU 上下文
          *  所以如果是中断环境的调度函数, 则不需要保存当前任务 FPU 上下文

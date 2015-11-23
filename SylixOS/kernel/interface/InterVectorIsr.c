@@ -53,9 +53,6 @@ irqreturn_t  API_InterVectorIsr (ULONG  ulVector)
     
     __LW_CPU_INT_ENTER_HOOK(ulVector, pcpu->CPU_ulInterNesting);
     
-    MONITOR_EVT_LONG2(MONITOR_EVENT_ID_INT, MONITOR_EVENT_INT_ENTER, 
-                      ulVector, pcpu->CPU_ulInterNesting, LW_NULL);
-    
 #if LW_CFG_SMP_EN > 0
     if (pcpu->CPU_ulIPIVector == ulVector) {                            /*  ºË¼äÖÐ¶Ï                    */
         _SmpProcIpi(pcpu);
@@ -92,9 +89,6 @@ irqreturn_t  API_InterVectorIsr (ULONG  ulVector)
     }
     
     __LW_CPU_INT_EXIT_HOOK(ulVector, pcpu->CPU_ulInterNesting);
-    
-    MONITOR_EVT_LONG2(MONITOR_EVENT_ID_INT, MONITOR_EVENT_INT_EXIT, 
-                      ulVector, pcpu->CPU_ulInterNesting, LW_NULL);
                       
     return  (irqret);
 }

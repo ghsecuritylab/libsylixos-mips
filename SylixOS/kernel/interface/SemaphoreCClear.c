@@ -59,18 +59,16 @@ ULONG  API_SemaphoreCClear (LW_OBJECT_HANDLE  ulId)
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMC)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
         return  (ERROR_EVENT_TYPE);
     }
     
     pevent->EVENT_ulCounter = 0ul;
-    
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     MONITOR_EVT_LONG1(MONITOR_EVENT_ID_SEMC, MONITOR_EVENT_SEM_CLEAR, ulId, LW_NULL);
     

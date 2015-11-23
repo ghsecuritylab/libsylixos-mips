@@ -41,7 +41,6 @@ VOID  _RmsInit (VOID)
     
     prmsTemp1->RMS_ucType  = LW_RMS_UNUSED;
     prmsTemp1->RMS_usIndex = 0;
-    LW_SPIN_INIT(&prmsTemp1->RMS_slLock);
     
     _INIT_LIST_MONO_HEAD(_K_resrcRms.RESRC_pmonoFreeHeader);
     
@@ -67,7 +66,6 @@ VOID  _RmsInit (VOID)
         
         pmonoTemp1 = &prmsTemp1->RMS_monoResrcList;
         pmonoTemp2 = &prmsTemp2->RMS_monoResrcList;
-        LW_SPIN_INIT(&prmsTemp1->RMS_slLock);
         
         _LIST_MONO_LINK(pmonoTemp1, pmonoTemp2);
         
@@ -79,7 +77,6 @@ VOID  _RmsInit (VOID)
     prmsTemp1->RMS_usIndex = (UINT16)ulI;
     
     pmonoTemp1 = &prmsTemp1->RMS_monoResrcList;
-    LW_SPIN_INIT(&prmsTemp1->RMS_slLock);
     
     _INIT_LIST_MONO_HEAD(pmonoTemp1);
     

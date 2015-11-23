@@ -23,44 +23,16 @@
 #define __MIPS_ARCH_FLOAT_H
 
 /*********************************************************************************************************
-  MIPS floating point coprocessor register definitions
+  Number of fp registers on coprocessor
 *********************************************************************************************************/
 
-#define FP0     $f0                                                     /*  return reg 0                */
-#define FP1     $f1                                                     /*  return reg 1                */
-#define FP2     $f2                                                     /*  return reg 2                */
-#define FP3     $f3                                                     /*  return reg 3                */
-#define FP4     $f4                                                     /*  caller saved 0              */
-#define FP5     $f5                                                     /*  caller saved 1              */
-#define FP6     $f6                                                     /*  caller saved 2              */
-#define FP7     $f7                                                     /*  caller saved 3              */
-#define FP8     $f8                                                     /*  caller saved 4              */
-#define FP9     $f9                                                     /*  caller saved 5              */
-#define FP10    $f10                                                    /*  caller saved 6              */
-#define FP11    $f11                                                    /*  caller saved 7              */
-#define FP12    $f12                                                    /*  arg reg 0                   */
-#define FP13    $f13                                                    /*  arg reg 1                   */
-#define FP14    $f14                                                    /*  arg reg 2                   */
-#define FP15    $f15                                                    /*  arg reg 3                   */
-#define FP16    $f16                                                    /*  caller saved 8              */
-#define FP17    $f17                                                    /*  caller saved 9              */
-#define FP18    $f18                                                    /*  caller saved 10             */
-#define FP19    $f19                                                    /*  caller saved 11             */
-#define FP20    $f20                                                    /*  callee saved 0              */
-#define FP21    $f21                                                    /*  callee saved 1              */
-#define FP22    $f22                                                    /*  callee saved 2              */
-#define FP23    $f23                                                    /*  callee saved 3              */
-#define FP24    $f24                                                    /*  callee saved 4              */
-#define FP25    $f25                                                    /*  callee saved 5              */
-#define FP26    $f26                                                    /*  callee saved 6              */
-#define FP27    $f27                                                    /*  callee saved 7              */
-#define FP28    $f28                                                    /*  callee saved 8              */
-#define FP29    $f29                                                    /*  callee saved 9              */
-#define FP30    $f30                                                    /*  callee saved 10             */
-#define FP31    $f31                                                    /*  callee saved 11             */
+#define FP_NUM_DREGS    16
 
-#define CP1_IR       $0                                                 /*  implementation/revision reg */
-#define CP1_STATUS   $31                                                /*  control/status reg          */
+typedef struct arch_cpu_fpu_context {                                   /* FP_CONTEXT 上下文            */
+    UINT32              FPUCTX_uiFpcsr;                                 /* status and control register  */
+    UINT32              FPUCTX_uiDreg[FP_NUM_DREGS * 2];                /* general purpose Reg  D0 ~ D16*/
+                                                                        /* equ -> S0 ~ S32              */
+} ARCH_CPU_FPU_CONTEXT;
 
 /*********************************************************************************************************
   float 格式 (使用 union 类型作为中间转换, 避免 GCC 3.x.x strict aliasing warning)
@@ -105,7 +77,7 @@ static LW_INLINE INT  __ARCH_FLOAT_ISINF (float  x)
 #define __ARCH_DOUBLE_INC_FLOAT_H          0                            /*  是否引用编译器 float.h 文件 */
 
 /*********************************************************************************************************
-  arm-none-eabi-gcc ... GNU
+  mips-sylixos-elf-gcc ... GNU
 *********************************************************************************************************/
 
 #if LW_CFG_DOUBLE_MIX_ENDIAN > 0

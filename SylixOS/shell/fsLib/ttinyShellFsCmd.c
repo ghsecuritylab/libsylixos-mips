@@ -1814,6 +1814,152 @@ static INT  __tshellFsCmdDosfslabel (INT  iArgC, PCHAR  ppcArgV[])
     return  (iError);
 }
 /*********************************************************************************************************
+** 函数名称: __tshellFsCmdFdisk
+** 功能描述: 系统命令 "fdisk"
+** 输　入  : iArgC         参数个数
+**           ppcArgV       参数表
+** 输　出  : 0
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static INT  __tshellFsCmdFdisk (INT  iArgC, PCHAR  ppcArgV[])
+{
+    LW_OEMFDISK_PART  fdpInfo[4];
+    UINT              uiNPart;
+    struct stat       statGet;
+    PCHAR             pcBlkFile;
+    INT               i, iPct, iTotalPct = 0;
+    CHAR              cActive, cType;
+    INT               iCnt;
+
+    if (iArgC < 2) {
+        fprintf(stderr, "too few arguments!\n");
+        return  (-ERROR_TSHELL_EPARAM);
+
+    } else if (iArgC == 2) {
+        return  (oemFdiskShow(ppcArgV[1]));
+
+    } else {
+        if (lib_strcmp(ppcArgV[1], "-f")) {
+            fprintf(stderr, "you must use '-f' to make disk partition!\n");
+            return  (-ERROR_TSHELL_EPARAM);
+        }
+
+        pcBlkFile = ppcArgV[2];
+    }
+
+    if (stat(pcBlkFile, &statGet)) {
+        fprintf(stderr, "can not get block device status : %s.\n", lib_strerror(errno));
+        return  (-ERROR_TSHELL_EPARAM);
+    }
+
+    if (!S_ISBLK(statGet.st_mode)) {
+        fprintf(stderr, "%s is not a block device.\n", pcBlkFile);
+        return  (-ERROR_TSHELL_EPARAM);
+    }
+
+    printf("block device %s total size : %llu (MB)\n", pcBlkFile, (statGet.st_size >> 20));
+
+__input_num:
+    printf("please input how many partition(s) you want to make (1 ~ 4) : ");
+    fflush(stdout);
+    if (scanf("%d", &uiNPart) != 1) {
+        goto    __input_num;
+    }
+
+    if ((uiNPart < 1) || (uiNPart > 4)) {
+        printf("the number must be 1 ~ 4\n");
+        goto    __input_num;
+    }
+
+    for (i = 0; i < uiNPart; i++) {
+__input_size:
+        printf("please input the partition %d size percentage(%%) 0 means all left space : ", i);
+        fflush(stdout);
+        if (scanf("%d", &iPct) != 1) {
+            goto    __input_size;
+        }
+
+        if ((iPct < 0) || (iPct > 100)) {
+            printf("the partition size percentage(%%) must be 1 ~ 100\n");
+            goto    __input_size;
+        }
+
+        if (iPct == 0) {
+            iTotalPct  = 100;
+        } else {
+            iTotalPct += iPct;
+        }
+
+        if (iTotalPct > 100) {
+            printf("the partition size percentage seriously error (bigger than 100%%)!\n");
+            return  (-ERROR_TSHELL_EPARAM);
+        }
+
+        fdpInfo[i].FDP_ucSzPct = (UINT8)iPct;
+
+__input_active:
+        printf("is this partition active(y/n) : ");
+        fflush(stdout);
+        do {
+            cActive = getchar();
+        } while ((cActive == '\r') || (cActive == '\n'));
+        if ((cActive != 'y') &&
+            (cActive != 'Y') &&
+            (cActive != 'n') &&
+            (cActive != 'N')) {
+            printf("please use y or n\n");
+            goto    __input_active;
+        }
+
+        if ((cActive == 'y') || (cActive == 'Y')) {
+            fdpInfo[i].FDP_bIsActive = LW_TRUE;
+        } else {
+            fdpInfo[i].FDP_bIsActive = LW_FALSE;
+        }
+
+__input_type:
+        printf("please input the file system type\n");
+        printf("1: FAT   2: TPSFS   3: LINUX\n");
+        do {
+            cType = getchar();
+        } while ((cType == '\r') || (cType == '\n'));
+        if ((cType < '1') || (cType > '3')) {
+            printf("please use 1 2 or 3\n");
+            goto    __input_type;
+        }
+
+        switch (cType) {
+
+        case '1':
+            fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_WIN95_FAT32;
+            break;
+
+        case '2':
+            fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_TPS;
+            break;
+
+        case '3':
+            fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_NATIVE_LINUX;
+            break;
+
+        default:
+            fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_TPS;
+            break;
+        }
+    }
+
+    printf("making partition...\n");
+    iCnt = oemFdisk(pcBlkFile, fdpInfo, uiNPart);
+    if (iCnt <= ERROR_NONE) {
+        fprintf(stderr, "make partition error : %s\n", lib_strerror(errno));
+        return  (PX_ERROR);
+    }
+    oemFdiskShow(pcBlkFile);
+
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
 ** 函数名称: __tshellFsCmdInit
 ** 功能描述: 初始化文件系统命令集
 ** 输　入  : NONE
@@ -1936,6 +2082,12 @@ VOID  __tshellFsCmdInit (VOID)
     API_TShellHelpAdd("dosfslabel",   "get or set volumn label.\n"
                                       "eg. dosfslabel /usb/ms0\n"
                                       "    dosfslabel /usb/ms1 newlabel\n");
+
+    API_TShellKeywordAdd("fdisk", __tshellFsCmdFdisk);
+    API_TShellFormatAdd("fdisk", " [-f] [block I/O device]");
+    API_TShellHelpAdd("fdisk",   "show or make disk partition table\n"
+                                 "eg. fdisk /dev/blk/udisk0\n"
+                                 "    fdisk -f /dev/blk/sata0\n");
 }
 #endif                                                                  /*  LW_CFG_SHELL_EN > 0         */
                                                                         /*  LW_CFG_MAX_VOLUMES > 0      */

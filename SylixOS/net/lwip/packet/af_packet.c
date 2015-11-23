@@ -1757,7 +1757,7 @@ INT  packet_mmap (AF_PACKET_T *pafpacket, PLW_DEV_MMAP_AREA  pdmap)
     __AF_PACKET_UNLOCK();
     
     ulPhysical  = (addr_t)pafpacket->PACKET_mmapRx.PKTB_pvPhyMem;
-    ulPhysical += (addr_t)(pdmap->DMAP_offPages * LW_CFG_VMM_PAGE_SIZE);
+    ulPhysical += (addr_t)(pdmap->DMAP_offPages << LW_CFG_VMM_PAGE_SHIFT);
     
     if (API_VmmRemapArea(pdmap->DMAP_pvAddr, (PVOID)ulPhysical, 
                          pdmap->DMAP_stLen, ulFlag, 

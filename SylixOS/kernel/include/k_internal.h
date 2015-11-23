@@ -198,23 +198,19 @@ PVOID _ITimerThread(PVOID  pvArg);
 
 VOID                __kernelEnter(CPCHAR  pcFunc);
 INT                 __kernelExit(VOID);
-
+BOOL                __kernelIsEnter(VOID);
 INTREG              __kernelEnterIrq(CPCHAR  pcFunc);
 INT                 __kernelExitIrq(INTREG  iregInterLevel);
 
-BOOL                __kernelIsEnter(VOID);
-LW_OBJECT_HANDLE    __kernelOwner(VOID);
-CPCHAR              __kernelEnterFunc(VOID);
-
 #define __KERNEL_ENTER()                    __kernelEnter(__func__)
 #define __KERNEL_EXIT()                     __kernelExit()
-
+#define __KERNEL_ISENTER()                  __kernelIsEnter()
 #define __KERNEL_ENTER_IRQ()                __kernelEnterIrq(__func__)
 #define __KERNEL_EXIT_IRQ(iregInterLevel)   __kernelExitIrq(iregInterLevel)
 
+LW_OBJECT_HANDLE    __kernelOwner(VOID);
+CPCHAR              __kernelEnterFunc(VOID);
 
-
-#define __KERNEL_ISENTER()                  __kernelIsEnter()
 #define __KERNEL_OWNER()                    __kernelOwner()
 #define __KERNEL_ENTERFUNC()                __kernelEnterFunc()
 
@@ -241,9 +237,9 @@ VOID                __kernelSchedInt(VOID);
 #define __KERNEL_TIME_GET(time, type)                                   \
         {                                                               \
             INTREG           iregInterLevel;                            \
-            LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);          \
+            LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);                   \
             time = (type)_K_i64KernelTime;                              \
-            LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);         \
+            LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                  \
         }
         
 #define __KERNEL_TIME_GET_NO_SPINLOCK(time, type)   \
@@ -363,7 +359,10 @@ LW_OBJECT_ID   _MakeObjectId(UINT8  ucCls, UINT16  usNode, UINT16  usIndex);
 *********************************************************************************************************/
 
 INT            _CpuActive(PLW_CLASS_CPU   pcpu);
+
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
 INT            _CpuInactive(PLW_CLASS_CPU   pcpu);
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 
 /*********************************************************************************************************
   调度器
@@ -399,6 +398,7 @@ INT            _SmpCallFunc(ULONG  ulCPUId, FUNCPTR  pfunc, PVOID  pvArg,
 VOID           _SmpCallFuncAllOther(FUNCPTR  pfunc, PVOID  pvArg,
                                     VOIDFUNCPTR  pfuncAsync, PVOID  pvAsync, INT  iOpt);
 VOID           _SmpProcIpi(PLW_CLASS_CPU  pcpuCur);
+VOID           _SmpTryProcIpi(PLW_CLASS_CPU  pcpuCur);
 VOID           _SmpUpdateIpi(PLW_CLASS_CPU  pcpuCur);
 #endif                                                                  /* LW_CFG_SMP_EN                */
 
@@ -406,15 +406,15 @@ VOID           _SmpUpdateIpi(PLW_CLASS_CPU  pcpuCur);
   线程外壳
 *********************************************************************************************************/
 
-PVOID          _ThreadShell(PVOID      pvThreadStartAddress);
+PVOID          _ThreadShell(PVOID  pvThreadStartAddress);
 
 /*********************************************************************************************************
   协程外壳
 *********************************************************************************************************/
 
 #if LW_CFG_COROUTINE_EN > 0
-VOID           _CoroutineShell(PVOID    pvCoroutineStartAddress);
-VOID           _CoroutineFreeAll(PLW_CLASS_TCB    ptcb);
+VOID           _CoroutineShell(PVOID   pvCoroutineStartAddress);
+VOID           _CoroutineFreeAll(PLW_CLASS_TCB  ptcb);
 #endif                                                                  /*  LW_CFG_COROUTINE_EN > 0     */
 
 /*********************************************************************************************************

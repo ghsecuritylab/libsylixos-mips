@@ -83,6 +83,7 @@ PVOID  API_PartitionPut (LW_OBJECT_HANDLE  ulId, PVOID  pvBlock)
     
     return  (LW_NULL);
 }
+
 #endif                                                                  /*  (LW_CFG_PARTITION_EN > 0)   */
                                                                         /*  (LW_CFG_MAX_PARTITIONS > 0) */
 /*********************************************************************************************************

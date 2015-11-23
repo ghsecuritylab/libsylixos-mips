@@ -491,7 +491,6 @@ typedef struct __ata_ctrl    __ATA_CTRL;
 typedef __ATA_CTRL          *__PATA_CTRL;
 
 struct __ata_ctrl {
-    LW_LIST_LINE      ATACTRL_lineManage;                               /*  ata控制器链表               */
     ATA_CHAN         *ATACTRL_pataChan;                                 /*  ata设备通道                 */
     __ATA_DRIVE       ATACTRL_ataDrive[__ATA_MAX_DRIVES];               /*  ata设备驱动器               */
     ATA_REG           ATACTRL_ataReg;                                   /*  ata任务文件寄存器           */

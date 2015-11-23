@@ -95,7 +95,6 @@ ULONG  API_RegionDeleteEx (LW_OBJECT_HANDLE   *pulId, BOOL  bForce)
     
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: API_RegionDelete
 ** 功能描述: 删除一个内存分区
@@ -113,6 +112,7 @@ ULONG  API_RegionDelete (LW_OBJECT_HANDLE   *pulId)
 {
     return  (API_RegionDeleteEx(pulId, LW_FALSE));
 }
+
 #endif                                                                  /*  (LW_CFG_REGION_EN > 0) &&   */
                                                                         /*  (LW_CFG_MAX_REGIONS > 0)    */
 /*********************************************************************************************************

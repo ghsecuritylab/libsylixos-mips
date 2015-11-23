@@ -46,14 +46,11 @@
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
-                                            注意！！！
-                                            
-       MUTEX 不同于 COUNTING、BINERY，一个线程必须成对使用！！！！
+  注意:
+       MUTEX 不同于 COUNTING, BINERY, 一个线程必须成对使用.
        
        API_SemaphoreMPend();
-       
        ... (do something as fast as possible...)
-       
        API_SemaphoreMPost();
 *********************************************************************************************************/
 /*********************************************************************************************************
@@ -124,11 +121,8 @@ __wait_again:
         return  (ERROR_NONE);
     }
     
-    LW_SPIN_LOCK(&pevent->EVENT_slLock);                                /*  锁定 spinlock               */
-    
     __KERNEL_ENTER();                                                   /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MUTEX)) {
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
@@ -139,7 +133,6 @@ __wait_again:
         pevent->EVENT_ulCounter    = LW_FALSE;
         pevent->EVENT_ulMaxCounter = (ULONG)ptcbCur->TCB_ucPriority;
         pevent->EVENT_pvTcbOwn     = (PVOID)ptcbCur;                    /*  保存线程信息                */
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         if (pevent->EVENT_ulOption & LW_OPTION_DELETE_SAFE) {           /*  安全模式设定                */
             _ThreadSafeInternal();
@@ -150,21 +143,18 @@ __wait_again:
     if (!(pevent->EVENT_ulOption & LW_OPTION_NORMAL)) {                 /*  需要递归支持或递归检查      */
         if (pevent->EVENT_pvTcbOwn == (PVOID)ptcbCur) {                 /*  是否是自己连续调用          */
             if (pevent->EVENT_ulOption & LW_OPTION_ERRORCHECK) {
-                LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                  /*  打开 spinlock               */
                 __KERNEL_EXIT();                                        /*  退出内核                    */
                 _ErrorHandle(EDEADLK);                                  /*  退出                        */
                 return  (EDEADLK);
             }
                                                                         /*  临时计数器++                */
             pevent->EVENT_pvPtr = (PVOID)((ULONG)pevent->EVENT_pvPtr + 1);
-            LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                      /*  打开 spinlock               */
             __KERNEL_EXIT();                                            /*  退出内核                    */
             return  (ERROR_NONE);
         }
     }
 
     if (ulTimeout == LW_OPTION_NOT_WAIT) {                              /*  不等待                      */
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
@@ -205,7 +195,7 @@ __wait_again:
         _EventWaitFifo(pevent, ppringList);                             /*  加入 FIFO 等待表            */
     }
     
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
 
     ulEventOption = pevent->EVENT_ulOption;
     
@@ -227,10 +217,8 @@ __wait_again:
     }
     
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {               /*  等待超时                    */
-        LW_SPIN_LOCK(&pevent->EVENT_slLock);                            /*  锁定 spinlock               */
         __KERNEL_ENTER();                                               /*  进入内核                    */
         if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_CLEAR) {         /*  是否在上面瞬间被激活        */
-            LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                      /*  打开 spinlock               */
             __KERNEL_EXIT();                                            /*  退出内核                    */
             if (pevent->EVENT_ulOption & LW_OPTION_DELETE_SAFE) {       /*  安全模式设定                */
                 _ThreadSafeInternal();
@@ -243,7 +231,7 @@ __wait_again:
         } else {
             _EventTimeoutFifo(pevent, ppringList);                      /*  等待超时恢复                */
         }
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
+        
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
@@ -254,6 +242,7 @@ __wait_again:
                 _ThreadSafeInternal();
             }
             return  (ERROR_NONE);
+        
         } else {
             _ErrorHandle(ERROR_EVENT_WAS_DELETED);                      /*  已经被删除                  */
             return  (ERROR_EVENT_WAS_DELETED);

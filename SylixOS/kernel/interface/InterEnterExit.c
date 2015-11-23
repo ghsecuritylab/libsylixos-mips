@@ -91,6 +91,7 @@ static VOID  __fpuInterExit (PLW_CLASS_CPU  pcpu)
         }
     }
 }
+
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
 /*********************************************************************************************************
 ** 函数名称: API_InterEnter
@@ -114,7 +115,7 @@ ULONG    API_InterEnter (VOID)
     KN_SMP_WMB();                                                       /*  等待以上操作完成            */
 
 #if LW_CFG_CPU_FPU_EN > 0
-    if (_K_bInterFpuEn) {                                               /*  中断状态允许使用浮点运算    */
+    if (LW_KERN_FPU_EN_GET()) {                                         /*  中断状态允许使用浮点运算    */
         __fpuInterEnter(pcpu);
     }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
@@ -151,7 +152,7 @@ VOID    API_InterExit (VOID)
     
     if (pcpu->CPU_ulInterNesting) {                                     /*  查看系统是否在中断嵌套中    */
 #if LW_CFG_CPU_FPU_EN > 0                                               /*  恢复上一等级中断 FPU CTX    */
-        if (_K_bInterFpuEn) {
+        if (LW_KERN_FPU_EN_GET()) {
             __fpuInterExit(pcpu);
         }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
@@ -161,7 +162,7 @@ VOID    API_InterExit (VOID)
     __KERNEL_SCHED_INT();                                               /*  中断中的调度                */
     
 #if LW_CFG_CPU_FPU_EN > 0
-    if (_K_bInterFpuEn) {
+    if (LW_KERN_FPU_EN_GET()) {
         __fpuInterExit(pcpu);
     }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */

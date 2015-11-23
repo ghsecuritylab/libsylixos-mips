@@ -66,10 +66,10 @@ static  VOID  _KernelPrimaryCoreStartup (PLW_CLASS_CPU   pcpuCur)
 {
     PLW_CLASS_TCB   ptcbOrg;
     
-    LW_SPIN_LOCK_IGNIRQ(&_K_slKernel);
+    LW_SPIN_KERN_LOCK_IGNIRQ();
     LW_TCB_GET_CUR(ptcbOrg);
     _CpuActive(pcpuCur);                                                /*  CPU 激活                    */
-    LW_SPIN_UNLOCK_SCHED(&_K_slKernel, ptcbOrg);
+    LW_SPIN_KERN_UNLOCK_SCHED(ptcbOrg);
     
 #if LW_CFG_SMP_EN > 0
     KN_SMP_MB();                                                        /*  内存屏障, 确保之前操作已处理*/
@@ -108,10 +108,10 @@ static  VOID  _KernelSecondaryCoreStartup (PLW_CLASS_CPU   pcpuCur)
         LW_SPINLOCK_DELAY();                                            /*  短延迟并释放总线            */
     }
 
-    LW_SPIN_LOCK_IGNIRQ(&_K_slKernel);
+    LW_SPIN_KERN_LOCK_IGNIRQ();
     LW_TCB_GET_CUR(ptcbOrg);
     _CpuActive(pcpuCur);                                                /*  CPU 激活                    */
-    LW_SPIN_UNLOCK_SCHED(&_K_slKernel, ptcbOrg);
+    LW_SPIN_KERN_UNLOCK_SCHED(ptcbOrg);
     
     pcpuCur->CPU_iKernelCounter = 0;                                    /*  允许调度                    */
     KN_SMP_MB();

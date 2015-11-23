@@ -609,12 +609,8 @@ int  pthread_mutex_setprioceiling (pthread_mutex_t  *pmutex, int  prioceiling)
     
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK(&pevent->EVENT_slLock);                                /*  锁定 spinlock               */
     __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
     pevent->EVENT_ucCeilingPriority = (UINT8)prioceiling;
-    
-    LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                              /*  打开中断, 同时打开 spinlock */
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     return  (ERROR_NONE);
@@ -655,12 +651,8 @@ int  pthread_mutex_getprioceiling (pthread_mutex_t  *pmutex, int  *prioceiling)
     
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK(&pevent->EVENT_slLock);                                /*  锁定 spinlock               */
     __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
     *prioceiling = (int)pevent->EVENT_ucCeilingPriority;
-    
-    LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                              /*  打开中断, 同时打开 spinlock */
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     return  (ERROR_NONE);

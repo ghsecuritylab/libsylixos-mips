@@ -85,7 +85,9 @@ LW_API VOID             API_AtomicUnlock(INTREG  iregInterLevel);
 #if LW_CFG_SMP_EN > 0
 LW_API ULONG            API_CpuUp(ULONG  ulCPUId);
 
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
 LW_API ULONG            API_CpuDown(ULONG  ulCPUId);
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 
 LW_API BOOL             API_CpuIsUp(ULONG  ulCPUId);
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
@@ -278,6 +280,8 @@ LW_API ULONG            API_ThreadIsSuspend(LW_OBJECT_HANDLE    ulId);  /*  检查
 
 LW_API BOOL             API_ThreadIsReady(LW_OBJECT_HANDLE    ulId);    /*  检查线程是否就绪            */
 
+LW_API ULONG            API_ThreadIsRunning(LW_OBJECT_HANDLE   ulId, BOOL  *pbIsRunning);
+                                                                        /*  检查线程是否正在运行        */
 LW_API ULONG            API_ThreadSetName(LW_OBJECT_HANDLE  ulId, 
                                           CPCHAR            pcName);    /*  设置线程名                  */
 
@@ -1089,8 +1093,7 @@ LW_API VOID             API_KernelResume(VOID);                         /*  内核
 LW_API ULONG            API_KernelHookSet(LW_HOOK_FUNC   hookfuncPtr, ULONG  ulOpt);     
                                                                         /*  设置系统钩子函数            */
 
-LW_API ULONG            API_KernelHookGet(LW_HOOK_FUNC   hookfuncPtr, ULONG  ulOpt);     
-                                                                        /*  获得系统钩子函数            */
+LW_API LW_HOOK_FUNC     API_KernelHookGet(ULONG  ulOpt);                /*  获得系统钩子函数            */
 
 LW_API ULONG            API_KernelHookDelete(ULONG  ulOpt);             /*  删除系统钩子函数            */
 

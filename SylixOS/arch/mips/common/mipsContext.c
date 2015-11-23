@@ -65,7 +65,7 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     pfpctx->FP_uiFP = (ARCH_REG_T)LW_NULL;
     pfpctx->FP_uiRA = (ARCH_REG_T)LW_NULL;
 
-    pregctx->REG_uiCP0_STATUS = uiCP0Status;
+    pregctx->REG_uiCP0Status = uiCP0Status;
 
     pregctx->REG_uiEPC = (ARCH_REG_T)pfuncTask;
 
@@ -126,6 +126,42 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
     pregctxDest->REG_uiFP = (ARCH_REG_T)&pfpctx->FP_uiRA;
 }
 /*********************************************************************************************************
+** 函数名称: archTaskRegsGet
+** 功能描述: 通过栈顶指针获取寄存器表 (满栈结构)
+** 输　入  : pstkTop        堆栈顶点
+**           pregSp         SP 指针
+** 输　出  : 寄存器结构
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+ARCH_REG_CTX  *archTaskRegsGet (PLW_STACK  pstkTop, ARCH_REG_T *pregSp)
+{
+    ARCH_REG_T  regSp = (ARCH_REG_T)pstkTop;
+
+#if CPU_STK_GROWTH == 0
+    regSp -= sizeof(ARCH_REG_CTX);
+#else
+    regSp += sizeof(ARCH_REG_CTX);
+#endif
+
+    *pregSp = regSp;
+
+    return  ((ARCH_REG_CTX *)pstkTop);
+}
+/*********************************************************************************************************
+** 函数名称: archTaskRegsSet
+** 功能描述: 通过栈顶指针获取寄存器表 (满栈结构)
+** 输　入  : pstkTop        堆栈顶点
+**           pregctx        寄存器表
+** 输　出  : 寄存器结构
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+VOID  archTaskRegsSet (PLW_STACK  pstkTop, const ARCH_REG_CTX  *pregctx)
+{
+    *(ARCH_REG_CTX *)pstkTop = *pregctx;
+}
+/*********************************************************************************************************
 ** 函数名称: archTaskCtxShow
 ** 功能描述: 打印任务上下文
 ** 输　入  : iFd        文件描述符
@@ -139,6 +175,7 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
 VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 {
     UINT32             uiCP0Status;
+
     fdprintf(iFd, "\n");
 
     fdprintf(iFd, "RA  = 0x%08x  ", pstkTop[STK_OFFSET_RA / sizeof(ARCH_REG_T)]);
@@ -182,45 +219,45 @@ VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
     fdprintf(iFd, "V0  = 0x%08x\n", pstkTop[STK_OFFSET_V0 / sizeof(ARCH_REG_T)]);
 
     fdprintf(iFd, "AT  = 0x%08x  ", pstkTop[STK_OFFSET_AT / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "EPC = 0x%08x  ", pstkTop[STK_OFFSET_EPC / sizeof(ARCH_REG_T)]);
+
+    fdprintf(iFd, "SP  = 0x%08x\n", (ARCH_REG_T)pstkTop);
     uiCP0Status = pstkTop[STK_OFFSET_SR / sizeof(ARCH_REG_T)];
     fdprintf(iFd, "SR  = 0x%08x\n", uiCP0Status);
-    fdprintf(iFd, "CP0 Status Register\n");
-    fdprintf(iFd, "SR Bit CU3  = %4d  ", (uiCP0Status & M_StatusCU3) >> S_StatusCU3);
-    fdprintf(iFd, "SR Bit CU2  = %4d\n", (uiCP0Status & M_StatusCU2) >> S_StatusCU2);
-    fdprintf(iFd, "SR Bit CU1  = %4d  ", (uiCP0Status & M_StatusCU1) >> S_StatusCU1);
-    fdprintf(iFd, "SR Bit CU0  = %4d\n", (uiCP0Status & M_StatusCU0) >> S_StatusCU0);
-    fdprintf(iFd, "SR Bit RP   = %4d  ", (uiCP0Status & M_StatusRP)  >> S_StatusRP);
-    fdprintf(iFd, "SR Bit FR   = %4d\n", (uiCP0Status & M_StatusFR)  >> S_StatusFR);
-    fdprintf(iFd, "SR Bit RE   = %4d  ", (uiCP0Status & M_StatusRE)  >> S_StatusRE);
-    fdprintf(iFd, "SR Bit MX   = %4d\n", (uiCP0Status & M_StatusMX)  >> S_StatusMX);
-    fdprintf(iFd, "SR Bit PX   = %4d  ", (uiCP0Status & M_StatusPX)  >> S_StatusPX);
-    fdprintf(iFd, "SR Bit BEV  = %4d\n", (uiCP0Status & M_StatusBEV) >> S_StatusBEV);
-    fdprintf(iFd, "SR Bit TS   = %4d  ", (uiCP0Status & M_StatusTS)  >> S_StatusTS);
-    fdprintf(iFd, "SR Bit SR   = %4d\n", (uiCP0Status & M_StatusSR)  >> S_StatusSR);
-    fdprintf(iFd, "SR Bit NMI  = %4d  ", (uiCP0Status & M_StatusNMI) >> S_StatusNMI);
-    fdprintf(iFd, "SR Bit IM7  = %4d\n", (uiCP0Status & M_StatusIM7) >> S_StatusIM7);
-    fdprintf(iFd, "SR Bit IM6  = %4d  ", (uiCP0Status & M_StatusIM6) >> S_StatusIM6);
-    fdprintf(iFd, "SR Bit IM5  = %4d\n", (uiCP0Status & M_StatusIM5) >> S_StatusIM5);
-    fdprintf(iFd, "SR Bit IM4  = %4d  ", (uiCP0Status & M_StatusIM4) >> S_StatusIM4);
-    fdprintf(iFd, "SR Bit IM3  = %4d\n", (uiCP0Status & M_StatusIM3) >> S_StatusIM3);
-    fdprintf(iFd, "SR Bit IM2  = %4d  ", (uiCP0Status & M_StatusIM2) >> S_StatusIM2);
-    fdprintf(iFd, "SR Bit IM1  = %4d\n", (uiCP0Status & M_StatusIM1) >> S_StatusIM1);
-    fdprintf(iFd, "SR Bit IM0  = %4d  ", (uiCP0Status & M_StatusIM0) >> S_StatusIM0);
-    fdprintf(iFd, "SR Bit KX   = %4d\n", (uiCP0Status & M_StatusKX)  >> S_StatusKX);
-    fdprintf(iFd, "SR Bit SX   = %4d  ", (uiCP0Status & M_StatusSX)  >> S_StatusSX);
-    fdprintf(iFd, "SR Bit UX   = %4d\n", (uiCP0Status & M_StatusUX)  >> S_StatusUX);
-    fdprintf(iFd, "SR Bit KSU  = %4d  ", (uiCP0Status & M_StatusKSU) >> S_StatusKSU);
-    fdprintf(iFd, "SR Bit UM   = %4d\n", (uiCP0Status & M_StatusUM)  >> S_StatusUM);
-    fdprintf(iFd, "SR Bit SM   = %4d  ", (uiCP0Status & M_StatusSM)  >> S_StatusSM);
-    fdprintf(iFd, "SR Bit ERL  = %4d\n", (uiCP0Status & M_StatusERL) >> S_StatusERL);
-    fdprintf(iFd, "SR Bit EXL  = %4d  ", (uiCP0Status & M_StatusEXL) >> S_StatusEXL);
-    fdprintf(iFd, "SR Bit IE   = %4d\n", (uiCP0Status & M_StatusIE)  >> S_StatusIE);
-    fdprintf(iFd, "EPC = 0x%08x  ", pstkTop[STK_OFFSET_EPC / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "SP  = 0x%08x\n", (ARCH_REG_T)pstkTop);
+    fdprintf(iFd, "CP0 Status Register:\n");
+    fdprintf(iFd, "CU3 = %4d  ", (uiCP0Status & M_StatusCU3) >> S_StatusCU3);
+    fdprintf(iFd, "CU2 = %4d\n", (uiCP0Status & M_StatusCU2) >> S_StatusCU2);
+    fdprintf(iFd, "CU1 = %4d  ", (uiCP0Status & M_StatusCU1) >> S_StatusCU1);
+    fdprintf(iFd, "CU0 = %4d\n", (uiCP0Status & M_StatusCU0) >> S_StatusCU0);
+    fdprintf(iFd, "RP  = %4d  ", (uiCP0Status & M_StatusRP)  >> S_StatusRP);
+    fdprintf(iFd, "FR  = %4d\n", (uiCP0Status & M_StatusFR)  >> S_StatusFR);
+    fdprintf(iFd, "RE  = %4d  ", (uiCP0Status & M_StatusRE)  >> S_StatusRE);
+    fdprintf(iFd, "MX  = %4d\n", (uiCP0Status & M_StatusMX)  >> S_StatusMX);
+    fdprintf(iFd, "PX  = %4d  ", (uiCP0Status & M_StatusPX)  >> S_StatusPX);
+    fdprintf(iFd, "BEV = %4d\n", (uiCP0Status & M_StatusBEV) >> S_StatusBEV);
+    fdprintf(iFd, "TS  = %4d  ", (uiCP0Status & M_StatusTS)  >> S_StatusTS);
+    fdprintf(iFd, "SR  = %4d\n", (uiCP0Status & M_StatusSR)  >> S_StatusSR);
+    fdprintf(iFd, "NMI = %4d  ", (uiCP0Status & M_StatusNMI) >> S_StatusNMI);
+    fdprintf(iFd, "IM7 = %4d\n", (uiCP0Status & M_StatusIM7) >> S_StatusIM7);
+    fdprintf(iFd, "IM6 = %4d  ", (uiCP0Status & M_StatusIM6) >> S_StatusIM6);
+    fdprintf(iFd, "IM5 = %4d\n", (uiCP0Status & M_StatusIM5) >> S_StatusIM5);
+    fdprintf(iFd, "IM4 = %4d  ", (uiCP0Status & M_StatusIM4) >> S_StatusIM4);
+    fdprintf(iFd, "IM3 = %4d\n", (uiCP0Status & M_StatusIM3) >> S_StatusIM3);
+    fdprintf(iFd, "IM2 = %4d  ", (uiCP0Status & M_StatusIM2) >> S_StatusIM2);
+    fdprintf(iFd, "IM1 = %4d\n", (uiCP0Status & M_StatusIM1) >> S_StatusIM1);
+    fdprintf(iFd, "IM0 = %4d  ", (uiCP0Status & M_StatusIM0) >> S_StatusIM0);
+    fdprintf(iFd, "KX  = %4d\n", (uiCP0Status & M_StatusKX)  >> S_StatusKX);
+    fdprintf(iFd, "SX  = %4d  ", (uiCP0Status & M_StatusSX)  >> S_StatusSX);
+    fdprintf(iFd, "UX  = %4d\n", (uiCP0Status & M_StatusUX)  >> S_StatusUX);
+    fdprintf(iFd, "KSU = %4d  ", (uiCP0Status & M_StatusKSU) >> S_StatusKSU);
+    fdprintf(iFd, "UM  = %4d\n", (uiCP0Status & M_StatusUM)  >> S_StatusUM);
+    fdprintf(iFd, "SM  = %4d  ", (uiCP0Status & M_StatusSM)  >> S_StatusSM);
+    fdprintf(iFd, "ERL = %4d\n", (uiCP0Status & M_StatusERL) >> S_StatusERL);
+    fdprintf(iFd, "EXL = %4d  ", (uiCP0Status & M_StatusEXL) >> S_StatusEXL);
+    fdprintf(iFd, "IE  = %4d\n", (uiCP0Status & M_StatusIE)  >> S_StatusIE);
 }
 
 #endif                                                                  /*  LW_CFG_DEVICE_EN > 0        */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/
-

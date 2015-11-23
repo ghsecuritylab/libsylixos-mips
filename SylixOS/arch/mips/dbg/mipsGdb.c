@@ -44,7 +44,7 @@ CPCHAR  archGdbTargetXml (VOID)
 }
 /*********************************************************************************************************
 ** 函数名称: archGdbCoreXml
-** 功能描述: 获得 Xfer:features:read:arm-core.xml 回复 XML
+** 功能描述: 获得 Xfer:features:read:mips-core.xml 回复 XML
 ** 输　入  : NONE
 ** 输　出  : 回复 XML
 ** 全局变量:
@@ -104,9 +104,15 @@ INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 *********************************************************************************************************/
 INT  archGdbRegSetPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, ULONG ulPc)
 {
-    /*
-     * TODO
-     */
+    ARCH_REG_CTX  regctx;
+    ARCH_REG_T    regPs;
+
+    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
+
+    regctx.REG_uiEPC = (ARCH_REG_T)ulPc;
+
+    API_DtraceSetRegs(pvDtrace, ulThread, &regctx);
+
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************

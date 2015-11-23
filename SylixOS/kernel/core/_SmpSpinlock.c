@@ -363,31 +363,6 @@ VOID  _SmpSpinUnlockIrqQuick (spinlock_t *psl, INTREG  iregInterLevel)
     KN_INT_ENABLE(iregInterLevel);
 }
 /*********************************************************************************************************
-** 函数名称: _SmpSpinUnlockSched
-** 功能描述: SMP 调度器切换完成后专用释放函数 (关中断状态下被调用)
-** 输　入  : psl           自旋锁
-**           ptcbOwner     锁的持有者
-** 输　出  : NONE
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-VOID  _SmpSpinUnlockSched (spinlock_t *psl, PLW_CLASS_TCB ptcbOwner)
-{
-    PLW_CLASS_CPU   pcpuCur;
-    INT             iRet;
-    
-    KN_SMP_MB();
-    iRet = __ARCH_SPIN_UNLOCK(psl);
-    _BugHandle((iRet != LW_SPIN_OK), LW_TRUE, "unlock error!\r\n");
-    
-    pcpuCur = LW_CPU_GET_CUR();
-    if (!pcpuCur->CPU_ulInterNesting) {
-        __THREAD_LOCK_DEC(ptcbOwner);                                   /*  解除任务锁定                */
-    }
-    
-    LW_CPU_SPIN_NESTING_DEC(pcpuCur);
-}
-/*********************************************************************************************************
 ** 函数名称: _SmpSpinLockTask
 ** 功能描述: 自旋锁原始加锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
 ** 输　入  : psl               自旋锁

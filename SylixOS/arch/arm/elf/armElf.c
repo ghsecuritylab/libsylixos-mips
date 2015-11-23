@@ -88,7 +88,8 @@ static Elf_Addr jmpItemFind (Elf_Addr addrSymVal,
 /*********************************************************************************************************
 ** 函数名称: archElfRelocateRela
 ** 功能描述: 重定位 RELA 类型的重定位项
-** 输  入  : prela        RELA 表项
+** 输  入  : pmodule      模块
+**           prela        RELA 表项
 **           addrSymVal   重定位符号的值
 **           pcTargetSec  重定位目目标节区
 **           pcBuffer     跳转表起始地址
@@ -97,7 +98,8 @@ static Elf_Addr jmpItemFind (Elf_Addr addrSymVal,
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-INT  archElfRelocateRela (Elf_Rela   *prela,
+INT  archElfRelocateRela (PVOID       pmodule,
+                          Elf_Rela   *prela,
                           Elf_Addr    addrSymVal,
                           PCHAR       pcTargetSec,
                           PCHAR       pcBuffer,
@@ -108,7 +110,8 @@ INT  archElfRelocateRela (Elf_Rela   *prela,
 /*********************************************************************************************************
 ** 函数名称: archElfRelocateRel
 ** 功能描述: 重定位 REL 类型的重定位项
-** 输  入  : prel         REL 表项
+** 输  入  : pmodule      模块
+**           prel         REL 表项
 **           addrSymVal   重定位符号的值
 **           pcTargetSec  重定位目目标节区
 **           pcBuffer     跳转表起始地址
@@ -117,7 +120,8 @@ INT  archElfRelocateRela (Elf_Rela   *prela,
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-INT  archElfRelocateRel (Elf_Rel     *prel,
+INT  archElfRelocateRel (PVOID        pmodule,
+                         Elf_Rel     *prel,
                          Elf_Addr     addrSymVal,
                          PCHAR        pcTargetSec,
                          PCHAR        pcBuffer,
@@ -310,12 +314,12 @@ INT  archElfRelocateRel (Elf_Rel     *prel,
 /*********************************************************************************************************
 ** 函数名称: archElfRGetJmpBuffItemLen
 ** 功能描述: 返回跳转表项长度
-** 输  入  :
+** 输  入  : pmodule       模块
 ** 输  出  : 跳转表项长度
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-INT  archElfRGetJmpBuffItemLen (VOID)
+INT  archElfRGetJmpBuffItemLen (PVOID  pmodule)
 {
     return  (JMP_TABLE_ITEMLEN);
 }

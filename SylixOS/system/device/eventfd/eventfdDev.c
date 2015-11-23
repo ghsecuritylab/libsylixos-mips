@@ -99,7 +99,7 @@ INT  API_EventfdDrvInstall (VOID)
     }
     
     if (_G_hEvtfdSelMutex == LW_OBJECT_HANDLE_INVALID) {
-        _G_hEvtfdSelMutex =  API_SemaphoreMCreate("eventfdsel_lock", LW_PRIO_DEF_CEILING, 
+        _G_hEvtfdSelMutex =  API_SemaphoreMCreate("evtfdsel_lock", LW_PRIO_DEF_CEILING, 
                                                   LW_OPTION_WAIT_PRIORITY | LW_OPTION_DELETE_SAFE |
                                                   LW_OPTION_INHERIT_PRIORITY | LW_OPTION_OBJECT_GLOBAL,
                                                   LW_NULL);

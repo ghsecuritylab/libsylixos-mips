@@ -91,12 +91,12 @@ ULONG  _ThreadUserGet (LW_HANDLE  ulId, uid_t  *puid, gid_t  *pgid)
 *********************************************************************************************************/
 VOID  _ThreadDeleteWaitDeath (PLW_CLASS_TCB  ptcbDel)
 {
-    LW_SPIN_LOCK(&ptcbDel->TCB_slLock);
     __KERNEL_ENTER();
     
+    LW_SPIN_LOCK(&ptcbDel->TCB_slLock);
     _ThreadStatusChange(ptcbDel, LW_TCB_REQ_WDEATH);
-    
     LW_SPIN_UNLOCK(&ptcbDel->TCB_slLock);
+    
     __KERNEL_EXIT();                                                    /*  等待对方状态转换完毕        */
 }
 /*********************************************************************************************************

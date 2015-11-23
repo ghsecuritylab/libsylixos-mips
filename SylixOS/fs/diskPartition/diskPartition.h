@@ -64,25 +64,45 @@
   直接使用 fatFsDevCreate(...) 装载卷即可.
 *********************************************************************************************************/
 /*********************************************************************************************************
-  分区类型
+  分区类型 (格式分区)
 *********************************************************************************************************/
-#define LW_DISK_PART_TYPE_EMPTY             0x00
-#define LW_DISK_PART_TYPE_FAT12             0x01
-#define LW_DISK_PART_TYPE_FAT16             0x04
-#define LW_DISK_PART_TYPE_EXTENDED          0x05
-#define LW_DISK_PART_TYPE_FAT16_BIG         0x06
-#define LW_DISK_PART_TYPE_HPFS_NTFS         0x07
-#define LW_DISK_PART_TYPE_WIN95_FAT32       0x0b
-#define LW_DISK_PART_TYPE_WIN95_FAT32LBA    0x0c
-#define LW_DISK_PART_TYPE_WIN95_FAT16LBA    0x0e
-#define LW_DISK_PART_TYPE_WIN95_EXTENDED    0x0f
-#define LW_DISK_PART_TYPE_NATIVE_LINUX      0x83
-#define LW_DISK_PART_TYPE_QNX4_1            0x4d
-#define LW_DISK_PART_TYPE_QNX4_2            0x4e
-#define LW_DISK_PART_TYPE_QNX4_3            0x4f
-#define LW_DISK_PART_TYPE_QNX6_1            0xb1
-#define LW_DISK_PART_TYPE_QNX6_2            0xb2
-#define LW_DISK_PART_TYPE_QNX6_3            0xb3
+#define LW_DISK_PART_TYPE_EMPTY                 0x00
+#define LW_DISK_PART_TYPE_FAT12                 0x01
+#define LW_DISK_PART_TYPE_FAT16                 0x04
+#define LW_DISK_PART_TYPE_FAT16_BIG             0x06
+#define LW_DISK_PART_TYPE_HPFS_NTFS             0x07
+#define LW_DISK_PART_TYPE_WIN95_FAT32           0x0b
+#define LW_DISK_PART_TYPE_WIN95_FAT32LBA        0x0c
+#define LW_DISK_PART_TYPE_WIN95_FAT16LBA        0x0e
+#define LW_DISK_PART_TYPE_NATIVE_LINUX          0x83
+#define LW_DISK_PART_TYPE_QNX4_1                0x4d
+#define LW_DISK_PART_TYPE_QNX4_2                0x4e
+#define LW_DISK_PART_TYPE_QNX4_3                0x4f
+#define LW_DISK_PART_TYPE_QNX6_1                0xb1
+#define LW_DISK_PART_TYPE_QNX6_2                0xb2
+#define LW_DISK_PART_TYPE_QNX6_3                0xb3
+#define LW_DISK_PART_TYPE_TPS                   0x9c
+/*********************************************************************************************************
+  分区类型 (扩展分区)
+*********************************************************************************************************/
+#define LW_DISK_PART_TYPE_EXTENDED              0x05
+#define LW_DISK_PART_TYPE_WIN95_EXTENDED        0x0f
+#define LW_DISK_PART_TYPE_HIDDEN_EXTENDED       0x15
+#define LW_DISK_PART_TYPE_HIDDEN_LBA_EXTENDED   0x1f
+#define LW_DISK_PART_TYPE_LINUX_EXTENDED        0x85
+/*********************************************************************************************************
+  分区类型判断
+*********************************************************************************************************/
+#define LW_DISK_PART_IS_EXTENDED(type)          (((type) == LW_DISK_PART_TYPE_EXTENDED)            || \
+                                                 ((type) == LW_DISK_PART_TYPE_WIN95_EXTENDED)      || \
+                                                 ((type) == LW_DISK_PART_TYPE_HIDDEN_EXTENDED)     || \
+                                                 ((type) == LW_DISK_PART_TYPE_HIDDEN_LBA_EXTENDED) || \
+                                                 ((type) == LW_DISK_PART_TYPE_LINUX_EXTENDED))
+/*********************************************************************************************************
+  分区类型有效
+*********************************************************************************************************/
+#define LW_DISK_PART_IS_VALID(type)             ((!LW_DISK_PART_IS_EXTENDED(type)) && \
+                                                 ((type) != LW_DISK_PART_TYPE_EMPTY))
 /*********************************************************************************************************
   单个分区信息
 *********************************************************************************************************/

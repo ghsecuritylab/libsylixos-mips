@@ -18,10 +18,12 @@
 **
 ** 描        述: MIPS 体系构架支持.
 *********************************************************************************************************/
+
 #ifndef __ARCH_MIPS_SUPPORT_H
 #define __ARCH_MIPS_SUPPORT_H
 
 #define __LW_SCHEDULER_BUG_TRACE_EN                                     /*  测试多核调度器              */
+#define __LW_KERNLOCK_BUG_TRACE_EN                                      /*  测试内核锁                  */
 
 /*********************************************************************************************************
   汇编相关头文件
@@ -42,17 +44,19 @@
   MIPS 处理器断言
 *********************************************************************************************************/
 
-VOID        archAssert(INT  iCond, CPCHAR  pcFunc, CPCHAR  pcFile, INT  iLine);
+VOID    archAssert(INT  iCond, CPCHAR  pcFunc, CPCHAR  pcFile, INT  iLine);
 
 /*********************************************************************************************************
   MIPS 处理器线程上下文相关接口
 *********************************************************************************************************/
 
-PLW_STACK   archTaskCtxCreate(PTHREAD_START_ROUTINE  pfuncTask,
-                              PVOID                  pvArg,
-                              PLW_STACK              pstkTop,
-                              ULONG                  ulOpt);
-VOID        archTaskCtxSetFp(PLW_STACK  pstkDest, PLW_STACK  pstkSrc);
+PLW_STACK       archTaskCtxCreate(PTHREAD_START_ROUTINE  pfuncTask,
+                                  PVOID                  pvArg,
+                                  PLW_STACK              pstkTop,
+                                  ULONG                  ulOpt);
+VOID            archTaskCtxSetFp(PLW_STACK  pstkDest, PLW_STACK  pstkSrc);
+ARCH_REG_CTX   *archTaskRegsGet(PLW_STACK  pstkTop, ARCH_REG_T *pregSp);
+VOID            archTaskRegsSet(PLW_STACK  pstkTop, const ARCH_REG_CTX  *pregctx);
 
 #if LW_CFG_DEVICE_EN > 0
 VOID        archTaskCtxShow(INT  iFd, PLW_STACK  pstkTop);
@@ -73,9 +77,9 @@ VOID        archSigCtxLoad(PVOID  pvStack);
 *********************************************************************************************************/
 
 #if LW_CFG_GDB_EN > 0
-VOID    archDbgBpInsert(addr_t   ulAddr, size_t stSize, ULONG  *pulIns);
+VOID    archDbgBpInsert(addr_t   ulAddr, size_t stSize, ULONG  *pulIns, BOOL  bLocal);
 VOID    archDbgAbInsert(addr_t   ulAddr, ULONG  *pulIns);
-VOID    archDbgBpRemove(addr_t   ulAddr, size_t stSize, ULONG   ulIns);
+VOID    archDbgBpRemove(addr_t   ulAddr, size_t stSize, ULONG   ulIns, BOOL  bLocal);
 VOID    archDbgBpPrefetch(addr_t ulAddr);
 UINT    archDbgTrapType(addr_t   ulAddr, PVOID   pvArch);
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
@@ -115,7 +119,6 @@ VOID    archReboot(INT  iRebootType, addr_t  ulStartAddress);
   MIPS 处理器 CACHE 操作
 *********************************************************************************************************/
 
-#define MIPS_MACHINE_NONE   "24kf"
 #define MIPS_MACHINE_24KF   "24kf"
 
 #if LW_CFG_CACHE_EN > 0
@@ -172,19 +175,42 @@ VOID    archMpInt(ULONG  ulCPUId);
   MIPS 内存屏障
 *********************************************************************************************************/
 
-#define KN_MB()
-#define KN_RMB()
-#define KN_WMB()
+#define KN_BARRIER()            __asm__ __volatile__ ("" : : : "memory")
 
-#define KN_SMP_MB()
-#define KN_SMP_RMB()
-#define KN_SMP_WMB()
+#if LW_CFG_MIPS_HAS_SYNC_INSTR > 0
+#define KN_SYNC()                       \
+        __asm__ __volatile__ (          \
+        ".set   push\n\t"               \
+        ".set   noreorder\n\t"          \
+        ".set   mips2\n\t"              \
+        "sync\n\t"                      \
+        ".set   pop"                    \
+        : : : "memory")
+#else
+#define KN_SYNC()               KN_BARRIER()
+#endif                                                                  /*  LW_CFG_MIPS_HAS_SYNC_INSTR  */
 
-#define KN_BARRIER()
+#define KN_MB()                 KN_SYNC()
+#define KN_RMB()                KN_SYNC()
+#define KN_WMB()                KN_SYNC()
+
+#if LW_CFG_SMP_EN > 0
+#define KN_SMP_MB()             __asm__ __volatile__ ("sync" : : : "memory")
+#define KN_SMP_RMB()            __asm__ __volatile__ ("sync" : : : "memory")
+#define KN_SMP_WMB()            __asm__ __volatile__ ("sync" : : : "memory")
+
+#else
+#define KN_SMP_MB()             KN_BARRIER()
+#define KN_SMP_RMB()            KN_BARRIER()
+#define KN_SMP_WMB()            KN_BARRIER()
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
 
 /*********************************************************************************************************
   MIPS 处理器浮点运算器
 *********************************************************************************************************/
+
+#define MIPS_FPU_VFP32    "vfp32"
+#define MIPS_FPU_VFP64    "vfp64"
 
 #if LW_CFG_CPU_FPU_EN > 0
 VOID    archFpuPrimaryInit(CPCHAR  pcMachineName, CPCHAR  pcFpuName);
@@ -207,9 +233,9 @@ VOID    archFpuRestore(PVOID pvFpuCtx);
 #if LW_CFG_DEVICE_EN > 0
 VOID    archFpuCtxShow(INT  iFd, PVOID pvFpuCtx);
 #define __ARCH_FPU_CTX_SHOW     archFpuCtxShow
-#endif                                                                  /*  #if LW_CFG_DEVICE_EN        */
+#endif                                                                  /*  LW_CFG_DEVICE_EN            */
 
-INT     archFpuUndHandle(VOID);
+INT     archFpuUndHandle(PLW_CLASS_TCB  ptcbCur);
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN           */
 
 /*********************************************************************************************************
@@ -265,9 +291,7 @@ VOID    bspReboot(INT  iRebootType, addr_t  ulStartAddress);
   系统关键信息打印 (打印信息不可依赖任何操作系统 api)
 *********************************************************************************************************/
 
-#if (LW_CFG_ERRORMESSAGE_EN > 0) || (LW_CFG_LOGMESSAGE_EN > 0) || (LW_CFG_BUGMESSAGE_EN > 0)
 VOID    bspDebugMsg(CPCHAR pcMsg);
-#endif                                                                  /*  LW_CFG_ERRORMESSAGE_EN > 0  */
 
 /*********************************************************************************************************
   BSP 信息

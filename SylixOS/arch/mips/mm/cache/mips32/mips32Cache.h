@@ -23,13 +23,13 @@
 #define __MIPS32_CACHE_H
 
 VOID  mips32CacheInit(LW_CACHE_OP *pcacheop,
-                     CACHE_MODE   uiInstruction,
-                     CACHE_MODE   uiData,
-                     CPCHAR       pcMachineName);
+                      CACHE_MODE   uiInstruction,
+                      CACHE_MODE   uiData,
+                      CPCHAR       pcMachineName);
 
 VOID  mips32CacheReset(CPCHAR  pcMachineName);
 
-#endif                                                                  /*  __MIPS32_CACHE_H              */
+#endif                                                                  /*  __MIPS32_CACHE_H            */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

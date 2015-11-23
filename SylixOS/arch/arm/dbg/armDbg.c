@@ -43,11 +43,12 @@
 ** 输　入  : ulAddr         断点地址
 **           stSize         断点大小
 **           pulIns         返回的之前的指令
+**           bLocal         是否仅更新当前 CPU I-CACHE
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns)
+VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns, BOOL  bLocal)
 {
     ULONG ulIns = ARM_BREAKPOINT_INS;
 
@@ -55,7 +56,11 @@ VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns)
     lib_memcpy((PCHAR)ulAddr, (PCHAR)&ulIns, stSize);
     
 #if LW_CFG_CACHE_EN > 0
-    API_CacheTextUpdate((PVOID)ulAddr, stSize);
+    if (bLocal) {
+        API_CacheLocalTextUpdate((PVOID)ulAddr, stSize);
+    } else {
+        API_CacheTextUpdate((PVOID)ulAddr, stSize);
+    }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 }
 /*********************************************************************************************************
@@ -83,16 +88,21 @@ VOID  archDbgAbInsert (addr_t  ulAddr, ULONG  *pulIns)
 ** 输　入  : ulAddr         断点地址
 **           stSize         断点大小
 **           pulIns         返回的之前的指令
+**           bLocal         是否仅更新当前 CPU I-CACHE
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-VOID  archDbgBpRemove (addr_t  ulAddr, size_t stSize, ULONG  ulIns)
+VOID  archDbgBpRemove (addr_t  ulAddr, size_t stSize, ULONG  ulIns, BOOL  bLocal)
 {
     lib_memcpy((PCHAR)ulAddr, (PCHAR)&ulIns, stSize);
     
 #if LW_CFG_CACHE_EN > 0
-    API_CacheTextUpdate((PVOID)ulAddr, stSize);
+    if (bLocal) {
+        API_CacheLocalTextUpdate((PVOID)ulAddr, stSize);
+    } else {
+        API_CacheTextUpdate((PVOID)ulAddr, stSize);
+    }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 }
 /*********************************************************************************************************

@@ -41,6 +41,10 @@ PVOID  _ThreadShell (PVOID  pvThreadStartAddress)
     
     LW_TCB_GET_CUR_SAFE(ptcbCur);                                       /*  当前任务控制块              */
     
+#ifdef  LW_CFG_CPU_ARCH_MIPS
+    MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pvThreadStartAddress));/*  MIPS 设置 T9 寄存器         */
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+
     pvReturnVal = ((PTHREAD_START_ROUTINE)pvThreadStartAddress)
                   (ptcbCur->TCB_pvArg);                                 /*  执行线程                    */
 

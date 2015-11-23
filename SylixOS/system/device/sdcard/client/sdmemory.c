@@ -28,6 +28,7 @@
 2011.04.03  更改 block io 层回调函数的参数.
 2015.03.11  增加卡写保护功能.
 2015.09.18  增加对保留扇区的处理.
+2015.09.22  增加对 MMC/eMMC 扩展协议的支持.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -110,6 +111,12 @@ static INT __sdMemIoctl(__PSD_BLK_DEV    psdblkdevice,
                         LONG             lArg);
 static INT __sdMemStatus(__PSD_BLK_DEV   psdblkdevice);
 static INT __sdMemReset(__PSD_BLK_DEV    psdblkdevice);
+
+static INT __sdMemMmcFreqChange(PLW_SDCORE_DEVICE  psdcoredevice,
+                                LW_SDDEV_CSD      *psdcsd,
+                                INT               *piCardCap);
+static INT __sdMemMmcBusWidthChange(PLW_SDCORE_DEVICE psdcoredevice, INT iCardCap);
+static CPCHAR __sdMemProtVsnStr(UINT8 ucType, UINT8 ucVsn);
 /*********************************************************************************************************
 ** 函数名称: API_SdMemDevCreate
 ** 功能描述: 创建一个SD记忆卡设备
@@ -311,6 +318,8 @@ LW_API INT  API_SdMemDevShow (PLW_BLK_DEV pblkdevice)
     UINT32              uiCapMod;
     UINT64              ullCap;
     UINT8               ucType;
+    CPCHAR              pcTypeStr = "unknown";
+    CPCHAR              pcVsnStr  = "unknown";
 
     if (!pblkdevice) {
         _ErrorHandle(EINVAL);
@@ -332,6 +341,29 @@ LW_API INT  API_SdMemDevShow (PLW_BLK_DEV pblkdevice)
     ullCap   = (UINT64)sddevcsd.DEVCSD_uiCapacity * ((UINT64)1 << sddevcsd.DEVCSD_ucReadBlkLenBits);
     uiCapMod = ullCap % LW_CFG_MB_SIZE;
 
+    switch (ucType) {
+    case SDDEV_TYPE_MMC:
+        pcTypeStr = "MMC";
+        break;
+
+    case SDDEV_TYPE_SDSC:
+        pcTypeStr = "SDSC";
+        break;
+
+    case SDDEV_TYPE_SDHC:
+        pcTypeStr = "SDHC";
+        break;
+
+    case SDDEV_TYPE_SDXC:
+        pcTypeStr = "SDXC";
+        break;
+
+    default:
+        break;
+    }
+
+    pcVsnStr = __sdMemProtVsnStr(ucType, sddevcsd.DEVCSD_ucStructure);
+
     printf("\nSD Memory Information >>\n");
     printf("Manufacturer : 0x%02x\n", sddevcid.DEVCID_ucMainFid);
     if (ucType == SDDEV_TYPE_MMC) {
@@ -340,6 +372,8 @@ LW_API INT  API_SdMemDevShow (PLW_BLK_DEV pblkdevice)
         printf("OEM ID       : %c%c\n", sddevcid.DEVCID_usOemId >> 8,
                                         sddevcid.DEVCID_usOemId & 0xff);
     }
+
+    printf("Media Type   : %s(%s)\n", pcTypeStr, pcVsnStr);
     printf("Product Name : %c%c%c%c%c\n",
                            __SD_CID_PNAME(0),
                            __SD_CID_PNAME(1),
@@ -432,6 +466,7 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
         }
 
         SD_DELAYMS(10);
+        API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_1);
 
         iError = API_SdCoreDevReset(psdcoredevice);                     /*  cmd0 go idle                */
         if (iError != ERROR_NONE) {
@@ -492,6 +527,14 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
             return  (PX_ERROR);
         }
 
+        if (ucType == SDDEV_TYPE_MMC) {
+            LW_SDDEV_EXT_CSD  sddevextcsd;
+            lib_bzero(&sddevextcsd, sizeof(sddevextcsd));
+            API_SdCoreDevSelect(psdcoredevice);
+            API_SdCoreDecodeExtCSD(psdcoredevice, &sddevcsd, &sddevextcsd);
+            API_SdCoreDevDeSelect(psdcoredevice);
+        }
+
         sddevcsd.DEVCSD_uiCapacity       <<= sddevcsd.DEVCSD_ucReadBlkLenBits - \
                                              SD_MEM_DEFAULT_BLKSIZE_NBITS;
         sddevcsd.DEVCSD_ucReadBlkLenBits   = SD_MEM_DEFAULT_BLKSIZE_NBITS;
@@ -503,21 +546,25 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
         iError = API_SdCoreDevCtl(psdcoredevice,
                                   SDBUS_CTRL_SETCLK,
                                   SDARG_SETCLK_NORMAL);                 /*  时钟设置到全速              */
-        /*
-         * TODO: 根据卡类型设置为高速
-         */
         if (iError != ERROR_NONE) {
             SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "set clock to max failed.\r\n");
             return  (PX_ERROR);
         }
 
-        /*
-         * 以下进入传输模式
-         */
-        iError = API_SdCoreDevSetBlkLen(psdcoredevice, SD_MEM_DEFAULT_BLKSIZE);
-        if (iError != ERROR_NONE) {
-            SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "set blklen failed.\r\n");
-            return  (PX_ERROR);
+        if (ucType != SDDEV_TYPE_MMC) {
+            iError = API_SdCoreDevCtl(psdcoredevice,
+                                      SDBUS_CTRL_SETCLK,
+                                      SDARG_SETCLK_NORMAL);             /*  时钟设置到全速              */
+            if (iError != ERROR_NONE) {
+                SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "set clock to max failed.\r\n");
+                return  (PX_ERROR);
+            }
+
+            iError = API_SdCoreDevSetBlkLen(psdcoredevice, SD_MEM_DEFAULT_BLKSIZE);
+            if (iError != ERROR_NONE) {
+                SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "set blklen failed.\r\n");
+                return  (PX_ERROR);
+            }
         }
 
         if (ucType != SDDEV_TYPE_MMC) {
@@ -528,14 +575,36 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
                 return  (PX_ERROR);
             }
             API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_4);
-        } else {                                                        /*  mmc 只有一位总线            */
-            API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_1);
+
+        } else {                                                        /*  mmc 总线特殊设置            */
+            INT    iCardCap;
+
+            API_SdCoreDevSelect(psdcoredevice);
+            iError = __sdMemMmcFreqChange(psdcoredevice, &sddevcsd, &iCardCap);
+            if (iError != ERROR_NONE) {
+                SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "mmc change frequency error.\r\n");
+                return  (PX_ERROR);
+            }
+            API_SdCoreDevDeSelect(psdcoredevice);
+
+            iError = API_SdCoreDevSetBlkLen(psdcoredevice, SD_MEM_DEFAULT_BLKSIZE);
+            if (iError != ERROR_NONE) {
+                SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "set blklen failed.\r\n");
+                return  (PX_ERROR);
+            }
+
+            API_SdCoreDevSelect(psdcoredevice);
+            iError = __sdMemMmcBusWidthChange(psdcoredevice, iCardCap);
+            if (iError != ERROR_NONE) {
+                SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "mmc change bus width error.\r\n");
+                return  (PX_ERROR);
+            }
+            API_SdCoreDevDeSelect(psdcoredevice);
         }
         return  (ERROR_NONE);
 
     case SDADAPTER_TYPE_SPI:
         API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_POWERON, 0);
-
         SD_DELAYMS(3);
 
         iError = API_SdCoreDevCtl(psdcoredevice,
@@ -602,6 +671,12 @@ static INT __sdMemInit (PLW_SDCORE_DEVICE psdcoredevice)
         if (iError != ERROR_NONE) {
             SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "get device csd failed.\r\n");
             return  (PX_ERROR);
+        }
+
+        if (ucType == SDDEV_TYPE_MMC) {
+            LW_SDDEV_EXT_CSD  sddevextcsd;
+            lib_bzero(&sddevextcsd, sizeof(sddevextcsd));
+            API_SdCoreDecodeExtCSD(psdcoredevice, &sddevcsd, &sddevextcsd);
         }
 
         sddevcsd.DEVCSD_uiCapacity       <<= sddevcsd.DEVCSD_ucReadBlkLenBits - \
@@ -1119,6 +1194,223 @@ static INT __sdMemStatus (__PSD_BLK_DEV   psdblkdevice)
 static INT __sdMemReset (__PSD_BLK_DEV    psdblkdevice)
 {
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: __sdMemProtVsnStr
+** 功能描述: 获取卡的协议版本字符串
+** 输    入: ucType   卡类型(MMC 或 SD)
+**           ucVsn    CSD里面的结构标识
+** 输    出: NONE
+** 返    回: ERROR CODE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static CPCHAR __sdMemProtVsnStr (UINT8 ucType, UINT8 ucVsn)
+{
+    CPCHAR pcVsnStr = "v1.0";
+
+    if (ucType != SDDEV_TYPE_MMC) {
+        switch (ucVsn) {
+        case CSD_STRUCT_VER_1_0:
+            pcVsnStr = "v1.0";
+            break;
+
+        case CSD_STRUCT_VER_2_0:
+            pcVsnStr = "v2.0";
+            break;
+
+        default:
+            pcVsnStr = "v2.0";
+            break;
+        }
+
+    } else {
+        switch (ucVsn) {
+        case MMC_VERSION_1_2:
+            pcVsnStr = "v1.2";
+            break;
+
+        case MMC_VERSION_1_4:
+            pcVsnStr = "v1.4";
+            break;
+
+        case MMC_VERSION_2_2:
+            pcVsnStr = "v2.2";
+            break;
+
+        case MMC_VERSION_3:
+            pcVsnStr = "v3.0";
+            break;
+
+        case MMC_VERSION_4:
+            pcVsnStr = "v4.0";
+            break;
+
+        default:
+            pcVsnStr = "v1.2";
+            break;
+        }
+    }
+
+    return  (pcVsnStr);
+}
+/*********************************************************************************************************
+** 函数名称: __sdMemMmcFreqChange
+** 功能描述: 设置 MMC 卡的总线频率
+** 输    入: psdcoredevice   核心设备对象
+**           psdcsd          已经解析后的 CSD
+**           piCardCap       保存CARD的功能(速度和支持的位宽模式)
+** 输    出: NONE
+** 返    回: ERROR CODE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static INT __sdMemMmcFreqChange (PLW_SDCORE_DEVICE  psdcoredevice,
+                                 LW_SDDEV_CSD      *psdcsd,
+                                 INT               *piCardCap)
+{
+    UINT8   ucExtCSD[512];
+    CHAR    cCardType;
+    INT     iError;
+    UINT8   ucHighSpeed = 0;
+    INT     iCapab      = 0;
+
+    if (psdcsd->DEVCSD_ucStructure < MMC_VERSION_4) {
+        return 0;
+    }
+
+    iError = API_SdCoreDevSendExtCSD(psdcoredevice, ucExtCSD);
+    if (iError) {
+        return iError;
+    }
+
+    if (ucExtCSD[212] || ucExtCSD[213] || ucExtCSD[214] || ucExtCSD[215]) {
+        COREDEV_HIGHSPEED_SET(psdcoredevice);
+    }
+
+    cCardType = ucExtCSD[196] & 0xf;
+
+    /*
+     * 这里的功能位标使用 sddrvm.h里面的定义,
+     * 这样在后面可以直接使用位与的方式得到实际需要使用的功能
+     */
+    if (cCardType & MMC_HS_52MHZ_1_8V_3V_IO) {
+        iCapab |= MMC_MODE_HS_52MHz_DDR_18_3V
+               |  MMC_MODE_HS_52MHz
+               |  MMC_MODE_HS
+               |  SDHOST_CAP_DATA_8BIT_DDR
+               |  SDHOST_CAP_DATA_4BIT_DDR
+               |  SDHOST_CAP_DATA_4BIT
+               |  SDHOST_CAP_DATA_8BIT;
+        ucHighSpeed = 1;
+
+    } else if (cCardType & MMC_HS_52MHZ) {
+        iCapab |= MMC_MODE_HS_52MHz
+               |  MMC_MODE_HS
+               |  SDHOST_CAP_DATA_4BIT
+               |  SDHOST_CAP_DATA_8BIT;
+        ucHighSpeed = 1;
+
+    } else {
+        iCapab |= MMC_MODE_HS
+               |  SDHOST_CAP_DATA_4BIT
+               |  SDHOST_CAP_DATA_8BIT;
+        ucHighSpeed = 0;
+    }
+
+    *piCardCap = iCapab;
+
+    iError = API_SdCoreDevSwitch(psdcoredevice,
+                                 EXT_CSD_CMD_SET_NORMAL,
+                                 EXT_CSD_HS_TIMING,
+                                 ucHighSpeed);
+    if (iError) {
+        return iError;
+    }
+
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: __sdMemMmcBusWidthChange
+** 功能描述: 设置 MMC 卡的总线位宽
+** 输    入: psdcoredevice   核心设备对象
+**           iCardCap        MMC卡支持的位宽功能
+** 输    出: NONE
+** 返    回: ERROR CODE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static INT __sdMemMmcBusWidthChange (PLW_SDCORE_DEVICE psdcoredevice, INT iCardCap)
+{
+    INT iHostCap;
+    INT iCardCapTmp = iCardCap;
+    INT iError;
+
+    iError = API_SdmHostCapGet(psdcoredevice, &iHostCap);
+    if (iError != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+
+    iCardCapTmp = iCardCap;
+    iCardCap    = iCardCap & iHostCap;
+
+    if (iCardCap & SDHOST_CAP_DATA_8BIT_DDR) {
+        iError = API_SdCoreDevSwitch(psdcoredevice,
+                                     EXT_CSD_CMD_SET_NORMAL,
+                                     EXT_CSD_BUS_WIDTH,
+                                     EXT_CSD_BUS_WIDTH_8_DDR);
+
+        if (iError != ERROR_NONE) {
+            return  (iError);
+        }
+        API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_8_DDR);
+
+    } else if (iCardCap & SDHOST_CAP_DATA_4BIT_DDR) {
+        iError = API_SdCoreDevSwitch(psdcoredevice,
+                                     EXT_CSD_CMD_SET_NORMAL,
+                                     EXT_CSD_BUS_WIDTH,
+                                     EXT_CSD_BUS_WIDTH_4_DDR);
+
+        if (iError != ERROR_NONE) {
+            return  (iError);
+        }
+        API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_4_DDR);
+
+    } else if (iCardCap & SDHOST_CAP_DATA_8BIT) {
+        iError = API_SdCoreDevSwitch(psdcoredevice,
+                                     EXT_CSD_CMD_SET_NORMAL,
+                                     EXT_CSD_BUS_WIDTH,
+                                     EXT_CSD_BUS_WIDTH_8);
+
+        if (iError != ERROR_NONE) {
+            return  (iError);
+        }
+        API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_8);
+
+    } else if (iCardCap & SDHOST_CAP_DATA_4BIT) {
+        iError = API_SdCoreDevSwitch(psdcoredevice,
+                                     EXT_CSD_CMD_SET_NORMAL,
+                                     EXT_CSD_BUS_WIDTH,
+                                     EXT_CSD_BUS_WIDTH_4);
+
+        if (iError != ERROR_NONE) {
+            return  (iError);
+        }
+        API_SdCoreDevCtl(psdcoredevice, SDBUS_CTRL_SETBUSWIDTH, SDARG_SETBUSWIDTH_4);
+    }
+
+    if (iCardCapTmp & (MMC_MODE_HS | MMC_MODE_HS_52MHz_DDR_12V | MMC_MODE_HS_52MHz_DDR_18_3V)) {
+        iError = API_SdCoreDevCtl(psdcoredevice,
+                                  SDBUS_CTRL_SETCLK,
+                                  SDARG_SETCLK_MAX);
+
+    } else {
+        iError = API_SdCoreDevCtl(psdcoredevice,
+                                  SDBUS_CTRL_SETCLK,
+                                  SDARG_SETCLK_NORMAL);
+    }
+
+    return  (iError);
 }
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0)      */
                                                                         /*  (LW_CFG_SDCARD_EN > 0)      */

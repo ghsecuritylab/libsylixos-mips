@@ -127,7 +127,7 @@ typedef SINT64   Elf64_Sxword;
 #define DT_MIPS_RLD_MAP         0x70000016 /* Address of run time loader map.  */
 /* The address of .got.plt in an executable using the new non-PIC ABI.  */
 #define DT_MIPS_PLTGOT          0x70000032
-#endif
+#endif /* LW_CFG_CPU_ARCH_MIPS */
 
 /* e_machine */
 #define EM_NONE		0		/* e_machine */

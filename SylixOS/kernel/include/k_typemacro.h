@@ -55,7 +55,7 @@
 #define  LW_TYPE_EVENT_MUTEX            4                               /*  互斥信号量                  */
 #define  LW_TYPE_EVENT_EVENTSET         5                               /*  事件标志组                  */
 
-#define  LW_MASK_EVENT_RESOURCE         0x0000FFFF                      /*  放死锁资源位                */
+#define  LW_MASK_EVENT_RESOURCE         0x0000FFFF                      /*  防死锁资源位 (未支持)       */
 
 /*********************************************************************************************************
   THREAD STATUS

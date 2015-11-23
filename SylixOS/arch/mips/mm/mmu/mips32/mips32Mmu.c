@@ -57,7 +57,6 @@ static UINT32               _G_uiTlbSize = 0;                           /*  TLB 
 *********************************************************************************************************/
 static VOID  mips32MmuEnable (VOID)
 {
-
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuDisable
@@ -69,7 +68,6 @@ static VOID  mips32MmuEnable (VOID)
 *********************************************************************************************************/
 static VOID  mips32MmuDisable (VOID)
 {
-
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuInvalidateTLB
@@ -105,12 +103,13 @@ static VOID  mips32MmuInvalidateTLB (VOID)
 static VOID  mips32MmuInvalidateTLBMVA (addr_t  ulAddr)
 {
     UINT32  uiEntryHiBak = mipsCp0EntryHiRead();
+    INT32   iIndex;
 
     mipsCp0EntryHiWrite((ulAddr >> LW_CFG_VMM_PAGE_SHIFT) << MIPS32_ENTRYHI_VPN_SHIFT);
 
     MIPS_EXEC_INS("tlbp");
 
-    INT32  iIndex = mipsCp0IndexRead();
+    iIndex = mipsCp0IndexRead();
     if (iIndex >= 0) {
         mipsCp0EntryLo0Write(0);
         mipsCp0EntryLo1Write(0);
@@ -149,7 +148,6 @@ static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
     UINT32              uiPFN;
 
     if (ulFlag & LW_VMM_FLAG_ACCESS) {
-
         uiPFN = uiBaseAddr >> LW_CFG_VMM_PAGE_SHIFT;                    /*  计算 PFN                    */
 
         stDescriptor.PTE_uiEntryLO = uiPFN << MIPS32_ENTRYLO_PFN_SHIFT; /*  填充 PFN                    */
@@ -169,6 +167,7 @@ static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
         if (ulFlag & LW_VMM_FLAG_EXECABLE) {
             stDescriptor.PTE_uiSoftware |= 1 << MIPS32_PTE_EXEC_SHIFT;  /*  填充软件的可执行位          */
         }
+
     } else {
         stDescriptor.PTE_uiEntryLO  = 0;
         stDescriptor.PTE_uiSoftware = 0;
@@ -238,6 +237,7 @@ static INT  mips32MmuGlobalInit (CPCHAR  pcMachineName)
         uiConfig = mipsCp0Config1Read();                                /*  读 Config1                  */
         UINT32  uiMMUSize = (uiConfig >> 25) & 0x3F;                    /*  获得 MMUSize 域             */
         _G_uiTlbSize = uiMMUSize + 1;
+
     } else {
         _G_uiTlbSize = 64;                                              /*  按最大算                    */
     }
@@ -247,11 +247,8 @@ static INT  mips32MmuGlobalInit (CPCHAR  pcMachineName)
     archCacheReset(pcMachineName);                                      /*  复位 Cache                  */
     
     mips32MmuInvalidateTLB();                                           /*  无效 TLB                    */
-    
     mipsCp0EntryHiWrite(0);                                             /*  ASID = 0                    */
-    
     mipsCp0PageMaskWrite(0);                                            /*  4K 页面大小                 */
-
     mipsCp0WiredWrite(0);                                               /*  全部允许随机替换            */
 
     return  (ERROR_NONE);
@@ -498,14 +495,12 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
     LW_PGD_TRANSENTRY  *p_pgdentry = mips32MmuPgdOffset(pmmuctx, ulAddr);/*  获得一级描述符地址         */
 
     if (mips32MmuPgdIsOk(*p_pgdentry)) {                                /*  一级描述符有效              */
-
         LW_PTE_TRANSENTRY  *p_pteentry = mips32MmuPteOffset((LW_PMD_TRANSENTRY *)p_pgdentry,
                                                             ulAddr);    /*  获得二级描述符地址          */
 
         LW_PTE_TRANSENTRY   stDescriptor = *p_pteentry;                 /*  获得二级描述符              */
 
         if (mips32MmuPteIsOk(stDescriptor)) {                           /*  二级描述符有效              */
-
             ULONG    ulFlag = 0;
             UINT32   uiCache;
 
@@ -524,6 +519,7 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
             uiCache = (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_C_MASK)
                        >> MIPS32_ENTRYLO_C_SHIFT;                       /*  获得 CACHE 属性             */
             switch (uiCache) {
+
             case MIPS_UNCACHED:                                         /*  不可以 CACHE                */
                 break;
 
@@ -561,14 +557,12 @@ static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  u
     }
 
     if (mips32MmuPgdIsOk(*p_pgdentry)) {                                /*  一级描述符有效              */
-
         LW_PTE_TRANSENTRY  *p_pteentry = mips32MmuPteOffset((LW_PMD_TRANSENTRY *)p_pgdentry,
                                                             ulAddr);    /*  获得二级描述符地址          */
 
         LW_PTE_TRANSENTRY   stDescriptor = *p_pteentry;                 /*  获得二级描述符              */
 
         if (mips32MmuPteIsOk(stDescriptor)) {                           /*  二级描述符有效              */
-
             UINT32   uiPFN = (stDescriptor.PTE_uiEntryLO & MIPS32_ENTRYLO_PFN_MASK)
                               >> MIPS32_ENTRYLO_PFN_SHIFT;              /*  获得物理页号                */
             addr_t   ulPhysicalAddr = uiPFN << LW_CFG_VMM_PAGE_SHIFT;   /*  计算页面物理地址            */
@@ -580,9 +574,11 @@ static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  u
                                                                    ulFlag);
             mips32MmuInvalidateTLBMVA(ulAddr);                          /*  无效 TLB                    */
             return  (ERROR_NONE);
+
         } else {
             return  (PX_ERROR);
         }
+
     } else {
         return  (PX_ERROR);
     }
@@ -637,6 +633,12 @@ static VOID  mips32MmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
 *********************************************************************************************************/
 VOID  mips32MmuInit (LW_MMU_OP  *pmmuop, CPCHAR  pcMachineName)
 {
+#if LW_CFG_SMP_EN > 0
+    pmmuop->MMUOP_ulOption = LW_VMM_MMU_FLUSH_TLB_MP;
+#else
+    pmmuop->MMUOP_ulOption = 0ul;
+#endif                                                                  /*  LW_CFG_SMP_EN               */
+
     pmmuop->MMUOP_ulOption        = 0ul;
     pmmuop->MMUOP_pfuncMemInit    = mips32MmuMemInit;
     pmmuop->MMUOP_pfuncGlobalInit = mips32MmuGlobalInit;

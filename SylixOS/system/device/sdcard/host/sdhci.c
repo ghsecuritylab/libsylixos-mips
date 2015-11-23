@@ -31,6 +31,8 @@
             增加 QUIRK 相关代码.
 2015.03.11  增加卡写保护功能支持.
 2015.03.14  增加 SDHCI 不能发出 SDIO 硬件中断的处理.
+2015.11.20  增加 对不支持 ACMD12 的控制器处理.
+            增加 对 SDHCI v3.0 的兼容性支持.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #define  __SYLIXOS_IO
@@ -168,7 +170,11 @@ struct __sdhci_trans {
 
     UINT32                SDHCITS_uiIntSta;
 
+    INT                   SDHCITS_iStage;
+#define __SDHCI_TRANS_STAGE_START  0
+#define __SDHCI_TRANS_STAGE_STOP   1
     LW_SD_COMMAND        *SDHCITS_psdcmd;
+    LW_SD_COMMAND        *SDHCITS_psdcmdStop;
     LW_SD_DATA           *SDHCITS_psddat;                               /*  对用户请求的引用            */
 
     LW_SPINLOCK_DEFINE   (SDHCITS_slLock);
@@ -181,6 +187,7 @@ struct __sdhci_host {
     PLW_SD_ADAPTER          SDHCIHS_psdadapter;                         /*  对应的总线适配器            */
     LW_SDHCI_HOST_ATTR      SDHCIHS_sdhcihostattr;                      /*  主控属性                    */
     __SDHCI_CAPAB           SDHCIHS_sdhcicap;                           /*  主控功能                    */
+    UINT32                  SDHCIHS_uiVersion;                          /*  硬件版本                    */
     atomic_t                SDHCIHS_atomicDevCnt;                       /*  设备计数                    */
 
     UINT32                  SDHCIHS_ucTransferMod;                      /*  主控使用的传输模式          */
@@ -325,20 +332,20 @@ static INT            __sdhciDataWriteNorm(__PSDHCI_TRANS    psdhcitrans);
 /*********************************************************************************************************
   FOR IO ACCESS DRV
 *********************************************************************************************************/
-static UINT32 __sdhciIoReadL(ULONG ulAddr);
-static UINT16 __sdhciIoReadW(ULONG ulAddr);
-static UINT8  __sdhciIoReadB(ULONG ulAddr);
+static UINT32 __sdhciIoReadL(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr);
+static UINT16 __sdhciIoReadW(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr);
+static UINT8  __sdhciIoReadB(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr);
 
-static VOID   __sdhciIoWriteL(ULONG ulAddr, UINT32 uiLword);
-static VOID   __sdhciIoWriteW(ULONG ulAddr, UINT16 usWord);
-static VOID   __sdhciIoWriteB(ULONG ulAddr, UINT8 ucByte);
+static VOID   __sdhciIoWriteL(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT32 uiLword);
+static VOID   __sdhciIoWriteW(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT16 usWord);
+static VOID   __sdhciIoWriteB(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT8 ucByte);
 
-static UINT32 __sdhciMemReadL(ULONG ulAddr);
-static UINT16 __sdhciMemReadW(ULONG ulAddr);
-static UINT8  __sdhciMemReadB(ULONG ulAddr);
-static VOID   __sdhciMemWriteL(ULONG ulAddr, UINT32 uiLword);
-static VOID   __sdhciMemWriteW(ULONG ulAddr, UINT16 usWord);
-static VOID   __sdhciMemWriteB(ULONG ulAddr, UINT8 ucByte);
+static UINT32 __sdhciMemReadL(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr);
+static UINT16 __sdhciMemReadW(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr);
+static UINT8  __sdhciMemReadB(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr);
+static VOID   __sdhciMemWriteL(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT32 uiLword);
+static VOID   __sdhciMemWriteW(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT16 usWord);
+static VOID   __sdhciMemWriteB(PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT8 ucByte);
 
 static INT    __sdhciRegAccessDrvInit(PLW_SDHCI_HOST_ATTR  psdhcihostattr);
 /*********************************************************************************************************
@@ -461,6 +468,11 @@ LW_API PVOID  API_SdhciHostCreate (CPCHAR               pcAdapterName,
         return  ((PVOID)LW_NULL);
     }
     lib_bzero(psdhcihost, sizeof(__SDHCI_HOST));
+
+    psdhcihost->SDHCIHS_uiVersion = SDHCI_READW(psdhcihostattr, SDHCI_HOST_VERSION);
+    psdhcihost->SDHCIHS_uiVersion = (psdhcihost->SDHCIHS_uiVersion &
+                                     SDHCI_HVER_SPEC_VER_MASK)     >>
+                                     SDHCI_HVER_SPEC_VER_SHIFT;
 
     __sdhciHostCapDecode(psdhcihostattr, &psdhcihost->SDHCIHS_sdhcicap);/*  主控功能解析                */
 
@@ -1353,13 +1365,27 @@ static INT __sdhciBusWidthSet (__PSDHCI_HOST  psdhcihost, UINT32 uiBusWidth)
     }
 
     ucCtl  = SDHCI_READB(psdhcihostattr, SDHCI_HOST_CONTROL);
+
     switch (uiBusWidth) {
     case SDARG_SETBUSWIDTH_1:
+        ucCtl &= ~SDHCI_HCTRL_8BITBUS;
         ucCtl &= ~SDHCI_HCTRL_4BITBUS;
         break;
 
     case SDARG_SETBUSWIDTH_4:
+        ucCtl &= ~SDHCI_HCTRL_8BITBUS;
         ucCtl |= SDHCI_HCTRL_4BITBUS;
+        break;
+
+    case SDARG_SETBUSWIDTH_8:
+        if (psdhcihost->SDHCIHS_uiVersion > SDHCI_HVER_SPEC_200) {
+            ucCtl &= ~SDHCI_HCTRL_4BITBUS;
+            ucCtl |= SDHCI_HCTRL_8BITBUS;
+        } else {
+            SDCARD_DEBUG_MSG(__LOGMESSAGE_LEVEL, "sdhci host can't support 8-bit width.\r\n");
+            _ErrorHandle(EINVAL);
+            return  (PX_ERROR);
+        }
         break;
 
     default:
@@ -1367,6 +1393,7 @@ static INT __sdhciBusWidthSet (__PSDHCI_HOST  psdhcihost, UINT32 uiBusWidth)
         _ErrorHandle(EINVAL);
         return  (PX_ERROR);
     }
+
     SDHCI_WRITEB(psdhcihostattr, SDHCI_HOST_CONTROL, ucCtl);
 
 __ret:
@@ -1474,6 +1501,7 @@ static INT __sdhciHighSpeedEn (__PSDHCI_HOST  psdhcihost,  BOOL bEnable)
     }
 
     SDHCI_WRITEB(psdhcihostattr, SDHCI_HOST_CONTROL, ucDat);
+
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -1503,6 +1531,19 @@ static __SDHCI_SDM_HOST *__sdhciSdmHostNew (__PSDHCI_HOST   psdhcihost)
     lib_bzero(psdhcisdmhost, sizeof(__SDHCI_SDM_HOST));
 
     iCapablity = SDHOST_CAP_DATA_4BIT;
+
+    if (SDHCI_QUIRK_FLG(&psdhcihost->SDHCIHS_sdhcihostattr,
+                        SDHCI_QUIRK_FLG_CAN_DATA_8BIT)) {
+        iCapablity |= SDHOST_CAP_DATA_8BIT;
+    }
+    if (SDHCI_QUIRK_FLG(&psdhcihost->SDHCIHS_sdhcihostattr,
+                        SDHCI_QUIRK_FLG_CAN_DATA_4BIT_DDR)) {
+        iCapablity |= SDHOST_CAP_DATA_4BIT_DDR;
+    }
+    if (SDHCI_QUIRK_FLG(&psdhcihost->SDHCIHS_sdhcihostattr,
+                        SDHCI_QUIRK_FLG_CAN_DATA_8BIT_DDR)) {
+        iCapablity |= SDHOST_CAP_DATA_8BIT_DDR;
+    }
     if (psdhcihost->SDHCIHS_sdhcicap.SDHCICAP_bCanHighSpeed) {
         iCapablity |= SDHOST_CAP_HIGHSPEED;
     }
@@ -1743,6 +1784,10 @@ static INT  __sdhciCmdSend (__PSDHCI_HOST   psdhcihost,
             uiMask |= SDHCI_PSTA_DATA_INHIBIT;
         }
 
+        if (psdcmd == psdhcitrans->SDHCITS_psdcmdStop) {
+            uiMask &= ~SDHCI_PSTA_DATA_INHIBIT;
+        }
+
         /*
          * 等待命令(数据)线空闲
          */
@@ -1774,7 +1819,9 @@ static INT  __sdhciCmdSend (__PSDHCI_HOST   psdhcihost,
     /*
      * 设置传输模式
      */
-    __sdhciTransferModSet(psdhcihost);
+    if (psddat) {
+        __sdhciTransferModSet(psdhcihost);
+    }
 
     if ((psdcmd->SDCMD_uiFlag & SD_RSP_136) && (psdcmd->SDCMD_uiFlag & SD_RSP_BUSY)) {
         SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "response type unavailable.\r\n");
@@ -1845,7 +1892,10 @@ static VOID __sdhciTransferModSet (__PSDHCI_HOST  psdhcihost)
     usTmod = SDHCI_TRNS_BLK_CNT_EN;                                     /*  使能块计数                  */
 
     if (psdhcitrans->SDHCITS_uiBlkCntRemain > 1) {
-        usTmod |= SDHCI_TRNS_MULTI | SDHCI_TRNS_ACMD12;                 /*  始终使用ACMD12功能          */
+        usTmod |= SDHCI_TRNS_MULTI;
+        if (!SDHCI_QUIRK_FLG(psdhcihostattr, SDHCI_QUIRK_FLG_DONOT_USE_ACMD12)) {
+            usTmod |= SDHCI_TRNS_ACMD12;                                /*  使用ACMD12功能              */
+        }
     }
 
     if (psdhcitrans->SDHCITS_bIsRead) {
@@ -2361,6 +2411,7 @@ static INT  __sdhciTransPrepare (__SDHCI_TRANS *psdhcitrans,
     psdhcitrans->SDHCITS_iDatError   = ERROR_NONE;
 
     psdhcitrans->SDHCITS_psdcmd      = psdmsg->SDMSG_psdcmdCmd;
+    psdhcitrans->SDHCITS_psdcmdStop  = psdmsg->SDMSG_psdcmdStop;
     psdhcitrans->SDHCITS_psddat      = psdmsg->SDMSG_psddata;
 
     return  (ERROR_NONE);
@@ -2396,13 +2447,14 @@ static INT  __sdhciTransStart (__SDHCI_TRANS *psdhcitrans)
     if (psdhcitrans->SDHCITS_pucDatBuffCurr) {
         if (psdhcitrans->SDHCITS_iTransType == __SDHIC_TRANS_NORMAL) {
             __sdhciDataPrepareNorm(psdhcitrans->SDHCITS_psdhcihost);
-        } else if (psdhcitrans->SDHCITS_iTransType == __SDHIC_TRANS_SDMA){
+        } else if (psdhcitrans->SDHCITS_iTransType == __SDHIC_TRANS_SDMA) {
             __sdhciDataPrepareSdma(psdhcitrans->SDHCITS_psdhcihost);
         } else {
             __sdhciDataPrepareAdma(psdhcitrans->SDHCITS_psdhcihost);
         }
     }
 
+    psdhcitrans->SDHCITS_iStage = __SDHCI_TRANS_STAGE_START;
     iRet = __sdhciCmdSend(psdhcitrans->SDHCITS_psdhcihost,
                           psdhcitrans->SDHCITS_psdcmd,
                           psdhcitrans->SDHCITS_psddat);
@@ -2449,8 +2501,9 @@ static INT  __sdhciTransClean (__SDHCI_TRANS *psdhcitrans)
         return  (PX_ERROR);
     }
 
-    psdhcitrans->SDHCITS_psdcmd = LW_NULL;
-    psdhcitrans->SDHCITS_psddat = LW_NULL;
+    psdhcitrans->SDHCITS_psdcmd     = LW_NULL;
+    psdhcitrans->SDHCITS_psdcmdStop = LW_NULL;
+    psdhcitrans->SDHCITS_psddat     = LW_NULL;
 
     if (SDHCI_QUIRK_FLG(&psdhcitrans->SDHCITS_psdhcihost->SDHCIHS_sdhcihostattr,
                          SDHCI_QUIRK_FLG_REENABLE_INTS_ON_EVERY_TRANSACTION)) {
@@ -2824,6 +2877,12 @@ static INT  __sdhciTransCmdFinish (__SDHCI_TRANS *psdhcitrans)
     LW_SD_COMMAND       *psdcmd         = psdhcitrans->SDHCITS_psdcmd;
     UINT32               uiRespFlag;
 
+    if (psdhcitrans->SDHCITS_iStage == __SDHCI_TRANS_STAGE_START) {
+        psdcmd = psdhcitrans->SDHCITS_psdcmd;
+    } else {
+        psdcmd = psdhcitrans->SDHCITS_psdcmdStop;
+    }
+
     uiRespFlag = SD_RESP_TYPE(psdcmd);
     if (uiRespFlag & SD_RSP_PRESENT) {
         UINT32  *puiResp = psdcmd->SDCMD_uiResp;
@@ -2864,6 +2923,11 @@ __ret:
     psdhcitrans->SDHCITS_iCmdError  = ERROR_NONE;
     psdhcitrans->SDHCITS_bCmdFinish = LW_TRUE;
 
+    if (psdhcitrans->SDHCITS_iStage == __SDHCI_TRANS_STAGE_STOP) {
+        __sdhciTransFinish(psdhcitrans);                                /*  本次事务结束                */
+        return  (ERROR_NONE);
+    }
+
     if (psdhcitrans->SDHCITS_pucDatBuffCurr &&
         psdhcitrans->SDHCITS_bDatFinish) {
         __sdhciTransDatFinish(psdhcitrans);                             /*  处理数据完成                */
@@ -2888,6 +2952,8 @@ __ret:
 *********************************************************************************************************/
 static INT  __sdhciTransDatFinish (__SDHCI_TRANS *psdhcitrans)
 {
+    LW_SDHCI_HOST_ATTR  *psdhcihostattr = &psdhcitrans->SDHCITS_psdhcihost->SDHCIHS_sdhcihostattr;
+
 #if LW_CFG_VMM_EN > 0
     if (psdhcitrans->SDHCITS_iDatError == ERROR_NONE) {
         if (psdhcitrans->SDHCITS_bIsRead &&
@@ -2899,6 +2965,14 @@ static INT  __sdhciTransDatFinish (__SDHCI_TRANS *psdhcitrans)
         }
     }
 #endif
+
+    if (SDHCI_QUIRK_FLG(psdhcihostattr, SDHCI_QUIRK_FLG_DONOT_USE_ACMD12)) {
+        if (psdhcitrans->SDHCITS_psdcmdStop) {
+            psdhcitrans->SDHCITS_iStage = __SDHCI_TRANS_STAGE_STOP;
+            __sdhciCmdSend(psdhcitrans->SDHCITS_psdhcihost, psdhcitrans->SDHCITS_psdcmdStop, LW_NULL);
+            return  (ERROR_NONE);
+        }
+    }
 
     __sdhciTransFinish(psdhcitrans);
 
@@ -2922,8 +2996,9 @@ static INT  __sdhciRegAccessDrvInit (PLW_SDHCI_HOST_ATTR  psdhcihostattr)
     }
 
     iType = psdhcihostattr->SDHCIHOST_iRegAccessType;
-    if ((iType != SDHCI_REGACCESS_TYPE_IO) &&
-        (iType != SDHCI_REGACCESS_TYPE_MEM)) {
+    if ((iType != SDHCI_REGACCESS_TYPE_IO)  &&
+        (iType != SDHCI_REGACCESS_TYPE_MEM) &&
+        !(psdhcihostattr->SDHCIHOST_pdrvfuncs)) {
         return  (PX_ERROR);
     }
 
@@ -2945,7 +3020,12 @@ static INT  __sdhciRegAccessDrvInit (PLW_SDHCI_HOST_ATTR  psdhcihostattr)
         bInit = LW_TRUE;
     }
 
-    psdhcihostattr->SDHCIHOST_pdrvfuncs = &_G_sdhcidrvfuncTbl[iType];
+    /*
+     * 如果提供了自己的寄存器访问驱动则不使用默认的方法
+     */
+    if (!psdhcihostattr->SDHCIHOST_pdrvfuncs) {
+        psdhcihostattr->SDHCIHOST_pdrvfuncs = &_G_sdhcidrvfuncTbl[iType];
+    }
 
     return  (ERROR_NONE);
 }
@@ -2957,9 +3037,9 @@ static INT  __sdhciRegAccessDrvInit (PLW_SDHCI_HOST_ATTR  psdhcihostattr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static UINT32 __sdhciIoReadL (ULONG ulAddr)
+static UINT32 __sdhciIoReadL (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr)
 {
-    return in32(ulAddr);
+    return in32(psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciIoReadW
@@ -2969,9 +3049,9 @@ static UINT32 __sdhciIoReadL (ULONG ulAddr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static UINT16 __sdhciIoReadW (ULONG ulAddr)
+static UINT16 __sdhciIoReadW (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr)
 {
-    return in16(ulAddr);
+    return in16(psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciIoReadB
@@ -2981,9 +3061,9 @@ static UINT16 __sdhciIoReadW (ULONG ulAddr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static UINT8 __sdhciIoReadB (ULONG ulAddr)
+static UINT8 __sdhciIoReadB (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr)
 {
-    return in8(ulAddr);
+    return in8(psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciIoWriteL
@@ -2994,9 +3074,9 @@ static UINT8 __sdhciIoReadB (ULONG ulAddr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID __sdhciIoWriteL (ULONG ulAddr, UINT32 uiLword)
+static VOID __sdhciIoWriteL (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT32 uiLword)
 {
-    out32(uiLword, ulAddr);
+    out32(uiLword, psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciIoWriteW
@@ -3007,9 +3087,9 @@ static VOID __sdhciIoWriteL (ULONG ulAddr, UINT32 uiLword)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID __sdhciIoWriteW (ULONG ulAddr, UINT16 usWord)
+static VOID __sdhciIoWriteW (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT16 usWord)
 {
-    out16(usWord, ulAddr);
+    out16(usWord, psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称:
@@ -3020,9 +3100,9 @@ static VOID __sdhciIoWriteW (ULONG ulAddr, UINT16 usWord)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID __sdhciIoWriteB (ULONG ulAddr, UINT8 ucByte)
+static VOID __sdhciIoWriteB (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT8 ucByte)
 {
-    out8(ucByte, ulAddr);
+    out8(ucByte, psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciMemReadL
@@ -3032,9 +3112,9 @@ static VOID __sdhciIoWriteB (ULONG ulAddr, UINT8 ucByte)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static UINT32 __sdhciMemReadL (ULONG ulAddr)
+static UINT32 __sdhciMemReadL (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr)
 {
-    return read32(ulAddr);
+    return read32(psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciMemReadW
@@ -3044,9 +3124,9 @@ static UINT32 __sdhciMemReadL (ULONG ulAddr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static UINT16 __sdhciMemReadW (ULONG ulAddr)
+static UINT16 __sdhciMemReadW (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr)
 {
-    return read16(ulAddr);
+    return read16(psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciMemReadB
@@ -3056,9 +3136,9 @@ static UINT16 __sdhciMemReadW (ULONG ulAddr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static UINT8 __sdhciMemReadB (ULONG ulAddr)
+static UINT8 __sdhciMemReadB (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr)
 {
-    return read8(ulAddr);
+    return read8(psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciMemWriteL
@@ -3069,9 +3149,9 @@ static UINT8 __sdhciMemReadB (ULONG ulAddr)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID __sdhciMemWriteL (ULONG ulAddr, UINT32 uiLword)
+static VOID __sdhciMemWriteL (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT32 uiLword)
 {
-    write32(uiLword, ulAddr);
+    write32(uiLword, psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciMemWriteW
@@ -3082,9 +3162,9 @@ static VOID __sdhciMemWriteL (ULONG ulAddr, UINT32 uiLword)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID __sdhciMemWriteW (ULONG ulAddr, UINT16 usWord)
+static VOID __sdhciMemWriteW (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT16 usWord)
 {
-    write16(usWord, ulAddr);
+    write16(usWord, psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciMemWriteB
@@ -3095,9 +3175,9 @@ static VOID __sdhciMemWriteW (ULONG ulAddr, UINT16 usWord)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID __sdhciMemWriteB (ULONG ulAddr, UINT8 ucByte)
+static VOID __sdhciMemWriteB (PLW_SDHCI_HOST_ATTR   psdhcihostattr, ULONG ulAddr, UINT8 ucByte)
 {
-    write8(ucByte, ulAddr);
+    write8(ucByte, psdhcihostattr->SDHCIHOST_ulBasePoint + ulAddr);
 }
 /*********************************************************************************************************
 ** 函数名称: __sdhciPreStaShow

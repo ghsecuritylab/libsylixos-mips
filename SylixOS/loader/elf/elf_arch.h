@@ -43,10 +43,9 @@ INT archElfRelocateRel(PVOID        pmodule,
                        size_t       stBuffLen);                         /*  REL 项重定位                */
 
 #ifdef  LW_CFG_CPU_ARCH_MIPS
-INT archMIPSGlobalGOTTABCreate(
-                        PVOID        pmodule,
-                        PVOID        pdyndir);                        /*  MIPS 全局GOT表创建           */
-#endif
+INT archMIPSGlobalGOTTABCreate(PVOID        pmodule,
+                               PVOID        pdyndir);                   /*  MIPS 全局 GOT 表创建        */
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
 
 #endif                                                                  /*  __ELF_ARCH_H                */
 /*********************************************************************************************************

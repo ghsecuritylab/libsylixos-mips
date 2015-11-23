@@ -34,6 +34,7 @@
 2014.01.05  将调度器 BUG 跟踪放在此处.
 2014.01.07  加入 _SchedCrSwp, 统一任务与协程移植的格式.
 2014.07.21  加入 CPU 停止功能.
+2015.11.13  加入 spinlock bug trace.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -51,6 +52,16 @@
 #else
 #define __LW_SCHEDULER_BUG_TRACE(ptcb)
 #endif                                                                  /*  __LW_SCHEDULER_BUG_TRACE_EN */
+/*********************************************************************************************************
+  spinlock bug trace
+*********************************************************************************************************/
+#ifdef  __LW_SPINLOCK_BUG_TRACE_EN
+#define __LW_SPINLOCK_BUG_TRACE(ptcb)   \
+        _BugHandle((LW_CPU_SPIN_NESTING_GET(ptcb) > 0ul), LW_FALSE, \
+                   "pend on spin lock nesting status!\r\n");
+#else
+#define __LW_SPINLOCK_BUG_TRACE(ptcb)
+#endif                                                                  /*  __LW_SPINLOCK_BUG_TRACE_EN  */
 /*********************************************************************************************************
   任务私有变量切换
 *********************************************************************************************************/
@@ -115,6 +126,8 @@ static VOID  _SchedSmpNotify (ULONG  ulCPUIdCur)
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
+
 static LW_INLINE VOID  _SchedCpuDown (PLW_CLASS_CPU  pcpuCur, BOOL  bIsIntSwtich)
 {
     REGISTER PLW_CLASS_TCB  ptcbCur = pcpuCur->CPU_ptcbTCBCur;
@@ -139,7 +152,7 @@ static LW_INLINE VOID  _SchedCpuDown (PLW_CLASS_CPU  pcpuCur, BOOL  bIsIntSwtich
     LW_CPU_CLR_IPI_PEND(ulCPUId, ((ULONG)~0));                          /*  清除所有中断标志            */
     KN_SMP_MB();
     
-    LW_SPIN_UNLOCK_SCHED(&_K_slKernel, ptcbCur);                        /*  解锁内核 spinlock           */
+    LW_SPIN_KERN_UNLOCK_SCHED(ptcbCur);                                 /*  解锁内核 spinlock           */
 
     LW_SPINLOCK_NOTIFY();
     bspCpuDown(ulCPUId);                                                /*  BSP 停止 CPU                */
@@ -147,6 +160,7 @@ static LW_INLINE VOID  _SchedCpuDown (PLW_CLASS_CPU  pcpuCur, BOOL  bIsIntSwtich
     _BugHandle(LW_TRUE, LW_TRUE, "CPU Down error!\r\n");                /*  不会运行到这里              */
 }
 
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 /*********************************************************************************************************
 ** 函数名称: _SchedSwap
@@ -165,14 +179,17 @@ VOID _SchedSwp (PLW_CLASS_CPU pcpuCur)
     REGISTER LW_OBJECT_HANDLE   ulHighId     = ptcbHigh->TCB_ulId;
              BOOL               bIsIntSwtich = pcpuCur->CPU_bIsIntSwtich;
 
-#if LW_CFG_SMP_EN > 0
+#if (LW_CFG_SMP_EN > 0) && (LW_CFG_SMP_CPU_DOWN_EN > 0)
     if (LW_CPU_GET_IPI_PEND(pcpuCur->CPU_ulCPUId) & LW_IPI_DOWN_MSK) {  /*  当前 CPU 需要停止           */
         _SchedCpuDown(pcpuCur, bIsIntSwtich);
     }
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
-    
+                                                                        /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
     __LW_TASK_SWITCH_VAR(ptcbCur, ptcbHigh);                            /*  线程私有化变量切换          */
     __LW_TASK_SWITCH_FPU(bIsIntSwtich);
+    
+    bspTaskSwapHook(ulCurId, ulHighId);                                 /*  调用 hook 函数              */
+    __LW_THREAD_SWAP_HOOK(ulCurId, ulHighId);
     
     if (_ObjectGetIndex(ulHighId) < LW_NCPUS) {                         /*  CPU 进入空闲模式            */
         __LW_CPU_IDLE_ENTER_HOOK(ulCurId);
@@ -187,10 +204,7 @@ VOID _SchedSwp (PLW_CLASS_CPU pcpuCur)
 
     pcpuCur->CPU_ptcbTCBCur = ptcbHigh;                                 /*  切换任务                    */
 
-    LW_SPIN_UNLOCK_SCHED(&_K_slKernel, ptcbCur);                        /*  解锁内核 spinlock           */
-    
-    bspTaskSwapHook(ulCurId, ulHighId);
-    __LW_THREAD_SWAP_HOOK(ulCurId, ulHighId);
+    LW_SPIN_KERN_UNLOCK_SCHED(ptcbCur);                                 /*  解锁内核 spinlock           */
     
     if (bIsIntSwtich) {
         MONITOR_EVT_LONG2(MONITOR_EVENT_ID_SCHED, MONITOR_EVENT_SCHED_INT, 
@@ -245,15 +259,14 @@ INT  _Schedule (VOID)
     ptcbCand = _SchedGetCand(pcpuCur, 1ul);                             /*  获得需要运行的线程          */
     if (ptcbCand != ptcbCur) {                                          /*  如果与当前运行的不同, 切换  */
         __LW_SCHEDULER_BUG_TRACE(ptcbCand);                             /*  调度器 BUG 检测             */
-
+        
 #if LW_CFG_SMP_EN > 0                                                   /*  SMP 系统                    */
-        _BugHandle((LW_CPU_SPIN_NESTING_GET(pcpuCur) > 1ul), LW_FALSE,
-                   "pend on spin lock nesting status!\r\n");
+        __LW_SPINLOCK_BUG_TRACE(pcpuCur);
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
         pcpuCur->CPU_bIsIntSwtich = LW_FALSE;                           /*  非中断调度                  */
         pcpuCur->CPU_ptcbTCBHigh  = ptcbCand;
         archTaskCtxSwitch(pcpuCur);                                     /*  线程切换,并释放内核自旋锁   */
-        LW_SPIN_LOCK_IGNIRQ(&_K_slKernel);                              /*  内核自旋锁重新加锁          */
+        LW_SPIN_KERN_LOCK_IGNIRQ();                                     /*  内核自旋锁重新加锁          */
     }
 #if LW_CFG_SMP_EN > 0                                                   /*  SMP 系统                    */
       else {
@@ -294,10 +307,13 @@ VOID  _ScheduleInt (VOID)
         if (ptcbCur->TCB_plineStatusReqHeader) {                        /*  请求当前任务改变状态        */
             _ThreadStatusChangeCur(pcpuCur);                            /*  检查是否需要进行状态切换    */
         }
+        
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
         if (LW_CPU_GET_IPI_PEND(pcpuCur->CPU_ulCPUId) & 
             LW_IPI_DOWN_MSK) {                                          /*  当前 CPU 需要停止           */
             _SchedCpuDown(pcpuCur, LW_TRUE);
         }
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
     }
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
@@ -306,13 +322,12 @@ VOID  _ScheduleInt (VOID)
         __LW_SCHEDULER_BUG_TRACE(ptcbCand);                             /*  调度器 BUG 检测             */
 
 #if LW_CFG_SMP_EN > 0                                                   /*  SMP 系统                    */
-        _BugHandle((LW_CPU_SPIN_NESTING_GET(pcpuCur) > 1ul), LW_FALSE,
-                   "pend on spin lock nesting status!\r\n");
+        __LW_SPINLOCK_BUG_TRACE(pcpuCur);
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
         pcpuCur->CPU_bIsIntSwtich = LW_TRUE;                            /*  中断调度                    */
         pcpuCur->CPU_ptcbTCBHigh  = ptcbCand;
         archIntCtxLoad(pcpuCur);                                        /*  中断上下文中线程切换        */
-        _BugHandle(LW_TRUE, LW_TRUE, "serious error!.\r\n");
+        _BugHandle(LW_TRUE, LW_TRUE, "serious error!\r\n");
     }
 #if LW_CFG_SMP_EN > 0                                                   /*  SMP 系统                    */
       else {

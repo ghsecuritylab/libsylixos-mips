@@ -197,7 +197,7 @@ long  sysconf (int name)
             for (i = 0; i < LW_CFG_VMM_ZONE_NUM; i++) {
                 if (API_VmmZoneStatus((ULONG)i, LW_NULL, &stPhySize, 
                                       LW_NULL, LW_NULL, LW_NULL) == ERROR_NONE) {
-                    iPages += (INT)(stPhySize / LW_CFG_VMM_PAGE_SIZE);
+                    iPages += (INT)(stPhySize >> LW_CFG_VMM_PAGE_SHIFT);
                 }
             }
             return  (iPages);

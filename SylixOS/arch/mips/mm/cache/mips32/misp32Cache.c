@@ -26,7 +26,13 @@
 #if LW_CFG_CACHE_EN > 0
 #include "../mipsCacheCommon.h"
 #include "../../../common/cp0/mipsCp0.h"
-
+/*********************************************************************************************************
+  Pipe Flush
+*********************************************************************************************************/
+#define MIPS_PIPE_FLUSH()               __asm__ __volatile__ ("sync")
+/*********************************************************************************************************
+  CACHE 参数
+*********************************************************************************************************/
 static UINT32                           uiMIPS32CacheLineSize;
 #define MIPS32_CACHE_LOOP_OP_MAX_SIZE   (32 * LW_CFG_KB_SIZE)
 #define CACHE_SIZE                      16*1024
@@ -67,7 +73,6 @@ static INT  mips32CacheEnable (LW_CACHE_TYPE  cachetype)
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheDisable
 ** 功能描述: 禁能 CACHE
@@ -104,7 +109,6 @@ static INT  mips32CacheDisable (LW_CACHE_TYPE  cachetype)
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheLock
 ** 功能描述: 锁定指定类型的 CACHE
@@ -135,7 +139,6 @@ static INT  mips32CacheUnlock (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, size_t  
     _ErrorHandle(ENOSYS);
     return  (PX_ERROR);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheFlush
 ** 功能描述: CACHE 脏数据回写
@@ -152,15 +155,15 @@ static INT  mips32CacheFlush (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, size_t  s
     addr_t  ulEnd;
 
     if (cachetype == DATA_CACHE) {
-        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {
-                                                                        /*  全部回写                    */
+        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {                 /*  全部回写                    */
             mipsDCacheFlush(pvAdrs, (PVOID)(pvAdrs + CACHE_SIZE), uiMIPS32CacheLineSize);
 
-        } else {
+        } else {                                                        /*  部分回写                    */
             MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiMIPS32CacheLineSize);
-                                                                        /*  部分回写                    */
             mipsDCacheFlush(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
         }
+
+        MIPS_PIPE_FLUSH();
 
 #if LW_CFG_MIPS_CACHE_L2 > 0
         mipsL2FlushAll();
@@ -169,7 +172,6 @@ static INT  mips32CacheFlush (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, size_t  s
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheFlushPage
 ** 功能描述: CACHE 脏数据回写
@@ -186,15 +188,15 @@ static INT  mips32CacheFlushPage (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, PVOID
     addr_t  ulEnd;
 
     if (cachetype == DATA_CACHE) {
-        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {
-                                                                        /*  全部回写                    */
+        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {                 /*  全部回写                    */
             mipsDCacheFlush(pvAdrs, (PVOID)(pvAdrs + CACHE_SIZE), uiMIPS32CacheLineSize);
 
-        } else {
+        } else {                                                        /*  部分回写                    */
             MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiMIPS32CacheLineSize);
-                                                                        /*  部分回写                    */
             mipsDCacheFlush(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
         }
+
+        MIPS_PIPE_FLUSH();
 
 #if LW_CFG_MIPS_CACHE_L2 > 0
         mipsL2Flush(pvPdrs, stBytes);
@@ -203,7 +205,6 @@ static INT  mips32CacheFlushPage (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, PVOID
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheInvalidate
 ** 功能描述: 指定类型的 CACHE 使部分无效(访问不命中)
@@ -255,7 +256,6 @@ static INT  mips32CacheInvalidate (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, size
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheInvalidatePage
 ** 功能描述: 指定类型的 CACHE 使部分无效(访问不命中)
@@ -307,7 +307,6 @@ static INT  mips32CacheInvalidatePage (LW_CACHE_TYPE cachetype, PVOID pvAdrs, PV
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheClear
 ** 功能描述: 指定类型的 CACHE 使部分或全部清空(回写内存)并无效(访问不命中)
@@ -332,15 +331,15 @@ static INT  mips32CacheClear (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, size_t  s
             mipsICacheInvalidate(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
         }
     } else {
-        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {
-                                                                        /*  全部回写并无效              */
+        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {                 /*  全部回写并无效              */
             mipsDCacheClear(pvAdrs, (PVOID)(pvAdrs + CACHE_SIZE), uiMIPS32CacheLineSize);
 
-        } else {
+        } else {                                                        /*  部分回写并无效              */
             MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiMIPS32CacheLineSize);
-                                                                        /*  部分回写并无效              */
             mipsDCacheClear(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
         }
+
+        MIPS_PIPE_FLUSH();
 
 #if LW_CFG_MIPS_CACHE_L2 > 0
         mipsL2ClearAll();
@@ -349,7 +348,6 @@ static INT  mips32CacheClear (LW_CACHE_TYPE  cachetype, PVOID  pvAdrs, size_t  s
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheClearPage
 ** 功能描述: 指定类型的 CACHE 使部分或全部清空(回写内存)并无效(访问不命中)
@@ -374,15 +372,15 @@ static INT  mips32CacheClearPage (LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID p
             mipsICacheInvalidate(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
         }
     } else {
-        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {
-                                                                        /*  全部回写并无效              */
+        if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {                 /*  全部回写并无效              */
             mipsDCacheClear(pvAdrs, (PVOID)(pvAdrs + CACHE_SIZE), uiMIPS32CacheLineSize);
 
-        } else {
+        } else {                                                        /*  部分回写并无效              */
             MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiMIPS32CacheLineSize);
-                                                                        /*  部分回写并无效              */
             mipsDCacheClear(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
         }
+
+        MIPS_PIPE_FLUSH();
 
 #if LW_CFG_MIPS_CACHE_L2 > 0
         mipsL2Clear(pvPdrs, stBytes);
@@ -391,7 +389,6 @@ static INT  mips32CacheClearPage (LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID p
 
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheTextUpdate
 ** 功能描述: 清空(回写内存) D CACHE 无效(访问不命中) I CACHE
@@ -406,24 +403,20 @@ static INT  mips32CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
 {
     addr_t  ulEnd;
 
-    if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {
-                                                                        /*  DCACHE 全部回写             */
+    if (stBytes >= MIPS32_CACHE_LOOP_OP_MAX_SIZE) {                     /*  DCACHE 全部回写             */
         mipsDCacheFlush(pvAdrs, (PVOID)(pvAdrs + CACHE_SIZE), uiMIPS32CacheLineSize);
+        MIPS_PIPE_FLUSH();
         mipsICacheInvalidateAll();                                      /*  ICACHE 全部无效             */
 
     } else {
         MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiMIPS32CacheLineSize);
         mipsDCacheFlush(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);   /*  部分回写                    */
+        MIPS_PIPE_FLUSH();
         mipsICacheInvalidate(pvAdrs, (PVOID)ulEnd, uiMIPS32CacheLineSize);
     }
-#if 0
-    if (LW_NCPUS > 1) {
-        mipsBranchPredictorInvalidateInnerShareable();                  /*  所有核清除分支预测          */
-    }
-#endif
+
     return  (ERROR_NONE);
 }
-
 /*********************************************************************************************************
 ** 函数名称: mips32CacheInit
 ** 功能描述: 初始化 CACHE
@@ -436,9 +429,9 @@ static INT  mips32CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
 ** 调用模块:
 *********************************************************************************************************/
 VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
-                      CACHE_MODE   uiInstruction,
-                      CACHE_MODE   uiData,
-                      CPCHAR       pcMachineName)
+                       CACHE_MODE   uiInstruction,
+                       CACHE_MODE   uiData,
+                       CPCHAR       pcMachineName)
 {
     UINT32  uiCP0COFG1;
 
@@ -449,25 +442,29 @@ VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
     mipsL2Init(uiInstruction, uiData, pcMachineName);
 #endif                                                                  /*  LW_CFG_MIPS_CACHE_L2 > 0    */
 
+#if LW_CFG_SMP_EN > 0
+    pcacheop->CACHEOP_ulOption = CACHE_TEXT_UPDATE_MP;
+#else
+    pcacheop->CACHEOP_ulOption = 0ul;
+#endif                                                                  /*  LW_CFG_SMP_EN               */
+
     uiCP0COFG1                   = mipsCp0Config1Read();
     pcacheop->CACHEOP_iCacheLine = MIPS32_CACHE_LINESIZE(uiCP0COFG1);
-    uiMIPS32CacheLineSize         = (UINT32)pcacheop->CACHEOP_iCacheLine;
+    uiMIPS32CacheLineSize        = (UINT32)pcacheop->CACHEOP_iCacheLine;
 
     _DebugFormat(__LOGMESSAGE_LEVEL, "MIPS Cache line size = %d byte.\r\n",
                  pcacheop->CACHEOP_iCacheLine);
 
-    if ((lib_strcmp(pcMachineName, MIPS_MACHINE_NONE) == 0) ||
-        (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0)) {
-        pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIPT;
-        pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_VIPT;
-
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_24KF) == 0) {
+        pcacheop->CACHEOP_iILoc = CACHE_LOCATION_VIPT;
+        pcacheop->CACHEOP_iDLoc = CACHE_LOCATION_VIPT;
     }
 
-    pcacheop->CACHEOP_pfuncEnable  = mips32CacheEnable;
-    pcacheop->CACHEOP_pfuncDisable = mips32CacheDisable;
+    pcacheop->CACHEOP_pfuncEnable         = mips32CacheEnable;
+    pcacheop->CACHEOP_pfuncDisable        = mips32CacheDisable;
 
-    pcacheop->CACHEOP_pfuncLock    = mips32CacheLock;                   /*  暂时不支持锁定操作          */
-    pcacheop->CACHEOP_pfuncUnlock  = mips32CacheUnlock;
+    pcacheop->CACHEOP_pfuncLock           = mips32CacheLock;            /*  暂时不支持锁定操作          */
+    pcacheop->CACHEOP_pfuncUnlock         = mips32CacheUnlock;
 
     pcacheop->CACHEOP_pfuncFlush          = mips32CacheFlush;
     pcacheop->CACHEOP_pfuncFlushPage      = mips32CacheFlushPage;

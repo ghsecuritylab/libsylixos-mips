@@ -23,26 +23,41 @@
 
 #include "arch/mips/arch_def.h"
 
+/*********************************************************************************************************
+  CP0 register read
+*********************************************************************************************************/
+
 #define mipsCp0RegRead(name, reg) \
 static LW_INLINE UINT32  mipsCp0##name##Read (VOID) \
-{\
-    UINT32  uiValue;\
-    MIPS_EXEC_INS("mfc0   %0, " reg : "=r"(uiValue));\
+{ \
+    UINT32  uiValue; \
+    MIPS_EXEC_INS("mfc0   %0, " reg : "=r"(uiValue)); \
     MIPS_EXEC_INS("ehb"); \
-    return  (uiValue);\
+    return  (uiValue); \
 }
+
+/*********************************************************************************************************
+  CP0 register write
+*********************************************************************************************************/
 
 #define mipsCp0RegWrite(name, reg) \
 static LW_INLINE VOID  mipsCp0##name##Write (UINT32  uiValue) \
-{\
-    MIPS_EXEC_INS("mtc0   %0, " reg : : "r"(uiValue));\
+{ \
+    MIPS_EXEC_INS("mtc0   %0, " reg : : "r"(uiValue)); \
     MIPS_EXEC_INS("ehb"); \
 }
 
-#define mipsCp0RegReadWrite(name, reg)\
-mipsCp0RegRead(name, reg) \
-\
-mipsCp0RegWrite(name, reg)
+/*********************************************************************************************************
+  CP0 register read write
+*********************************************************************************************************/
+
+#define mipsCp0RegReadWrite(name, reg) \
+        mipsCp0RegRead(name, reg) \
+        mipsCp0RegWrite(name, reg)
+
+/*********************************************************************************************************
+  CP0 register op
+*********************************************************************************************************/
 
 mipsCp0RegReadWrite(Status, CP0_STATUS)
 mipsCp0RegReadWrite(Cause, CP0_CAUSE)

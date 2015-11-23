@@ -10,6 +10,7 @@
 
 #define  __SYLIXOS_KERNEL /* need some kernel function */
 #include <unistd.h>
+#include <sys/mman.h>
 
 /*
  * sbrk lock
@@ -17,6 +18,11 @@
 void __vp_patch_lock(void);
 void __vp_patch_unlock(void);
 void __vp_patch_sbrk(BOOL lock);
+
+/*
+ * pre allocate physical memory
+ */
+void  __vp_pre_alloc_phy(const void *pmem, size_t nbytes);
 
 /*
  * global heap
@@ -65,6 +71,41 @@ __re_try:
         __vp_patch_sbrk(FALSE);
         __vp_patch_unlock();
         goto  __re_try;
+    }
+
+    return  (mem);
+}
+
+/*
+ * dlmalloc_mmap
+ */
+void *dlmalloc_mmap (size_t  stLen)
+{
+    void  *mem;
+
+    mem = mmap(NULL, stLen, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem != MAP_FAILED) {
+        __vp_pre_alloc_phy(mem, stLen);
+    }
+
+    return  (mem);
+}
+
+/*
+ * dlmalloc_mremap
+ */
+void  *dlmalloc_mremap (void *pvAddr, size_t stOldSize, size_t stNewSize, int mv)
+{
+    void  *mem;
+    int    flag = 0;
+
+    if (mv) {
+        flag = MREMAP_MAYMOVE;
+    }
+
+    mem = mremap(pvAddr, stOldSize, stNewSize, flag);
+    if (mem != MAP_FAILED) {
+        __vp_pre_alloc_phy(mem, stNewSize);
     }
 
     return  (mem);

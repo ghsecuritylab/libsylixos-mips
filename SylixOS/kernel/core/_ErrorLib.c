@@ -158,6 +158,10 @@ VOID  _DebugMessage (INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcString)
         _K_pfuncKernelDebugLog(pcString);
     }
 #endif
+
+    if (iLevel & __PRINTMESSAGE_LEVEL) {
+        bspDebugMsg(pcString);
+    }
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: printFullFmt
@@ -590,6 +594,12 @@ VOID  _DebugFmtMsg (INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcFmt, ...)
         va_end(ap);
     }
 #endif
+
+    if (iLevel & __PRINTMESSAGE_LEVEL) {
+        va_start(ap, pcFmt);
+        _DebugFmtPrint(bspDebugMsg, pcFmt, ap);
+        va_end(ap);
+    }
 }
 /*********************************************************************************************************
   END

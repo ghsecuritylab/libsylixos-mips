@@ -42,6 +42,11 @@
   裁剪宏
 *********************************************************************************************************/
 #if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_DISKCACHE_EN > 0) && (LW_CFG_FATFS_EN > 0)
+#include "oemBlkIo.h"
+/*********************************************************************************************************
+  blk io 前缀
+*********************************************************************************************************/
+#define LW_BLKIO_PERFIX                 "/dev/blk/"
 /*********************************************************************************************************
   后缀字符串长度 (一个磁盘不可超过 999 个分区)
 *********************************************************************************************************/
@@ -135,6 +140,10 @@ PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
     REGISTER ULONG          ulError;
              CHAR           cFullVolName[MAX_FILENAME_LENGTH];          /*  完整卷标名                  */
              
+             INT            iBlkIo;
+             INT            iBlkIoErr;
+             PCHAR          pcTail;
+
              INT            iVolSeq;
     REGISTER INT            iNPart;
              DISKPART_TABLE dptPart;                                    /*  分区表                      */
@@ -203,12 +212,37 @@ PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
     }
     
     /*
+     *  创建 blk io 设备
+     */
+    pcTail = lib_rindex(pcVolName, PX_DIVIDER);
+    if (pcTail == LW_NULL) {
+        pcTail =  (PCHAR)pcVolName;
+    } else {
+        pcTail++;
+    }
+
+    for (iBlkIo = 0; iBlkIo < 64; iBlkIo++) {
+        snprintf(cFullVolName, MAX_FILENAME_LENGTH, "%s%s%d", LW_BLKIO_PERFIX, pcTail, iBlkIo);
+        if (API_IosDevMatchFull(cFullVolName) == LW_NULL) {
+            iBlkIoErr = API_OemBlkIoCreate(cFullVolName,
+                                           poemd->OEMDISK_pblkdCache);
+            if (iBlkIoErr == ERROR_NONE) {
+                break;
+
+            } else if (errno != ERROR_IOS_DUPLICATE_DEVICE_NAME) {
+                iErrLevel = 2;
+                goto    __error_handle;
+            }
+        }
+    }
+
+    /*
      *  扫面磁盘所有分区信息
      */
     iNPart = API_DiskPartitionScan(poemd->OEMDISK_pblkdCache, 
                                    &dptPart);                           /*  扫描分区表                  */
     if (iNPart < 1) {
-        iErrLevel = 2;
+        iErrLevel = 3;
         goto    __error_handle;
     }
     poemd->OEMDISK_uiNPart = (UINT)iNPart;                              /*  记录分区数量                */
@@ -292,17 +326,15 @@ __refined_seq:
     }
 
 __mount_over:                                                           /*  所有分区挂载完毕            */
-    if (i == 0) {                                                       /*  一个分区都没有挂载成功 ?    */
-        iErrLevel = 3;
-        goto    __error_handle;
-    }
     lib_strcpy(poemd->OEMDISK_cVolName, pcVolName);                     /*  拷贝名字                    */
     
     return  (poemd);
     
 __error_handle:
     if (iErrLevel > 2) {
-        __oemDiskPartFree(poemd);
+        if (poemd->OEMDISK_pblkdCache) {
+            API_OemBlkIoDelete(poemd->OEMDISK_pblkdCache);
+        }
     }
     if (iErrLevel > 1) {
         if (poemd->OEMDISK_pblkdCache != pblkdDisk) {
@@ -344,6 +376,10 @@ PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
     REGISTER ULONG          ulError;
              CHAR           cFullVolName[MAX_FILENAME_LENGTH];          /*  完整卷标名                  */
              
+             INT            iBlkIo;
+             INT            iBlkIoErr;
+             PCHAR          pcTail;
+
              INT            iVolSeq;
     REGISTER INT            iNPart;
              DISKPART_TABLE dptPart;                                    /*  分区表                      */
@@ -405,12 +441,37 @@ PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
     }
     
     /*
+     *  创建 blk io 设备
+     */
+    pcTail = lib_rindex(pcVolName, PX_DIVIDER);
+    if (pcTail == LW_NULL) {
+        pcTail =  (PCHAR)pcVolName;
+    } else {
+        pcTail++;
+    }
+
+    for (iBlkIo = 0; iBlkIo < 64; iBlkIo++) {
+        snprintf(cFullVolName, MAX_FILENAME_LENGTH, "%s%s%d", LW_BLKIO_PERFIX, pcTail, iBlkIo);
+        if (API_IosDevMatchFull(cFullVolName) == LW_NULL) {
+            iBlkIoErr = API_OemBlkIoCreate(cFullVolName,
+                                           poemd->OEMDISK_pblkdCache);
+            if (iBlkIoErr == ERROR_NONE) {
+                break;
+
+            } else if (errno != ERROR_IOS_DUPLICATE_DEVICE_NAME) {
+                iErrLevel = 2;
+                goto    __error_handle;
+            }
+        }
+    }
+
+    /*
      *  扫面磁盘所有分区信息
      */
     iNPart = API_DiskPartitionScan(poemd->OEMDISK_pblkdCache, 
                                    &dptPart);                           /*  扫描分区表                  */
     if (iNPart < 1) {
-        iErrLevel = 2;
+        iErrLevel = 3;
         goto    __error_handle;
     }
     poemd->OEMDISK_uiNPart = (UINT)iNPart;                              /*  记录分区数量                */
@@ -437,8 +498,6 @@ __refined_seq:
         
         switch (dptPart.DPT_dpoLogic[i].DPO_dpnEntry.DPN_ucPartType) {  /*  判断文件系统分区类型        */
         
-        case LW_DISK_PART_TYPE_EMPTY:                                   /*  默认使用 FAT 类型           */
-        
         case LW_DISK_PART_TYPE_FAT12:                                   /*  FAT 文件系统类型            */
         case LW_DISK_PART_TYPE_FAT16:
         case LW_DISK_PART_TYPE_FAT16_BIG:
@@ -461,9 +520,6 @@ __refined_seq:
             poemd->OEMDISK_pdevhdr[i] = API_IosDevMatchFull(cFullVolName);
             poemd->OEMDISK_iVolSeq[i] = iVolSeq;                        /*  记录卷序号                  */
             break;
-            
-        case LW_DISK_PART_TYPE_HPFS_NTFS:                               /*  NTFS 文件系统类型           */
-            break;
         
         default:
             break;
@@ -477,17 +533,15 @@ __refined_seq:
     }
 
 __mount_over:                                                           /*  所有分区挂载完毕            */
-    if (i == 0) {                                                       /*  一个分区都没有挂载成功 ?    */
-        iErrLevel = 3;
-        goto    __error_handle;
-    }
     lib_strcpy(poemd->OEMDISK_cVolName, pcVolName);                     /*  拷贝名字                    */
     
     return  (poemd);
     
 __error_handle:
     if (iErrLevel > 2) {
-        __oemDiskPartFree(poemd);
+        if (poemd->OEMDISK_pblkdCache) {
+            API_OemBlkIoDelete(poemd->OEMDISK_pblkdCache);
+        }
     }
     if (iErrLevel > 1) {
         if (poemd->OEMDISK_pblkdCache != pblkdDisk) {
@@ -557,6 +611,8 @@ INT  API_OemDiskUnmountEx (PLW_OEMDISK_CB  poemd, BOOL  bForce)
         API_DiskCacheDelete(poemd->OEMDISK_pblkdCache);                 /*  释放 CACHE 内存             */
     }
     
+    API_OemBlkIoDelete(poemd->OEMDISK_pblkdCache);
+
     if (poemd->OEMDISK_pvCache) {
         __SHEAP_FREE(poemd->OEMDISK_pvCache);                           /*  释放磁盘缓冲内存            */
     }

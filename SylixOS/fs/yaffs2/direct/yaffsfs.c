@@ -1729,8 +1729,18 @@ static int yaffsfs_DoStat(struct yaffs_obj *obj, struct yaffs_stat *buf)
 			buf->st_mode |= S_IFDIR;
 		else if (obj->variant_type == YAFFS_OBJECT_TYPE_SYMLINK)
 			buf->st_mode |= S_IFLNK;
-		else if (obj->variant_type == YAFFS_OBJECT_TYPE_FILE)
-			buf->st_mode |= S_IFREG;
+		else if (obj->variant_type == YAFFS_OBJECT_TYPE_FILE) {
+		    switch (obj->yst_mode & S_IFMT) {
+		    
+		    case S_IFSOCK:
+		        buf->st_mode |= S_IFSOCK;
+		        break;
+		        
+		    default:
+			    buf->st_mode |= S_IFREG;
+			    break;
+			}
+		}
 
 		buf->st_nlink = yaffs_get_obj_link_count(obj);
 		buf->st_uid = obj->yst_uid;
@@ -2491,7 +2501,9 @@ static int yaffsfs_DoChMod(struct yaffs_obj *obj, mode_t mode)
 		obj = yaffs_get_equivalent_obj(obj);
 
 	if (obj) {
-		obj->yst_mode = mode;
+	    mode &= ~S_IFMT;
+	    obj->yst_mode &= S_IFMT;
+		obj->yst_mode |= mode;
 		obj->dirty = 1;
 		result = yaffs_flush_file(obj, 0, 0, 0);
 	}

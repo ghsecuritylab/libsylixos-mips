@@ -35,7 +35,7 @@
 /*********************************************************************************************************
   内部全局变量
 *********************************************************************************************************/
-static LW_LIST_LINE_HEADER  _G_plineAtaNodeHeader = LW_NULL;
+static __PATA_CTRL  _G_patactrlTable[LW_CFG_ATA_MAX_CTLS];
 /*********************************************************************************************************
   函数声明
 *********************************************************************************************************/
@@ -47,7 +47,7 @@ INT                __ataCmd(__PATA_CTRL pAtaCtrl,
 INT                __ataWait(__PATA_CTRL patactrler, INT iRequest);
 INT                __ataCtrlReset(__PATA_CTRL pAtaCtrl);
 INT                __ataDriveInit(__PATA_CTRL patactrler, INT iDrive);
-static __PATA_CTRL __ataSearchNode (INT iCtrl);
+static __PATA_CTRL __ataSearchNode(INT iCtrl);
 static INT         __ataAddNode(__PATA_CTRL patactrl);
 static INT         __ataWrite(__PATA_CTRL patactrl);
 static INT         __ataRW(__PATA_CTRL patactrler,
@@ -103,20 +103,12 @@ static INT         __ataReset(__PATA_DEV  patadev);
 *********************************************************************************************************/
 static __PATA_CTRL __ataSearchNode (INT iCtrl)
 {
-             __PATA_CTRL        patactrl;
-    REGISTER PLW_LIST_LINE      plineTemp;
+    if (iCtrl < LW_CFG_ATA_MAX_CTLS) {
+        return  (_G_patactrlTable[iCtrl]);
 
-    for (plineTemp  = _G_plineAtaNodeHeader;
-         plineTemp != LW_NULL;
-         plineTemp  = _list_line_get_next(plineTemp)) {
-
-        patactrl = _LIST_ENTRY(plineTemp, __ATA_CTRL, ATACTRL_lineManage);
-        if (patactrl->ATACTRL_iCtrl== iCtrl) {                          /*  控制器号匹配,返回控制器块   */
-            return  (patactrl);
-        }
+    } else {
+        return  (LW_NULL);
     }
-
-    return  (LW_NULL);
 }
 /*********************************************************************************************************
 ** 函数名称: __ataAddNode
@@ -128,7 +120,7 @@ static __PATA_CTRL __ataSearchNode (INT iCtrl)
 *********************************************************************************************************/
 static INT __ataAddNode (__PATA_CTRL patactrl)
 {
-    _List_Line_Add_Ahead(&patactrl->ATACTRL_lineManage, &_G_plineAtaNodeHeader);
+    _G_patactrlTable[patactrl->ATACTRL_iCtrl] = patactrl;
 
     return  (ERROR_NONE);
 }
@@ -474,7 +466,6 @@ static INT __ataBlkRW (__ATA_DEV  *patadev,
     }
 
     patactrl = __ataSearchNode(patadev->ATAD_iCtrl);
-
     if (!patactrl) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "parameter error.\r\n");
         _ErrorHandle(EINVAL);
@@ -611,7 +602,6 @@ static INT __ataIoctl (__PATA_DEV patadev,
     }
 
     patactrl = __ataSearchNode(patadev->ATAD_iCtrl);
-
     if (!patactrl) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "parameter error.\r\n");
         _ErrorHandle(EINVAL);
@@ -821,13 +811,18 @@ INT API_AtaDrv (ATA_CHAN  *patachan, ATA_CHAN_PARAM *patacp)
         return  (PX_ERROR);
     }
 
+    if (patacp->ATACP_iCtrlNum >= LW_CFG_ATA_MAX_CTLS) {
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "IDE controller number error.\r\n");
+        _ErrorHandle(EINVAL);
+        return  (PX_ERROR);
+    }
+
     if ((patacp->ATACP_iDrives >= __ATA_MAX_DRIVES) ||
         (patacp->ATACP_iDrives <= 0)) {
         patacp->ATACP_iDrives = 1;
     }
 
     patactrl = __ataSearchNode(patacp->ATACP_iCtrlNum);
-
     if (patactrl != LW_NULL) {                                          /*  不为空,则已安装过驱动       */
         goto __drive_init;
     }

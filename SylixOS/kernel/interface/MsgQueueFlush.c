@@ -63,10 +63,9 @@ ULONG  API_MsgQueueFlush (LW_OBJECT_HANDLE  ulId, ULONG  *pulThreadUnblockNum)
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MSGQUEUE)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "msgqueue handle invalidate.\r\n");
         _ErrorHandle(ERROR_MSGQUEUE_TYPE);
         return  (ERROR_MSGQUEUE_TYPE);
@@ -76,10 +75,7 @@ ULONG  API_MsgQueueFlush (LW_OBJECT_HANDLE  ulId, ULONG  *pulThreadUnblockNum)
         *pulThreadUnblockNum = _EventWaitNum(pevent);
     }
     
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
     while (_EventWaitNum(pevent)) {                                     /*  是否存在正在等待的任务      */
-    
         if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {         /*  优先级等待队列              */
             _EVENT_DEL_Q_PRIORITY(ppringList);                          /*  检查需要激活的队列          */
                                                                         /*  激活优先级等待线程          */
@@ -89,27 +85,24 @@ ULONG  API_MsgQueueFlush (LW_OBJECT_HANDLE  ulId, ULONG  *pulThreadUnblockNum)
             _EVENT_DEL_Q_FIFO(ppringList);                              /*  查找 FIFO 队列指针地址      */
                                                                         /*  激活FIFO等待线程            */
             ptcb = _EventReadyFifoLowLevel(pevent, LW_NULL, ppringList);
-    
         }
         
         *ptcb->TCB_pstMsgByteSize = 0;                                  /*  消息长度为 0                */
 
-        /*
-         *  注意: 以下操作没有释放 spinlock.
-         */
         KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
+        
         _EventReadyHighLevel(ptcb, LW_THREAD_STATUS_MSGQUEUE);          /*  处理 TCB                    */
+        
         iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
     }
     
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
-    
-    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     MONITOR_EVT_LONG1(MONITOR_EVENT_ID_MSGQ, MONITOR_EVENT_MSGQ_FLUSH, ulId, LW_NULL);
     
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  (LW_CFG_MSGQUEUE_EN > 0)    */
                                                                         /*  (LW_CFG_MAX_MSGQUEUES > 0)  */
 /*********************************************************************************************************

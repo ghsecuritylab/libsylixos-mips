@@ -30,7 +30,7 @@
   裁剪支持
 *********************************************************************************************************/
 #if (LW_CFG_MODULELOADER_EN > 0) && (LW_CFG_PROCFS_EN > 0)
-#include "../include/loader_vppatch.h"
+#include "../include/loader_lib.h"
 #include "../include/loader_symbol.h"
 /*********************************************************************************************************
   对应文件信息
@@ -185,6 +185,7 @@ static ssize_t  __procFsProcMemRead (PLW_PROCFS_NODE  p_pfsn,
         INT                 i, iNum;
         ULONG               ulPages;
         size_t              stTotalMem;
+        size_t              stMmapSize = 0;
         size_t              stStatic;
         BOOL                bStart;
     
@@ -215,7 +216,7 @@ static ssize_t  __procFsProcMemRead (PLW_PROCFS_NODE  p_pfsn,
 #if LW_CFG_VMM_EN > 0
             ulPages = 0;
             if (API_VmmPCountInArea(pmodTemp->EMOD_pvBaseAddr, &ulPages) == ERROR_NONE) {
-                stTotalMem += (size_t)(ulPages * LW_CFG_VMM_PAGE_SIZE);
+                stTotalMem += (size_t)(ulPages << LW_CFG_VMM_PAGE_SHIFT);
             }
 #else
             stTotalMem += pmodTemp->EMOD_stLen;
@@ -235,7 +236,7 @@ static ssize_t  __procFsProcMemRead (PLW_PROCFS_NODE  p_pfsn,
                     if (API_VmmPCountInArea(pvVmem[i], 
                                             &ulPages) == ERROR_NONE) {
                         stTotalMem += (size_t)(ulPages 
-                                    *  LW_CFG_VMM_PAGE_SIZE);
+                                   << LW_CFG_VMM_PAGE_SHIFT);
                     }
                 }
             }
@@ -247,14 +248,20 @@ static ssize_t  __procFsProcMemRead (PLW_PROCFS_NODE  p_pfsn,
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
         }
         LW_VP_UNLOCK(pvproc);
+        
+#if LW_CFG_VMM_EN > 0
+        API_VmmMmapPCount(pvproc->VP_pid, &stMmapSize);                 /*  计算 mmap 内存实际消耗量    */
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
         LW_LD_UNLOCK();
         
         stRealSize = bnprintf(pcFileBuffer, 
                               __VPROC_PROCFS_MEM_SIZE, 0,
                               "static memory : %zu\n"
                               "heap memory : %zu\n"
+                              "mmap memory : %zu\n"
                               "total memory : %zu",
-                              stStatic, (stTotalMem - stStatic), stTotalMem);
+                              stStatic, (stTotalMem - stStatic), 
+                              stMmapSize, (stTotalMem + stMmapSize));
                               
         API_ProcFsNodeSetRealFileSize(p_pfsn, stRealSize);
     }

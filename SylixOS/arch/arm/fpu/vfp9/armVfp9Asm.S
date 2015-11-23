@@ -54,7 +54,7 @@ FUNC_DEF(armVfp9Enable)
     FUNC_END()
     
 FUNC_DEF(armVfp9Disable)
-    MOV     R1, #0x00000000      ;/*  Set Neon/VFP Enable bit                                            */
+    MOV     R1, #0x00000000      ;/*  Clear Neon/VFP Enable bit                                          */
     FMXR    FPEXC, R1            ;/*  FPEXC, clear others.                                               */
     BX      LR
     FUNC_END()

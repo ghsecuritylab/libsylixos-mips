@@ -225,7 +225,7 @@ static VOID  __pageStructSeparate (PLW_VMM_PAGE  pvmpage,
 
     _List_Line_Add_Tail(&pvmpageNew->PAGE_lineManage, &plineHeader);    /*  加入邻居链表                */
     pvmpageNew->PAGE_ulCount      = pvmpage->PAGE_ulCount - ulPageNum;
-    pvmpageNew->PAGE_ulPageAddr   = pvmpage->PAGE_ulPageAddr + (ulPageNum * LW_CFG_VMM_PAGE_SIZE);
+    pvmpageNew->PAGE_ulPageAddr   = pvmpage->PAGE_ulPageAddr + (ulPageNum << LW_CFG_VMM_PAGE_SHIFT);
     pvmpageNew->PAGE_iPageType    = iPageType;
     pvmpageNew->PAGE_ulFlags      = pvmpage->PAGE_ulFlags;              /*  页面属性                    */
     pvmpageNew->PAGE_pvmzoneOwner = pvmpage->PAGE_pvmzoneOwner;         /*  记录所属区域                */

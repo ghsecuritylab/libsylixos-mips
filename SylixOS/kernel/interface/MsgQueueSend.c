@@ -82,27 +82,25 @@ __re_send:
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MSGQUEUE)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "msgqueue handle invalidate.\r\n");
         _ErrorHandle(ERROR_MSGQUEUE_TYPE);
         return  (ERROR_MSGQUEUE_TYPE);
     }
+    
     pmsgqueue = (PLW_CLASS_MSGQUEUE)pevent->EVENT_pvPtr;
     
     if (stMsgLen > pmsgqueue->MSGQUEUE_stEachMsgByteSize) {             /*  长度太长                    */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "ulMsgLen invalidate.\r\n");
         _ErrorHandle(ERROR_MSGQUEUE_MSG_LEN);
         return  (ERROR_MSGQUEUE_MSG_LEN);
     }
     
-    if (_EventWaitNum(pevent)) {
+    if (_EventWaitNum(pevent)) {                                        /*  有任务在等待消息            */
         BOOL    bSendOk = LW_TRUE;
-        
-        __KERNEL_ENTER();                                               /*  进入内核                    */
         
         if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {         /*  优先级等待队列              */
             _EVENT_DEL_Q_PRIORITY(ppringList);                          /*  检查需要激活的队列          */
@@ -113,7 +111,6 @@ __re_send:
             _EVENT_DEL_Q_FIFO(ppringList);                              /*  检查需要激活的FIFO队列      */
                                                                         /*  激活FIFO等待线程            */
             ptcb = _EventReadyFifoLowLevel(pevent, LW_NULL, ppringList);
-    
         }
         
         if ((stMsgLen > ptcb->TCB_stMaxByteSize) && 
@@ -132,7 +129,7 @@ __re_send:
                        stRealLen);
         }
                    
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        KN_INT_ENABLE(iregInterLevel);                                  /*  使能中断                    */
         
         _EventReadyHighLevel(ptcb, LW_THREAD_STATUS_MSGQUEUE);          /*  处理 TCB                    */
         
@@ -144,20 +141,18 @@ __re_send:
         if (bSendOk == LW_FALSE) {
             goto    __re_send;                                          /*  重新发送                    */
         }
+        
         return  (ERROR_NONE);
         
     } else {                                                            /*  没有线程等待                */
         if (pevent->EVENT_ulCounter < pevent->EVENT_ulMaxCounter) {     /*  检查是否还有空间加          */
             pevent->EVENT_ulCounter++;
             _MsgQueueSendMsg(pmsgqueue, pvMsgBuffer, stMsgLen);         /*  保存消息                    */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);
-                                                                        /*  打开中断, 同时打开 spinlock */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
         
         } else {                                                        /*  已经满了                    */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);
-                                                                        /*  打开中断, 同时打开 spinlock */
-            
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             _ErrorHandle(ERROR_MSGQUEUE_FULL);
             return  (ERROR_MSGQUEUE_FULL);
         }

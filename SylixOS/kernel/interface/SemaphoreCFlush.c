@@ -63,10 +63,9 @@ ULONG  API_SemaphoreCFlush (LW_OBJECT_HANDLE  ulId, ULONG  *pulThreadUnblockNum)
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMC)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
         return  (ERROR_EVENT_TYPE);
@@ -76,10 +75,7 @@ ULONG  API_SemaphoreCFlush (LW_OBJECT_HANDLE  ulId, ULONG  *pulThreadUnblockNum)
         *pulThreadUnblockNum = _EventWaitNum(pevent);
     }
 
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
     while (_EventWaitNum(pevent)) {                                     /*  是否存在正在等待的任务      */
-        
         if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {         /*  优先级等待队列              */
             _EVENT_DEL_Q_PRIORITY(ppringList);                          /*  检查需要激活的队列          */
                                                                         /*  激活优先级等待线程          */
@@ -89,20 +85,16 @@ ULONG  API_SemaphoreCFlush (LW_OBJECT_HANDLE  ulId, ULONG  *pulThreadUnblockNum)
             _EVENT_DEL_Q_FIFO(ppringList);                              /*  检查需要激活的队列          */
                                                                         /*  激活FIFO等待线程            */
             ptcb = _EventReadyFifoLowLevel(pevent, LW_NULL, ppringList);
-    
         }
 
-        /*
-         *  注意: 以下操作没有释放 spinlock.
-         */
         KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
+        
         _EventReadyHighLevel(ptcb, LW_THREAD_STATUS_SEM);               /*  处理 TCB                    */
+        
         iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
     }
 
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
-    
-    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     MONITOR_EVT_LONG1(MONITOR_EVENT_ID_SEMC, MONITOR_EVENT_SEM_FLUSH, ulId, LW_NULL);
     

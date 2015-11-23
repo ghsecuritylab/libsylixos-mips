@@ -162,6 +162,38 @@ static VOID  __vmmMergeAreaHook (PLW_VMM_PAGE  pvmpagePhysical,
     __pageLink(pvmpageVirtualL, pvmpagePhysical);
 }
 /*********************************************************************************************************
+** 函数名称: __vmmMoveAreaHook
+** 功能描述: API_VmmMoveArea 回调函数
+** 输　入  : pvmpagePhysical       pvmpageVirtualFrom 内的一个物理页面控制块
+**           pvmpageVirtualL       目标虚拟分区
+**           pvmpageVirtualR       源虚拟分区
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+static VOID  __vmmMoveAreaHook (PLW_VMM_PAGE  pvmpagePhysical,
+                                PLW_VMM_PAGE  pvmpageVirtualTo,
+                                PLW_VMM_PAGE  pvmpageVirtualFrom)
+{
+    addr_t  ulNewMap;
+    ULONG   ulOff;
+    
+    __pageUnlink(pvmpageVirtualFrom, pvmpagePhysical);                  /*  解除连接关系                */
+    
+    ulOff = pvmpagePhysical->PAGE_ulMapPageAddr
+          - pvmpageVirtualFrom->PAGE_ulPageAddr;                        /*  物理页面偏移量              */
+          
+    ulNewMap = pvmpageVirtualTo->PAGE_ulPageAddr
+             + ulOff;                                                   /*  新的映射地址                */
+             
+    __vmmLibPageMap(pvmpagePhysical->PAGE_ulPageAddr, 
+                    ulNewMap, 1, pvmpageVirtualTo->PAGE_ulFlags);       /*  建立新的映射关系            */
+                    
+    pvmpagePhysical->PAGE_ulMapPageAddr = ulNewMap;                     /*  记录新的映射关系            */
+                    
+    __pageLink(pvmpageVirtualTo, pvmpagePhysical);                      /*  连接到目标虚拟分区          */
+}
+/*********************************************************************************************************
 ** 函数名称: API_VmmMalloc
 ** 功能描述: 分配逻辑上连续, 物理可能不连续的内存.
 ** 输　入  : stSize     需要分配的内存大小
@@ -277,7 +309,7 @@ PVOID  API_VmmMallocAlign (size_t  stSize, size_t  stAlign, ULONG  ulFlag)
         __pageLink(pvmpageVirtual, pvmpagePhysical);                    /*  将物理页面连接入虚拟空间    */
         
         ulPageNumTotal += ulPageNumOnce;
-        ulVirtualAddr  += (LW_CFG_VMM_PAGE_SIZE * ulPageNumOnce);
+        ulVirtualAddr  += (ulPageNumOnce << LW_CFG_VMM_PAGE_SHIFT);
         
     } while (ulPageNumTotal < ulPageNum);
     
@@ -714,6 +746,68 @@ ULONG  API_VmmMergeArea (PVOID  pvVirtualMem1, PVOID  pvVirtualMem2)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
+** 函数名称: API_VmmMoveArea
+** 功能描述: 将一块虚拟页面的物理内存移动到另一块虚拟内存
+** 输　入  : pvVirtualTo     目标虚拟地址区域
+**           pvVirtualFrom   源虚拟地址区域
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+ULONG  API_VmmMoveArea (PVOID  pvVirtualTo, PVOID  pvVirtualFrom)
+{
+    PLW_VMM_PAGE    pvmpageVirtualTo;
+    PLW_VMM_PAGE    pvmpageVirtualFrom;
+    
+    addr_t          ulAddrTo   = (addr_t)pvVirtualTo;
+    addr_t          ulAddrFrom = (addr_t)pvVirtualFrom;
+    
+    __VMM_LOCK();
+    pvmpageVirtualTo = __areaVirtualSearchPage(ulAddrTo);
+    if (pvmpageVirtualTo == LW_NULL) {
+        __VMM_UNLOCK();
+        _ErrorHandle(ERROR_VMM_VIRTUAL_PAGE);                           /*  无法反向查询虚拟页面控制块  */
+        return  (ERROR_VMM_VIRTUAL_PAGE);
+    }
+    
+    pvmpageVirtualFrom = __areaVirtualSearchPage(ulAddrFrom);
+    if (pvmpageVirtualFrom == LW_NULL) {
+        __VMM_UNLOCK();
+        _ErrorHandle(ERROR_VMM_VIRTUAL_PAGE);                           /*  无法反向查询虚拟页面控制块  */
+        return  (ERROR_VMM_VIRTUAL_PAGE);
+    }
+    
+    if (pvmpageVirtualTo->PAGE_ulCount < 
+        pvmpageVirtualFrom->PAGE_ulCount) {                             /*  目标虚拟区间太小            */
+        __VMM_UNLOCK();
+        _ErrorHandle(ERROR_VMM_LOW_PAGE);
+        return  (ERROR_VMM_LOW_PAGE);
+    }
+    
+#if LW_CFG_CACHE_EN > 0
+    __vmmPhysicalPageClearAll(pvmpageVirtualFrom);
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
+    
+    __vmmLibPageMap(pvmpageVirtualFrom->PAGE_ulPageAddr,
+                    pvmpageVirtualFrom->PAGE_ulPageAddr,
+                    pvmpageVirtualFrom->PAGE_ulCount, 
+                    LW_VMM_FLAG_FAIL);                                  /*  不允许访问                  */
+    
+    __pageTraversalLink(pvmpageVirtualFrom, 
+                        __vmmMoveAreaHook, 
+                        pvmpageVirtualTo,
+                        pvmpageVirtualFrom,
+                        LW_NULL,
+                        LW_NULL,
+                        LW_NULL,
+                        LW_NULL);                                       /*  遍历对应的物理页面          */
+    __VMM_UNLOCK();
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
 ** 函数名称: API_VmmSetFiller
 ** 功能描述: 设置虚拟空间的填充函数
 **           此函数仅向 loader 提供服务, 用于代码段共享.
@@ -795,7 +889,7 @@ ULONG  API_VmmSetFindShare (PVOID  pvVirtualMem, PVOIDFUNCPTR  pfuncFindShare, P
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: API_VmmCounterArea
+** 函数名称: API_VmmPCountInArea
 ** 功能描述: API_VmmMallocAreaEx 分配的连续虚拟内存中包含的物理页面个数 (此物理内存为缺页中断分配)
 ** 输　入  : pvVirtualMem    连续虚拟地址 (必须为 vmmMallocArea?? 返回地址)
 **           pulPageNum      返回物理页面的个数
@@ -933,7 +1027,7 @@ ULONG  API_VmmPreallocArea (PVOID       pvVirtualMem,
     
     if ((pvSubMem < pvVirtualMem) ||
         (((addr_t)pvSubMem + stSize) > 
-        ((addr_t)pvVirtualMem + (pvmpageVirtual->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE)))) {
+        ((addr_t)pvVirtualMem + (pvmpageVirtual->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT)))) {
         __VMM_UNLOCK();
         _ErrorHandle(ERROR_VMM_VIRTUAL_ADDR);                           /*  地址超出范围                */
         return  (ERROR_VMM_VIRTUAL_ADDR);
@@ -1095,8 +1189,8 @@ ULONG  API_VmmShareArea (PVOID      pvVirtualMem1,
         return  (ERROR_VMM_VIRTUAL_PAGE);
     }
     
-    if ((stStartOft1 > (pvmpageVirtual1->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE)) ||
-        (stStartOft2 > (pvmpageVirtual2->PAGE_ulCount * LW_CFG_VMM_PAGE_SIZE))) {
+    if ((stStartOft1 > (pvmpageVirtual1->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT)) ||
+        (stStartOft2 > (pvmpageVirtual2->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT))) {
         __VMM_UNLOCK();
         _ErrorHandle(EINVAL);                                           /*  偏移量越界                  */
         return  (EINVAL);

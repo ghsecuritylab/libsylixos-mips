@@ -111,21 +111,18 @@ __wait_again:
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_SEMB)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
         return  (ERROR_EVENT_TYPE);
     }
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     if (pevent->EVENT_ulCounter) {                                      /*  事件有效                    */
         pevent->EVENT_ulCounter = LW_FALSE;
         pvMsgPtr = pevent->EVENT_pvPtr;                                 /*  截获消息                    */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */        
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         if (ppvMsgPtr) {
             *ppvMsgPtr = pvMsgPtr;                                      /*  保存信息                    */
         }
@@ -133,8 +130,7 @@ __wait_again:
     }
     
     if (ulTimeout == LW_OPTION_NOT_WAIT) {                              /*  不等待                      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
     }
@@ -160,7 +156,7 @@ __wait_again:
         _EventWaitFifo(pevent, ppringList);                             /*  加入 FIFO 等待表            */
     }
     
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
 
     ulEventOption = pevent->EVENT_ulOption;
     
@@ -182,12 +178,9 @@ __wait_again:
     }
     
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {               /*  等待超时                    */
-        LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);     /*  关闭中断, 锁住 spinlock     */
-        __KERNEL_ENTER();                                               /*  进入内核                    */
+        iregInterLevel = __KERNEL_ENTER_IRQ();                          /*  进入内核                    */
         if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_CLEAR) {         /*  是否在上面瞬间被激活        */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             pvMsgPtr = ptcbCur->TCB_pvMsgBoxMessage;                    /*  截获消息                    */
             if (ppvMsgPtr) {
                 *ppvMsgPtr = pvMsgPtr;                                  /*  保存信息                    */
@@ -200,8 +193,8 @@ __wait_again:
         } else {
             _EventTimeoutFifo(pevent, ppringList);                      /*  等待超时恢复                */
         }
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
         
@@ -212,12 +205,14 @@ __wait_again:
                 *ppvMsgPtr = pvMsgPtr;                                  /*  保存信息                    */
             }
             return  (ERROR_NONE);
+        
         } else {
             _ErrorHandle(ERROR_EVENT_WAS_DELETED);                      /*  已经被删除                  */
             return  (ERROR_EVENT_WAS_DELETED);
         }
     }
 }
+
 #endif                                                                  /*  (LW_CFG_SEMB_EN > 0)        */
                                                                         /*  (LW_CFG_MAX_EVENTS > 0)     */
 /*********************************************************************************************************

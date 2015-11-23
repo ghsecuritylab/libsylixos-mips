@@ -83,9 +83,11 @@ struct pbuf *aodv_rrep_create (u8_t flags, u8_t prefix, u8_t hcnt, struct in_add
   }
 #endif /* AODV_MCAST */
 
+#if AODV_MCAST
   if (!grp_addr) {
     grp_addr = &aodv_addr_any;
   }
+#endif /* AODV_MCAST */
   
   p = pbuf_alloc(PBUF_TRANSPORT, length, PBUF_RAM);
   if (p) {

@@ -25,6 +25,7 @@
 #endif
 
 #include <arch/assembler.h>
+#include <config/cpu/cpu_cfg.h>
 
     FILE_BEGIN()
 
@@ -38,6 +39,11 @@
     EXPORT_LABEL(sigsetjmp)
     EXPORT_LABEL(longjmp)
     EXPORT_LABEL(siglongjmp)
+
+#if LW_CFG_MIPS_HAS_CLZ_INSTR > 0
+    EXPORT_LABEL(archFindLsb)
+    EXPORT_LABEL(archFindMsb)
+#endif
 
     EXPORT_LABEL(archIntDisable)
     EXPORT_LABEL(archIntEnable)
@@ -83,16 +89,26 @@ FUNC_DEF(archIntEnableForce)
 FUNC_END(archIntEnableForce)
 
 ;/*********************************************************************************************************
-;  页面拷贝 (代码来自 linux/arch/arm/lib) TODO
+;  MIPS 前导零运算
 ;*********************************************************************************************************/
-#define PAGE_SZ         4096
-#define L1_CACHE_BYTES  32
-#define COPY_COUNT      (PAGE_SZ / (2 * L1_CACHE_BYTES) PLD(-1))
 
-FUNC_DEF(archPageCopy)
-    JR      RA
-    NOP
-FUNC_END(archPageCopy)
+#if LW_CFG_MIPS_HAS_CLZ_INSTR > 0
+FUNC_DEF(archFindLsb)
+    NEGU    V0 , A0
+    AND     A0 , V0 , A0
+    CLZ     A0 , A0
+    LI      V0 , 32
+    J       RA
+    SUBU    V0, V0, A0
+FUNC_END(archFindLsb)
+
+FUNC_DEF(archFindMsb)
+    CLZ     A0, A0
+    LI      V0, 32
+    J       RA
+    SUBU    V0, V0, A0
+FUNC_END(archFindMsb)
+#endif
 
 ;/*********************************************************************************************************
 ;  注意: setjmp 与 longjmp 上下文结构与线程上下文结构不同
@@ -110,7 +126,6 @@ FUNC_END(archPageCopy)
 ;  +-------+<---   Adjusted SP
 ;
 ;*********************************************************************************************************/
-
 
 ;/*********************************************************************************************************
 ;  sigsetjmp (参数为 jmp_buf, mask_saved)

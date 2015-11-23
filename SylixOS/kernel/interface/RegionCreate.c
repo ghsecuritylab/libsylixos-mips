@@ -111,6 +111,7 @@ LW_OBJECT_HANDLE API_RegionCreate (CPCHAR             pcName,
     
     return  (ulIdTemp);
 }
+
 #endif                                                                  /*  (LW_CFG_REGION_EN > 0)      */
                                                                         /*  (LW_CFG_MAX_REGIONS > 0)    */
 /*********************************************************************************************************

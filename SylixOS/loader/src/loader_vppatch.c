@@ -116,12 +116,9 @@ PCHAR __moduleVpPatchVersion (LW_LD_EXEC_MODULE *pmodule)
     
     funcVpVersion = (PCHAR (*)())API_ModuleSym(pmodule, __LW_VP_PATCH_VERSION);
     if (funcVpVersion) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-        /*
-         * 当前函数指针放到T9($25)Register，为计算GOT服务
-         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
         MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpVersion));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
         pcVersion = funcVpVersion(pmodule->EMOD_pvproc);
     }
     
@@ -144,12 +141,9 @@ PVOID __moduleVpPatchHeap (LW_LD_EXEC_MODULE *pmodule)
 
     funcVpHeap = (PVOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_HEAP);
     if (funcVpHeap) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-        /*
-         * 当前函数指针放到T9($25)Register，为计算GOT服务
-         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
         MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpHeap));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
         pvHeap = funcVpHeap(pmodule->EMOD_pvproc);
     }
     
@@ -174,12 +168,9 @@ INT __moduleVpPatchVmem (LW_LD_EXEC_MODULE *pmodule, PVOID  ppvArea[], INT  iSiz
 
     funcVpVmem = (FUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_VMEM);
     if (funcVpVmem) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-        /*
-         * 当前函数指针放到T9($25)Register，为计算GOT服务
-         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
         MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpVmem));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
         iRet = funcVpVmem(pmodule->EMOD_pvproc, ppvArea, iSize);
     }
     
@@ -199,12 +190,9 @@ VOID __moduleVpPatchInit (LW_LD_EXEC_MODULE *pmodule)
     
     funcVpCtor = (VOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_CTOR);
     if (funcVpCtor) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-        /*
-         * 当前函数指针放到T9($25)Register，为计算GOT服务
-         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
         MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpCtor));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
 
         funcVpCtor(pmodule->EMOD_pvproc, pmodule->EMOD_pcModulePath);
     }
@@ -223,12 +211,9 @@ VOID __moduleVpPatchFini (LW_LD_EXEC_MODULE *pmodule)
 
     funcVpDtor = (VOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_DTOR);
     if (funcVpDtor) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-        /*
-         * 当前函数指针放到T9($25)Register，为计算GOT服务
-         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
         MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpDtor));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
         funcVpDtor(pmodule->EMOD_pvproc);
     }
 }
@@ -246,12 +231,9 @@ static VOID __moduleVpPatchAerun (LW_LD_EXEC_MODULE *pmodule)
 
     funcVpAerun = (VOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_AERUN);
     if (funcVpAerun) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-        /*
-         * 当前函数指针放到T9($25)Register，为计算GOT服务
-         */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
         MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpAerun));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
         funcVpAerun(pmodule->EMOD_pvproc);
     }
 }
@@ -461,7 +443,7 @@ LW_LD_VPROC *vprocCreate (CPCHAR  pcFile)
         goto    __error_handle;
     }
     
-    pvproc->VP_ulWaitForExit = API_SemaphoreBCreate("vproc_waitforexit",
+    pvproc->VP_ulWaitForExit = API_SemaphoreBCreate("vproc_wfe",
                                                     LW_FALSE,
                                                     LW_OPTION_OBJECT_GLOBAL,
                                                     LW_NULL);
@@ -1286,12 +1268,9 @@ INT  vprocRun (LW_LD_VPROC      *pvproc,
                 sigqueue(pvpstop->VPS_ulId, pvpstop->VPS_iSigNo, sigvalue);
                 API_ThreadStop(pvproc->VP_ulMainThread);                /*  等待调试器命令              */
             }
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-            /*
-             * 当前函数指针放到T9($25)Register，为计算GOT服务
-             */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
             MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfunEntry));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
             iError = pfunEntry(iArgC, ppcArgV, ppcEnv);                 /*  执行进程入口函数            */
         } else {
             iError = 0;

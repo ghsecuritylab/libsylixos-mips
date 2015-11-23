@@ -191,7 +191,7 @@ static VOID  __logBspMsg (PCHAR  pcMsg)
         }
     }
     
-    bspDebugMsg(pcMsg);
+    _DebugHandle(__PRINTMESSAGE_LEVEL, pcMsg);
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: API_LogPrintk

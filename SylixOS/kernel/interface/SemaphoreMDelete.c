@@ -27,16 +27,12 @@
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
-                                            注意！！！
-                                            
-       MUTEX 不同于 COUNTING、BINERY，一个线程必须成对使用！！！！
+  注意:
+       MUTEX 不同于 COUNTING, BINERY, 一个线程必须成对使用.
        
        API_SemaphoreMPend();
-       
        ... (do something as fast as possible...)
-       
        API_SemaphoreMPost();
-       
 *********************************************************************************************************/
 /*********************************************************************************************************
 ** 函数名称: API_SemaphoreMDelete
@@ -89,22 +85,19 @@ ULONG  API_SemaphoreMDelete (LW_OBJECT_HANDLE  *pulId)
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MUTEX)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
         return  (ERROR_EVENT_TYPE);
     }
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
+
     _ObjectCloseId(pulId);                                              /*  清除句柄                    */
     
     pevent->EVENT_ucType = LW_TYPE_EVENT_UNUSED;                        /*  事件类型为空                */
     
     while (_EventWaitNum(pevent)) {                                     /*  是否存在正在等待的任务      */
-        
         if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {         /*  优先级等待队列              */
             _EVENT_DEL_Q_PRIORITY(ppringList);                          /*  检查需要激活的队列          */
                                                                         /*  激活优先级等待线程          */
@@ -114,15 +107,13 @@ ULONG  API_SemaphoreMDelete (LW_OBJECT_HANDLE  *pulId)
             _EVENT_DEL_Q_FIFO(ppringList);                              /*  查找 FIFO 队列指针地址      */
                                                                         /*  激活FIFO等待线程            */
             ptcb = _EventReadyFifoLowLevel(pevent, LW_NULL, ppringList);
-            
         }
-        
-        /*
-         *  注意: 以下操作没有释放 spinlock.
-         */
+
         KN_INT_ENABLE(iregInterLevel);
+        
         ptcb->TCB_ucIsEventDelete = LW_EVENT_DELETE;                    /*  事件已经被删除              */
         _EventReadyHighLevel(ptcb, LW_THREAD_STATUS_SEM);               /*  处理 TCB                    */
+        
         iregInterLevel = KN_INT_DISABLE();
     }
     
@@ -140,8 +131,6 @@ ULONG  API_SemaphoreMDelete (LW_OBJECT_HANDLE  *pulId)
     
     _Free_Event_Object(pevent);                                         /*  交还控制块                  */
     ulOptionTemp = pevent->EVENT_ulOption;                              /*  暂存选项                    */
-    
-    LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                              /*  释放自旋锁                  */
     
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     

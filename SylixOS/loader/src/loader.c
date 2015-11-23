@@ -463,18 +463,17 @@ static INT initArrayCall (LW_LD_EXEC_MODULE *pmodule)
             for (i = 0; i < pmodTemp->EMOD_ulInitArrCnt; i++) {         /*  正顺序调用初始化函数        */
                 pfuncInit = pmodTemp->EMOD_ppfuncInitArray[i];
                 if (pfuncInit != LW_NULL && pfuncInit != (VOIDFUNCPTR)(~0)) {
-
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-                    /*
-                     * 当前函数指针放到T9($25)Register，为计算GOT服务
-                     */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
                     MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncInit));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
                     pfuncInit();
                 }
             }
 
             if (pmodTemp->EMOD_pfuncInit) {
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
+                MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pmodTemp->EMOD_pfuncInit));
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
                 if (pmodTemp->EMOD_pfuncInit() < 0) {
                     LW_VP_UNLOCK(pmodule->EMOD_pvproc);
                     return  (PX_ERROR);
@@ -516,19 +515,19 @@ static INT finiArrayCall (LW_LD_EXEC_MODULE *pmodule, BOOL  bRunFini)
             pmodTemp->EMOD_ulStatus = LW_LD_STATUS_FINIED;
 
             if (pmodTemp->EMOD_pfuncExit) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS
-                /*
-                 * 当前函数指针放到T9($25)Register，为计算GOT服务
-                 */
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
                 MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pmodTemp->EMOD_pfuncExit));
-#endif
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
                 pmodTemp->EMOD_pfuncExit();
             }
             
-            if (bRunFini) {                                             /*  逆序调用结束函数           */
+            if (bRunFini) {                                             /*  逆序调用结束函数            */
                 for (i = (INT)pmodTemp->EMOD_ulFiniArrCnt - 1; i >= 0; i--) {
                     pfuncFini = pmodTemp->EMOD_ppfuncFiniArray[i];
                     if (pfuncFini != LW_NULL && pfuncFini != (VOIDFUNCPTR)(~0)) {
+#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
+                        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncFini));
+#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
                         pfuncFini();
                     }
                 }

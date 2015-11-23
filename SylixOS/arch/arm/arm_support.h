@@ -23,6 +23,7 @@
 #define __ARCH_ARM_SUPPORT_H
 
 #define __LW_SCHEDULER_BUG_TRACE_EN                                     /*  测试多核调度器              */
+#define __LW_KERNLOCK_BUG_TRACE_EN                                      /*  测试内核锁                  */
 
 /*********************************************************************************************************
   汇编相关头文件
@@ -43,17 +44,19 @@
   ARM 处理器断言
 *********************************************************************************************************/
 
-VOID        archAssert(INT  iCond, CPCHAR  pcFunc, CPCHAR  pcFile, INT  iLine);
+VOID    archAssert(INT  iCond, CPCHAR  pcFunc, CPCHAR  pcFile, INT  iLine);
 
 /*********************************************************************************************************
   ARM 处理器线程上下文相关接口
 *********************************************************************************************************/
 
-PLW_STACK   archTaskCtxCreate(PTHREAD_START_ROUTINE  pfuncTask,
-                              PVOID                  pvArg,
-                              PLW_STACK              pstkTop, 
-                              ULONG                  ulOpt);
-VOID        archTaskCtxSetFp(PLW_STACK  pstkDest, PLW_STACK  pstkSrc);
+PLW_STACK       archTaskCtxCreate(PTHREAD_START_ROUTINE  pfuncTask,
+                                  PVOID                  pvArg,
+                                  PLW_STACK              pstkTop, 
+                                  ULONG                  ulOpt);
+VOID            archTaskCtxSetFp(PLW_STACK  pstkDest, PLW_STACK  pstkSrc);
+ARCH_REG_CTX   *archTaskRegsGet(PLW_STACK  pstkTop, ARCH_REG_T *pregSp);
+VOID            archTaskRegsSet(PLW_STACK  pstkTop, const ARCH_REG_CTX  *pregctx);
 
 #if LW_CFG_DEVICE_EN > 0
 VOID        archTaskCtxShow(INT  iFd, PLW_STACK  pstkTop);
@@ -74,9 +77,9 @@ VOID        archSigCtxLoad(PVOID  pvStack);
 *********************************************************************************************************/
 
 #if LW_CFG_GDB_EN > 0
-VOID    archDbgBpInsert(addr_t   ulAddr, size_t stSize, ULONG  *pulIns);
+VOID    archDbgBpInsert(addr_t   ulAddr, size_t stSize, ULONG  *pulIns, BOOL  bLocal);
 VOID    archDbgAbInsert(addr_t   ulAddr, ULONG  *pulIns);
-VOID    archDbgBpRemove(addr_t   ulAddr, size_t stSize, ULONG   ulIns);
+VOID    archDbgBpRemove(addr_t   ulAddr, size_t stSize, ULONG   ulIns, BOOL  bLocal);
 VOID    archDbgBpPrefetch(addr_t ulAddr);
 UINT    archDbgTrapType(addr_t   ulAddr, PVOID   pvArch);
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
@@ -182,8 +185,17 @@ VOID    archSpinDelay(VOID);
 VOID    archSpinNotify(VOID);
 
 #define __ARCH_SPIN_INIT    archSpinInit
+
+#if __SYLIXOS_ARM_ARCH__ >= 7
 #define __ARCH_SPIN_DELAY   archSpinDelay
 #define __ARCH_SPIN_NOTIFY  archSpinNotify
+#else
+#define __ARCH_SPIN_DELAY() \
+        {   volatile INT i; \
+            for (i = 0; i < 10; i++);    \
+        }
+#define __ARCH_SPIN_NOTIFY()
+#endif                                                                  /*  __SYLIXOS_ARM_ARCH__ >= 7   */
 
 INT     archSpinLock(spinlock_t  *psl);
 INT     archSpinTryLock(spinlock_t  *psl);
@@ -306,7 +318,7 @@ VOID    archFpuCtxShow(INT  iFd, PVOID pvFpuCtx);
 #define __ARCH_FPU_CTX_SHOW     archFpuCtxShow
 #endif                                                                  /*  #if LW_CFG_DEVICE_EN        */
 
-INT     archFpuUndHandle(VOID);
+INT     archFpuUndHandle(PLW_CLASS_TCB  ptcbCur);
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN           */
 
 /*********************************************************************************************************
@@ -362,9 +374,7 @@ VOID    bspReboot(INT  iRebootType, addr_t  ulStartAddress);
   系统关键信息打印 (打印信息不可依赖任何操作系统 api)
 *********************************************************************************************************/
 
-#if (LW_CFG_ERRORMESSAGE_EN > 0) || (LW_CFG_LOGMESSAGE_EN > 0) || (LW_CFG_BUGMESSAGE_EN > 0)
 VOID    bspDebugMsg(CPCHAR pcMsg);
-#endif                                                                  /*  LW_CFG_ERRORMESSAGE_EN > 0  */
 
 /*********************************************************************************************************
   BSP 信息
@@ -405,7 +415,10 @@ ULONG   bspMmuPteMaxNum(VOID);
 #if LW_CFG_SMP_EN > 0
 VOID    bspMpInt(ULONG  ulCPUId);
 VOID    bspCpuUp(ULONG  ulCPUId);                                       /*  启动一个 CPU                */
+
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
 VOID    bspCpuDown(ULONG  ulCPUId);                                     /*  停止一个 CPU                */
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
 /*********************************************************************************************************

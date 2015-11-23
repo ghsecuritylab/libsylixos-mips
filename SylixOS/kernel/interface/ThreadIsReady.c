@@ -78,5 +78,60 @@ BOOL  API_ThreadIsReady (LW_OBJECT_HANDLE    ulId)
     return  (bIsReady);
 }
 /*********************************************************************************************************
+** 函数名称: API_ThreadIsRunning
+** 功能描述: 检查线程是否在运行
+** 输　入  : ulId               线程ID
+**           pbIsRunning        是否正在执行
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API
+ULONG  API_ThreadIsRunning (LW_OBJECT_HANDLE   ulId, BOOL  *pbIsRunning)
+{
+    REGISTER UINT16         usIndex;
+    REGISTER PLW_CLASS_TCB  ptcb;
+	
+    usIndex = _ObjectGetIndex(ulId);
+    
+#if LW_CFG_ARG_CHK_EN > 0
+    if (!_ObjectClassOK(ulId, _OBJECT_THREAD)) {                        /*  检查 ID 类型有效性          */
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "thread handle invalidate.\r\n");
+        _ErrorHandle(ERROR_KERNEL_HANDLE_NULL);
+        return  (ERROR_KERNEL_HANDLE_NULL);
+    }
+    
+    if (_Thread_Index_Invalid(usIndex)) {                               /*  检查线程有效性              */
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "thread handle invalidate.\r\n");
+        _ErrorHandle(ERROR_THREAD_NULL);
+        return  (ERROR_THREAD_NULL);
+    }
+#endif
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    if (_Thread_Invalid(usIndex)) {
+        __KERNEL_EXIT();                                                /*  退出内核                    */
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "thread handle invalidate.\r\n");
+        _ErrorHandle(ERROR_THREAD_NULL);
+        return  (ERROR_THREAD_NULL);
+    }
+    
+    ptcb = _K_ptcbTCBIdTable[usIndex];
+    
+    if (pbIsRunning) {
+        if (__LW_THREAD_IS_RUNNING(ptcb)) {
+            *pbIsRunning = LW_TRUE;
+        
+        } else {
+            *pbIsRunning = LW_FALSE;
+        }
+    }
+    
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
   END
 *********************************************************************************************************/

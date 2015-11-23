@@ -31,16 +31,12 @@
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
-                                            注意！！！
-                                            
-       MUTEX 不同于 COUNTING、BINERY，一个线程必须成对使用！！！！
+  注意:
+       MUTEX 不同于 COUNTING, BINERY, 一个线程必须成对使用.
        
        API_SemaphoreMPend();
-       
        ... (do something as fast as possible...)
-       
        API_SemaphoreMPost();
-       
 *********************************************************************************************************/
 /*********************************************************************************************************
 ** 函数名称: API_SemaphoreMPost
@@ -94,11 +90,8 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
         return  (ERROR_NONE);
     }
     
-    LW_SPIN_LOCK(&pevent->EVENT_slLock);                                /*  锁定 spinlock               */
-    
     __KERNEL_ENTER();                                                   /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MUTEX)) {
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "semaphore handle invalidate.\r\n");
         _ErrorHandle(ERROR_EVENT_TYPE);
@@ -106,7 +99,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
     }
     
     if (ptcbCur != (PLW_CLASS_TCB)pevent->EVENT_pvTcbOwn) {             /*  是否是拥有者                */
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _ErrorHandle(ERROR_EVENT_NOT_OWN);                              /*  没有事件所有权              */
         return  (ERROR_EVENT_NOT_OWN);
@@ -114,7 +106,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
     
     if (pevent->EVENT_pvPtr) {                                          /*  检测是否进行了连续调用      */
         pevent->EVENT_pvPtr = (PVOID)((ULONG)pevent->EVENT_pvPtr - 1);  /*  临时计数器--                */
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         return  (ERROR_NONE);
     }
@@ -122,7 +113,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
     iregInterLevel = KN_INT_DISABLE();
     
     if (_EventWaitNum(pevent)) {
-        
         if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {         /*  优先级等待队列              */
             _EVENT_DEL_Q_PRIORITY(ppringList);                          /*  检查需要激活的队列          */
                                                                         /*  激活优先级等待线程          */
@@ -150,7 +140,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
         MONITOR_EVT_LONG2(MONITOR_EVENT_ID_SEMM, MONITOR_EVENT_SEM_POST, 
                           ulId, ptcb->TCB_ulId, LW_NULL);
         
-        LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                          /*  打开 spinlock               */
         __KERNEL_EXIT();                                                /*  退出内核                    */
         
         if (pevent->EVENT_ulOption & LW_OPTION_DELETE_SAFE) {           /*  退出安全模式                */
@@ -159,7 +148,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
         return  (ERROR_NONE);
     
     } else {                                                            /*  没有线程等待                */
-        
         KN_INT_ENABLE(iregInterLevel);
         
         if (pevent->EVENT_ulCounter == LW_FALSE) {                      /*  检查是否还有空间加          */
@@ -168,7 +156,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
             pevent->EVENT_ulMaxCounter = LW_PRIO_LOWEST;                /*  清空保存信息                */
             pevent->EVENT_pvTcbOwn     = LW_NULL;
             
-            LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                      /*  打开 spinlock               */
             __KERNEL_EXIT();                                            /*  退出内核                    */
             
             if (pevent->EVENT_ulOption & LW_OPTION_DELETE_SAFE) {       /*  退出安全模式                */
@@ -177,7 +164,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
             return  (ERROR_NONE);
         
         } else {                                                        /*  已经满了                    */
-            LW_SPIN_UNLOCK(&pevent->EVENT_slLock);                      /*  打开 spinlock               */
             __KERNEL_EXIT();                                            /*  退出内核                    */
             _ErrorHandle(ERROR_EVENT_FULL);
             return  (ERROR_EVENT_FULL);

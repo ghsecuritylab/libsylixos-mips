@@ -103,6 +103,15 @@ VOID  _DebugFmtMsg(INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcFmt, ...);
         if (cond) { if (stop) { for (;;); }}
 #endif                                                                  /*  LW_CFG_BUGMESSAGE_EN > 0    */
 
+/*********************************************************************************************************
+  PRINT ¥Ú”°
+*********************************************************************************************************/
+
+#define _PrintHandle(msg)   \
+        _DebugMessage(__PRINTMESSAGE_LEVEL, LW_NULL, msg)
+#define _PrintFormat(fmt, ...)  \
+        _DebugFmtMsg(__PRINTMESSAGE_LEVEL, LW_NULL, fmt, ##__VA_ARGS__)
+
 #endif                                                                  /*  __INLERRORHANDLE_H          */
 /*********************************************************************************************************
   END

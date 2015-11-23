@@ -46,16 +46,8 @@ typedef LW_IPI_MSG  *PLW_IPI_MSG;
   核间中断短等待时间
 *********************************************************************************************************/
 
-#ifdef __ARCH_SPIN_NOTIFY
 #define LW_SPINLOCK_DELAY()     __ARCH_SPIN_DELAY()
 #define LW_SPINLOCK_NOTIFY()    __ARCH_SPIN_NOTIFY()
-#else
-#define LW_SPINLOCK_DELAY() \
-        {   volatile INT i; \
-            for (i = 0; i < 10; i++);    \
-        }
-#define LW_SPINLOCK_NOTIFY()
-#endif                                                                  /*  __ARCH_SPIN_NOTIFY          */
 
 #endif                                                                  /*  __K_IPI_H                   */
 /*********************************************************************************************************

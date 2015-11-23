@@ -89,6 +89,7 @@ ULONG  API_PartitionGetName (LW_OBJECT_HANDLE  ulId, PCHAR  pcName)
     
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  ((LW_CFG_HTIMER_EN > 0)     */
                                                                         /*  (LW_CFG_ITIMER_EN > 0))     */
                                                                         /*  (LW_CFG_MAX_TIMERS > 0)     */

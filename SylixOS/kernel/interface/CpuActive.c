@@ -68,6 +68,8 @@ ULONG  API_CpuUp (ULONG  ulCPUId)
 ** 调用模块: 
                                            API 函数
 *********************************************************************************************************/
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
+
 LW_API  
 ULONG  API_CpuDown (ULONG  ulCPUId)
 {
@@ -87,7 +89,10 @@ ULONG  API_CpuDown (ULONG  ulCPUId)
         return  (ERROR_NONE);
     }
     
+    LW_SPIN_LOCK_QUICK(&pcpuDst->CPU_slIpi, &iregInterLevel);
     LW_CPU_ADD_IPI_PEND2(pcpu, LW_IPI_DOWN_MSK);
+    LW_SPIN_UNLOCK_QUICK(&pcpuDst->CPU_slIpi, iregInterLevel);
+    
     _ThreadOffAffinity(pcpu);                                           /*  关闭与此 CPU 有关的亲和度   */
     __KERNEL_EXIT();
     
@@ -97,6 +102,8 @@ ULONG  API_CpuDown (ULONG  ulCPUId)
     
     return  (ERROR_NONE);
 }
+
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 /*********************************************************************************************************
 ** 函数名称: API_CpuIsUp
 ** 功能描述: 指定 CPU 是否启动.

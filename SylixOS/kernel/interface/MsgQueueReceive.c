@@ -124,16 +124,15 @@ __wait_again:
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MSGQUEUE)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "msgqueue handle invalidate.\r\n");
         _ErrorHandle(ERROR_MSGQUEUE_TYPE);
         return  (ERROR_MSGQUEUE_TYPE);
     }
+    
     pmsgqueue = (PLW_CLASS_MSGQUEUE)pevent->EVENT_pvPtr;
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     ptcbCur->TCB_ulRecvOption = LW_OPTION_NOERROR;                      /*  接收大消息自动截断          */
     
@@ -143,15 +142,12 @@ __wait_again:
                         pvMsgBuffer, 
                         stMaxByteSize, 
                         pstMsgLen);                                     /*  获得消息                    */
-        
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         return  (ERROR_NONE);
     }
     
     if (ulTimeout == LW_OPTION_NOT_WAIT) {                              /*  不等待                      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
     }
@@ -181,7 +177,7 @@ __wait_again:
         _EventWaitFifo(pevent, ppringList);                             /*  加入 FIFO 等待表            */
     }
     
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
     
     ulEventOption = pevent->EVENT_ulOption;
     
@@ -203,12 +199,9 @@ __wait_again:
     }
     
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {
-        LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);     /*  关闭中断, 锁住 spinlock     */
-        __KERNEL_ENTER();                                               /*  进入内核                    */
+        iregInterLevel = __KERNEL_ENTER_IRQ();                          /*  进入内核                    */
         if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_CLEAR) {         /*  是否在上面瞬间被激活        */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             return  (ERROR_NONE);
         }
         
@@ -217,14 +210,15 @@ __wait_again:
         } else {
             _EventTimeoutFifo(pevent, ppringList);                      /*  等待超时恢复                */
         }
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
         
     } else {
         if (ptcbCur->TCB_ucIsEventDelete == LW_EVENT_EXIST) {           /*  事件是否存在                */
             return  (ERROR_NONE);
+        
         } else {
             _ErrorHandle(ERROR_MSGQUEUE_WAS_DELETED);                   /*  已经被删除                  */
             return  (ERROR_MSGQUEUE_WAS_DELETED);
@@ -305,16 +299,15 @@ __wait_again:
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MSGQUEUE)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "msgqueue handle invalidate.\r\n");
         _ErrorHandle(ERROR_MSGQUEUE_TYPE);
         return  (ERROR_MSGQUEUE_TYPE);
     }
+    
     pmsgqueue = (PLW_CLASS_MSGQUEUE)pevent->EVENT_pvPtr;
-    __KERNEL_ENTER();                                                   /*  进入内核                    */
     
     ptcbCur->TCB_ulRecvOption = ulOption;
     
@@ -324,9 +317,7 @@ __wait_again:
         _MsgQueueGetMsgLen(pmsgqueue, &stMsgLenInBuffer);
         if ((stMsgLenInBuffer > stMaxByteSize) && 
             !(ulOption & LW_OPTION_NOERROR)) {
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             _ErrorHandle(E2BIG);                                        /*  退出                        */
             return  (E2BIG);
         }
@@ -337,14 +328,12 @@ __wait_again:
                         stMaxByteSize, 
                         pstMsgLen);                                     /*  获得消息                    */
         
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         return  (ERROR_NONE);
     }
     
     if (ulTimeout == LW_OPTION_NOT_WAIT) {                              /*  不等待                      */
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
     }
@@ -374,7 +363,7 @@ __wait_again:
         _EventWaitFifo(pevent, ppringList);                             /*  加入 FIFO 等待表            */
     }
     
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  使能中断                    */
     
     ulEventOption = pevent->EVENT_ulOption;
     
@@ -396,15 +385,13 @@ __wait_again:
     }
     
     if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_OUT) {
-        LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);     /*  关闭中断, 锁住 spinlock     */
-        __KERNEL_ENTER();                                               /*  进入内核                    */
+        iregInterLevel = __KERNEL_ENTER_IRQ();                          /*  进入内核                    */
         if (ptcbCur->TCB_ucWaitTimeout == LW_WAIT_TIME_CLEAR) {         /*  是否在上面瞬间被激活        */
-            LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, 
-                                 iregInterLevel);                       /*  打开中断, 同时打开 spinlock */
-            __KERNEL_EXIT();                                            /*  退出内核                    */
+            __KERNEL_EXIT_IRQ(iregInterLevel);                          /*  退出内核                    */
             if ((*pstMsgLen == 0) && (ptcbCur->TCB_stMaxByteSize == 0)) {
                 _ErrorHandle(E2BIG);                                    /*  退出                        */
                 return  (E2BIG);
+            
             } else {
                 return  (ERROR_NONE);
             }
@@ -415,8 +402,8 @@ __wait_again:
         } else {
             _EventTimeoutFifo(pevent, ppringList);                      /*  等待超时恢复                */
         }
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
-        __KERNEL_EXIT();                                                /*  退出内核                    */
+        
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_WAIT_TIMEOUT);                        /*  超时                        */
         return  (ERROR_THREAD_WAIT_TIMEOUT);
         
@@ -425,9 +412,11 @@ __wait_again:
             if ((*pstMsgLen == 0) && (ptcbCur->TCB_stMaxByteSize == 0)) {
                 _ErrorHandle(E2BIG);                                    /*  退出                        */
                 return  (E2BIG);
+            
             } else {
                 return  (ERROR_NONE);
             }
+        
         } else {
             _ErrorHandle(ERROR_MSGQUEUE_WAS_DELETED);                   /*  已经被删除                  */
             return  (ERROR_MSGQUEUE_WAS_DELETED);

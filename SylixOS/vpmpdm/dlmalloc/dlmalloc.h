@@ -34,6 +34,8 @@
 #include <sys/mman.h>
 
 void *dlmalloc_sbrk(int  size);
+void *dlmalloc_mmap(size_t  stLen);
+void *dlmalloc_mremap(void *pvAddr, size_t stOldSize, size_t stNewSize, int mv);
 
 /* use dl prefix */
 #define USE_DL_PREFIX           1
@@ -51,12 +53,19 @@ void *dlmalloc_sbrk(int  size);
 #if LW_CFG_VMM_EN > 0
 #define HAVE_MMAP               1
 #define HAVE_MREMAP             1
+
+#define MMAP                    dlmalloc_mmap
+#define DIRECT_MMAP             dlmalloc_mmap
+#define MREMAP                  dlmalloc_mremap
 #endif /* LW_CFG_VMM_EN > 0 */
 
 /* Use some mutex locks */
 #define USE_LOCKS               1
 #define USE_SPIN_LOCKS          0
 #define USE_RECURSIVE_LOCKS     1
+
+/* Use realloc 0 as free */
+#define REALLOC_ZERO_BYTES_FREES   1
 
 #endif /* SYLIXOS */
 

@@ -365,6 +365,8 @@ VOID  armCacheV5Init (LW_CACHE_OP *pcacheop,
                       CACHE_MODE   uiData, 
                       CPCHAR       pcMachineName)
 {
+    pcacheop->CACHEOP_ulOption = 0ul;
+
     pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIVT;
     pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_VIVT;
     pcacheop->CACHEOP_iCacheLine = ARMv5_CACHE_LINE_SIZE;

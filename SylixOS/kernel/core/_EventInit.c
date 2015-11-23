@@ -62,8 +62,6 @@ VOID  _EventInit (VOID)
         pwqTemp1->WAIT_Q_wlWaitList.WAIT_Q_pringPRIOList[ulI] = LW_NULL;    /*  初始化等待队列          */
     }
     
-    LW_SPIN_INIT(&peventTemp1->EVENT_slLock);
-    
     _INIT_LIST_MONO_HEAD(pmonoTemp1);                                       /*  初始化最后节点          */
     
     _K_resrcEvent.RESRC_pmonoFreeTail = pmonoTemp1;
@@ -98,8 +96,6 @@ VOID  _EventInit (VOID)
         for (ucJ = 0; ucJ < __THREAD_PRIORITY_Q_NUM; ucJ++) {               /*  初始化等待队列          */
             pwqTemp1->WAITQUEUE_wlWaitList.WAITLIST_pringPRIOList[ucJ] = LW_NULL;
         }
-        
-        LW_SPIN_INIT(&peventTemp1->EVENT_slLock);
    
         _LIST_MONO_LINK(pmonoTemp1, pmonoTemp2);                            /*  建立资源连接            */
         
@@ -124,8 +120,6 @@ VOID  _EventInit (VOID)
     for (ucJ = 0; ucJ < __THREAD_PRIORITY_Q_NUM; ucJ++) {                   /*  初始化等待队列          */
         pwqTemp1->WAITQUEUE_wlWaitList.WAITLIST_pringPRIOList[ucJ] = LW_NULL;
     }
-    
-    LW_SPIN_INIT(&peventTemp1->EVENT_slLock);
     
     _INIT_LIST_MONO_HEAD(pmonoTemp1);                                       /*  初始化最后节点          */
     

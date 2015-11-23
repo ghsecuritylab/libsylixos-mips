@@ -35,7 +35,7 @@ LW_OBJECT_HANDLE    _K_ulInterShowLock = LW_OBJECT_HANDLE_INVALID;
 *********************************************************************************************************/
 #define INTER_SHOWLOCK_CREATE()    \
         if (_K_ulInterShowLock == LW_OBJECT_HANDLE_INVALID) {   \
-            _K_ulInterShowLock =  API_SemaphoreMCreate("int_show_lock", LW_PRIO_DEF_CEILING,    \
+            _K_ulInterShowLock =  API_SemaphoreMCreate("ints_lock", LW_PRIO_DEF_CEILING,    \
                                                        LW_OPTION_OBJECT_GLOBAL, LW_NULL);   \
         }
 #define INTER_SHOWLOCK_LOCK()       \

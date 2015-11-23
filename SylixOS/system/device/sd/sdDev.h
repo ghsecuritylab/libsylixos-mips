@@ -19,7 +19,8 @@
 ** 描        述: sd 总线挂载的设备结构.
 
 ** BUG:
-2011.01.18  增加SD设备获取函数.
+2011.01.18  增加 SD 设备获取函数.
+2012.09.22  增加扩展 CSD 数据结构.
 *********************************************************************************************************/
 
 #ifndef __SDDEV_H
@@ -90,6 +91,13 @@ typedef struct lw_sddev_csd {
 #define CSD_STRUCT_VER_1_2  2                                           /*  CSD Ver 3.1~3.31 4.0~4.1    */
 #define CSD_STRUCT_EXT_CSD  3                                           /*  CSD Ver in EXT_CSD          */
 
+#define MMC_VERSION_MMC     0x0
+#define MMC_VERSION_1_2     (MMC_VERSION_MMC | 0x12)
+#define MMC_VERSION_1_4     (MMC_VERSION_MMC | 0x14)
+#define MMC_VERSION_2_2     (MMC_VERSION_MMC | 0x22)
+#define MMC_VERSION_3       (MMC_VERSION_MMC | 0x30)
+#define MMC_VERSION_4       (MMC_VERSION_MMC | 0x40)                    /*  this is for MMC card        */
+
     UINT32      DEVCSD_uiTaccNs;
     UINT16      DEVCSD_usTaccClks;
 
@@ -127,6 +135,16 @@ typedef struct lw_sddev_csd {
     UINT32      DEVCSD_uiCapacity;                                      /*  卡的容量,这里指示的是卡的块 */
                                                                         /*  个数.                       */
 } LW_SDDEV_CSD, *PLW_SDDEV_CSD;
+
+/*********************************************************************************************************
+  扩展 CSD 寄存器
+*********************************************************************************************************/
+
+typedef struct lw_sddev_ext_csd {
+    UINT        DEVEXTCSD_uiMaxDtr;
+    UINT        DEVEXTCSD_uiSectorCnt;
+    UINT        DEVEXTCSD_uiBootSizeMulti;
+} LW_SDDEV_EXT_CSD, *PLW_SDDEV_EXT_CSD;
 
 /*********************************************************************************************************
   SCR寄存器

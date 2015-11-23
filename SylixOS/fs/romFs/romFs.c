@@ -249,6 +249,8 @@ INT  API_RomFsDevCreate (PCHAR   pcName, PLW_BLK_DEV  pblkd)
         return  (PX_ERROR);
     }
     
+    __fsDiskLinkCounterAdd(pblkd);                                      /*  增加块设备链接              */
+
     _DebugFormat(__LOGMESSAGE_LEVEL, "target \"%s\" mount ok.\r\n", pcName);
 
     return  (ERROR_NONE);
@@ -427,6 +429,8 @@ __file_open_ok:
 static INT  __romFsRemove (PROM_VOLUME   promfs,
                            PCHAR         pcName)
 {
+    PLW_BLK_DEV    pblkd;
+
     if (pcName == LW_NULL) {
         _ErrorHandle(ERROR_IO_NO_DEVICE_NAME_IN_PATH);
         return  (PX_ERROR);
@@ -465,6 +469,11 @@ __re_umount_vol:
             promfs->ROMFS_bValid = LW_FALSE;
         }
         
+        pblkd = promfs->ROMFS_pblkd;
+        if (pblkd) {
+            __fsDiskLinkCounterDec(pblkd);                              /*  减少链接次数                */
+        }
+
         iosDevDelete((LW_DEV_HDR *)promfs);                             /*  IO 系统移除设备             */
         API_SemaphoreMDelete(&promfs->ROMFS_hVolLock);
         

@@ -353,8 +353,8 @@ Q: ÒòÎª SylixOS Ê¹ÓÃ elf ÀàĞÍ gcc ±àÒë, Ò»°ã´ËÀà±àÒëÆ÷Ìá¹©µÄ¶¼ÊÇ *.a µÄ¾²Ì¬±ê×¼¿
 
 A: Ò»ÏÂÁ½¾ä¿ÉÒÔ½«¾²Ì¬¿â×ª»»Îª¶¯Ì¬¿â: (ÀıÈçÒª×ª»» libstd++.a -> libstd++.so)
 
-   arm-none-eabi-ar -x libstdc++.a
-   arm-none-eabi-g++ -nostdlib -fPIC -shared *.o -o libstdc++.so -lm -lgcc
+   arm-sylixos-eabi-ar -x libstdc++.a
+   arm-sylixos-eabi-g++ -nostdlib -fPIC -shared *.o -o libstdc++.so -lm -lgcc
 
 --------------------------------------------------------------------------------------------------------------
 Q: ÎÒµÄÏµÍ³·¢ÉúÈ±Ò³ÖĞ¶Ïºó, ´òÓ¡ÁËÒ»Ğ©µ÷ÊÔÏµÍ³¾ÍÖØÆô»òÕßÈÎÎñ±»É±ËÀÁË

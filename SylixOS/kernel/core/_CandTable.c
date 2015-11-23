@@ -73,7 +73,7 @@ static VOID  _CandTableFill (PLW_CLASS_CPU   pcpu)
              UINT8              ucPriority;
 
     ppcbbmap = _SchedSeekPriority(pcpu, &ucPriority);
-    _BugHandle((ppcbbmap == LW_NULL), LW_TRUE, "serious error!.\r\n");  /*  就绪表不应该为 NULL         */
+    _BugHandle((ppcbbmap == LW_NULL), LW_TRUE, "serious error!\r\n");   /*  就绪表不应该为 NULL         */
     
     ptcb = _CandSeekThread(ppcbbmap, ucPriority);                       /*  确定可以候选运行的线程      */
     ppcb = &ppcbbmap->PCBM_pcb[ucPriority];
@@ -312,6 +312,8 @@ __update_done:
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_SMP_CPU_DOWN_EN > 0
+
 VOID _CandTableRemove (PLW_CLASS_CPU   pcpu)
 {
     if (LW_CPU_IS_ACTIVE(pcpu)) {                                       /*  CPU 必须为非激活状态        */
@@ -322,6 +324,8 @@ VOID _CandTableRemove (PLW_CLASS_CPU   pcpu)
         _CandTableEmpty(pcpu);
     }
 }
+
+#endif                                                                  /*  LW_CFG_SMP_CPU_DOWN_EN > 0  */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

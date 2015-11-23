@@ -33,29 +33,30 @@
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
-  kernel status
-*********************************************************************************************************/
-typedef struct {
-    PLW_CLASS_CPU           KN_pcpuKernelCpu;
-    LW_OBJECT_HANDLE        KN_ulKernelOwner;
-    CPCHAR                  KN_ulKernelEnterFunc;
-} LW_KERNEL_STATUS;
-static LW_KERNEL_STATUS     _K_knstatus;
-/*********************************************************************************************************
   kernel status macro
 *********************************************************************************************************/
+#ifdef __LW_KERNLOCK_BUG_TRACE_EN
 #define __LW_SAVE_KERNEL_OWNER(pcpuCur, pcFunc) \
-        _K_knstatus.KN_pcpuKernelCpu     = pcpuCur; \
-        _K_knstatus.KN_ulKernelEnterFunc = pcFunc;  \
-        if (pcpuCur->CPU_ulInterNesting) {  \
-            _K_knstatus.KN_ulKernelOwner = ~0;  \
-        } else {    \
-            _K_knstatus.KN_ulKernelOwner = pcpuCur->CPU_ptcbTCBCur->TCB_ulId;   \
-        }
+        do {    \
+            _K_klKernel.KERN_pvCpuOwner        = (PVOID)pcpuCur;    \
+            _K_klKernel.KERN_ulKernelEnterFunc = pcFunc;  \
+            if (pcpuCur->CPU_ulInterNesting) {  \
+                _K_klKernel.KERN_ulKernelOwner = ~0;  \
+            } else {    \
+                _K_klKernel.KERN_ulKernelOwner = pcpuCur->CPU_ptcbTCBCur->TCB_ulId;   \
+            }   \
+        } while (0)
+        
 #define __LW_CLEAR_KERNEL_OWNER()   \
-        _K_knstatus.KN_pcpuKernelCpu     = LW_NULL; \
-        _K_knstatus.KN_ulKernelEnterFunc = LW_NULL; \
-        _K_knstatus.KN_ulKernelOwner     = LW_OBJECT_HANDLE_INVALID;    \
+        do {    \
+            _K_klKernel.KERN_pvCpuOwner        = LW_NULL; \
+            _K_klKernel.KERN_ulKernelEnterFunc = LW_NULL; \
+            _K_klKernel.KERN_ulKernelOwner     = LW_OBJECT_HANDLE_INVALID;    \
+        } while (0)
+#else
+#define __LW_SAVE_KERNEL_OWNER(pcpuCur, pcFunc) (_K_klKernel.KERN_pvCpuOwner = (PVOID)pcpuCur)
+#define __LW_CLEAR_KERNEL_OWNER()               (_K_klKernel.KERN_pvCpuOwner = LW_NULL)
+#endif                                                                  /*  __LW_KERNLOCK_BUG_TRACE_EN  */
 /*********************************************************************************************************
 ** 函数名称: __kernelEnter
 ** 功能描述: 进入内核状态
@@ -69,7 +70,7 @@ VOID  __kernelEnter (CPCHAR  pcFunc)
     INTREG          iregInterLevel;
     PLW_CLASS_CPU   pcpuCur;
     
-    LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);                  /*  锁内核 spinlock 并关闭中断  */
+    LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);                           /*  锁内核 spinlock 并关闭中断  */
     
     pcpuCur = LW_CPU_GET_CUR();
     pcpuCur->CPU_iKernelCounter++;
@@ -78,10 +79,6 @@ VOID  __kernelEnter (CPCHAR  pcFunc)
     __LW_SAVE_KERNEL_OWNER(pcpuCur, pcFunc);
 
     KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
-
-    MONITOR_EVT_INT3(MONITOR_EVENT_ID_KERNEL, MONITOR_EVENT_KERNEL_ENTER, 
-                     pcpuCur->CPU_ulCPUId,
-                     pcpuCur->CPU_iKernelCounter, 0, LW_NULL);
 }
 /*********************************************************************************************************
 ** 函数名称: __kernelEnterIrq
@@ -96,21 +93,13 @@ INTREG  __kernelEnterIrq (CPCHAR  pcFunc)
     INTREG          iregInterLevel;
     PLW_CLASS_CPU   pcpuCur;
     
-    LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);                  /*  锁内核 spinlock 并关闭中断  */
+    LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);                           /*  锁内核 spinlock 并关闭中断  */
     
     pcpuCur = LW_CPU_GET_CUR();
     pcpuCur->CPU_iKernelCounter++;
     KN_SMP_WMB();                                                       /*  等待以上操作完成            */
     
     __LW_SAVE_KERNEL_OWNER(pcpuCur, pcFunc);
-    
-#if LW_CFG_MONITOR_EN > 0
-    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
-    MONITOR_EVT_INT3(MONITOR_EVENT_ID_KERNEL, MONITOR_EVENT_KERNEL_ENTER, 
-                     pcpuCur->CPU_ulCPUId,
-                     pcpuCur->CPU_iKernelCounter, 1, LW_NULL);
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-#endif                                                                  /*  LW_CFG_MONITOR_EN > 0       */
     
     return  (iregInterLevel);
 }
@@ -132,15 +121,6 @@ INT  __kernelExit (VOID)
     
     pcpuCur = LW_CPU_GET_CUR();
     if (pcpuCur->CPU_iKernelCounter) {
-    
-#if LW_CFG_MONITOR_EN > 0
-        KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
-        MONITOR_EVT_INT3(MONITOR_EVENT_ID_KERNEL, MONITOR_EVENT_KERNEL_EXIT, 
-                         pcpuCur->CPU_ulCPUId,
-                         pcpuCur->CPU_iKernelCounter - 1, 0, LW_NULL);
-        iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
-#endif                                                                  /*  LW_CFG_MONITOR_EN > 0       */
-    
         pcpuCur->CPU_iKernelCounter--;
         KN_SMP_WMB();                                                   /*  等待以上操作完成            */
         
@@ -148,13 +128,13 @@ INT  __kernelExit (VOID)
             __LW_CLEAR_KERNEL_OWNER();
             
             iRetVal = _Schedule();                                      /*  尝试调度                    */
-            LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);         /*  解锁内核 spinlock 并打开中断*/
+            LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                  /*  解锁内核 spinlock 并打开中断*/
             
             return  (iRetVal);
         }
     }
     
-    LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);                 /*  解锁内核 spinlock 并打开中断*/
+    LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                          /*  解锁内核 spinlock 并打开中断*/
     
     return  (ERROR_NONE);
 }
@@ -173,15 +153,6 @@ INT  __kernelExitIrq (INTREG     iregInterLevel)
     
     pcpuCur = LW_CPU_GET_CUR();
     if (pcpuCur->CPU_iKernelCounter) {
-    
-#if LW_CFG_MONITOR_EN > 0
-        KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
-        MONITOR_EVT_INT3(MONITOR_EVENT_ID_KERNEL, MONITOR_EVENT_KERNEL_EXIT, 
-                         pcpuCur->CPU_ulCPUId,
-                         pcpuCur->CPU_iKernelCounter - 1, 1, LW_NULL);
-        iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
-#endif                                                                  /*  LW_CFG_MONITOR_EN > 0       */
-
         pcpuCur->CPU_iKernelCounter--;
         KN_SMP_WMB();                                                   /*  等待以上操作完成            */
 
@@ -189,13 +160,13 @@ INT  __kernelExitIrq (INTREG     iregInterLevel)
             __LW_CLEAR_KERNEL_OWNER();
             
             iRetVal = _Schedule();                                      /*  尝试调度                    */
-            LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);         /*  解锁内核 spinlock 并打开中断*/
+            LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                  /*  解锁内核 spinlock 并打开中断*/
             
             return  (iRetVal);
         }
     }
     
-    LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);                 /*  解锁内核 spinlock 并打开中断*/
+    LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                          /*  解锁内核 spinlock 并打开中断*/
     
     return  (ERROR_NONE);
 }
@@ -222,6 +193,7 @@ BOOL  __kernelIsEnter (VOID)
     
     if (iKernelCounter) {
         return  (LW_TRUE);
+    
     } else {
         return  (LW_FALSE);
     }
@@ -239,9 +211,9 @@ INT  __kernelSched (VOID)
     INTREG          iregInterLevel;
     INT             iRetVal;
     
-    LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);                  /*  锁内核 spinlock 并关闭中断  */
+    LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);                           /*  锁内核 spinlock 并关闭中断  */
     iRetVal = _Schedule();                                              /*  尝试调度                    */
-    LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);                 /*  解锁内核 spinlock 并打开中断*/
+    LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                          /*  解锁内核 spinlock 并打开中断*/
     
     return  (iRetVal);
 }
@@ -257,9 +229,9 @@ VOID  __kernelSchedInt (VOID)
 {
     INTREG          iregInterLevel;
     
-    LW_SPIN_LOCK_QUICK(&_K_slKernel, &iregInterLevel);                  /*  锁内核 spinlock 并关闭中断  */
+    LW_SPIN_KERN_LOCK_QUICK(&iregInterLevel);                           /*  锁内核 spinlock 并关闭中断  */
     _ScheduleInt();                                                     /*  尝试调度                    */
-    LW_SPIN_UNLOCK_QUICK(&_K_slKernel, iregInterLevel);                 /*  解锁内核 spinlock 并打开中断*/
+    LW_SPIN_KERN_UNLOCK_QUICK(iregInterLevel);                          /*  解锁内核 spinlock 并打开中断*/
 }
 /*********************************************************************************************************
 ** 函数名称: __kernelOwner
@@ -271,16 +243,19 @@ VOID  __kernelSchedInt (VOID)
 *********************************************************************************************************/
 LW_OBJECT_HANDLE __kernelOwner (VOID)
 {
+#ifdef __LW_KERNLOCK_BUG_TRACE_EN
     INTREG  iregInterLevel;
     ULONG   ulKernelOwner;
     
     iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-    
-    ulKernelOwner = _K_knstatus.KN_ulKernelOwner;
-    
+    ulKernelOwner = _K_klKernel.KERN_ulKernelOwner;
     KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
 
     return  (ulKernelOwner);
+
+#else
+    return  (1ul);
+#endif                                                                  /*  __LW_KERNLOCK_BUG_TRACE_EN  */
 }
 /*********************************************************************************************************
 ** 函数名称: __kernelEnterFunc
@@ -292,16 +267,19 @@ LW_OBJECT_HANDLE __kernelOwner (VOID)
 *********************************************************************************************************/
 CPCHAR __kernelEnterFunc (VOID)
 {
+#ifdef __LW_KERNLOCK_BUG_TRACE_EN
     INTREG  iregInterLevel;
     CPCHAR  pcKernelEnterFunc;
     
     iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-    
-    pcKernelEnterFunc = _K_knstatus.KN_ulKernelEnterFunc;
-    
+    pcKernelEnterFunc = _K_klKernel.KERN_ulKernelEnterFunc;
     KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
     
     return  (pcKernelEnterFunc);
+    
+#else
+    return  ("<No kernel bug trace>");
+#endif                                                                  /*  __LW_KERNLOCK_BUG_TRACE_EN  */
 }
 /*********************************************************************************************************
   内核环境中对 IO 的访问为内核文件描述符表

@@ -50,7 +50,7 @@
 #include "./loader/include/loader_lib.h" /* need _Unwind_Ptr */
 #endif /* LW_CFG_CPU_ARCH_ARM */
 
-#define __VP_PATCH_VERSION      "1.4.1" /* vp patch version */
+#define __VP_PATCH_VERSION      "1.4.2" /* vp patch version */
 
 /*
  * fixed gcc old version.
@@ -341,7 +341,7 @@ int atexit (void (*func)(void))
 /*
  *  pre-alloc physical pages (use page fault mechanism)
  */
-static void  pre_alloc_phy (const void *pmem, size_t nbytes)
+void  __vp_pre_alloc_phy (const void *pmem, size_t nbytes)
 {
 #if LW_CFG_VMM_EN > 0
     unsigned long  algin = (unsigned long)pmem;
@@ -380,7 +380,7 @@ void *lib_malloc (size_t  nbytes)
 __re_try:
         pmem = VP_MEM_ALLOC(&ctx.heap, nbytes);
         if (pmem) {
-            pre_alloc_phy(pmem, nbytes);
+            __vp_pre_alloc_phy(pmem, nbytes);
 
         } else {
             if (mextern || !NEED_CALL_SBRK) {
@@ -440,7 +440,7 @@ void *lib_mallocalign (size_t  nbytes, size_t align)
 __re_try:
         pmem = VP_MEM_ALLOC_ALIGN(&ctx.heap, nbytes, align);
         if (pmem) {
-            pre_alloc_phy(pmem, nbytes);
+            __vp_pre_alloc_phy(pmem, nbytes);
 
         } else {
             if (mextern || !NEED_CALL_SBRK) {
@@ -590,7 +590,7 @@ void *lib_realloc (void *ptr, size_t  new_size)
 __re_try:
         pmem = VP_MEM_REALLOC(&ctx.heap, ptr, new_size, __HEAP_CHECK);
         if (pmem) {
-            pre_alloc_phy(pmem, new_size);
+            __vp_pre_alloc_phy(pmem, new_size);
 
         } else {
             if (mextern || !NEED_CALL_SBRK) {
@@ -679,7 +679,7 @@ void *lib_malloc_new (size_t  nbytes)
 __re_try:
         p = VP_MEM_ALLOC(&ctx.heap, nbytes);
         if (p) {
-            pre_alloc_phy(p, nbytes);
+            __vp_pre_alloc_phy(p, nbytes);
 
         } else {
             if (mextern || !NEED_CALL_SBRK) {

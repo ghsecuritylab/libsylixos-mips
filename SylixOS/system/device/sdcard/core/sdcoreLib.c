@@ -31,6 +31,7 @@
 2011.04.12  ÐÞ¸Ä __sdCoreDevSendAppOpCond(). Æä´«ÈëµÄ²ÎÊý uiOCR Îª Ö÷¿ØÖ§³ÖµÄµçÑ¹,µ«ÊÇ¶ÔÓÚ memory ¿¨,Æä¿¨
             µçÑ¹ÊÇÓÐÒ»¶¨·¶Î§ÒªÇóµÄ.ËùÒÔÔÚ·¢ËÍÃüÁîÊ±,½« uiOCR ½øÐÐ´¦ÀíºóÔÙ×÷Îª²ÎÊý·¢ËÍ.
 2015.09.15  ¸ü¸Ä MMC ¿¨ÊÇ·ñÊÇ¿éÑ°Ö·µÄÅÐ¶ÏÌõ¼þ.
+2015.09.22  Ôö¼Ó MMC/eMMC À©Õ¹Ð­ÒéµÄÖ§³Ö.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -93,6 +94,217 @@ static UINT32 __getBits (UINT32  *puiResp, UINT32 uiStart, UINT32 uiSize)
     uiRes &= uiMask;
 
     return  (uiRes);
+}
+/*********************************************************************************************************
+** º¯ÊýÃû³Æ: __mmcCsdDecode
+** ¹¦ÄÜÃèÊö: ½âÎö MMC CSD
+** Êä    Èë: psdcsdDec
+**           pRawCSD
+** Êä    ³ö: ERROR CODE
+** ·µ    »Ø: NONE
+** È«¾Ö±äÁ¿:
+** µ÷ÓÃÄ£¿é:
+*********************************************************************************************************/
+static INT  __mmcCsdDecode (LW_SDDEV_CSD  *psdcsdDec, UINT32 *pRawCSD)
+{
+    UINT32  uiExp;
+    UINT32  uiMnt;
+    UINT8   ucMmcVsn = MMC_VERSION_1_2;
+
+    ucMmcVsn = __getBits(pRawCSD, 122, 4);
+    switch (ucMmcVsn) {
+    case 0:
+        ucMmcVsn = MMC_VERSION_1_2;
+        break;
+    case 1:
+        ucMmcVsn = MMC_VERSION_1_4;
+        break;
+    case 2:
+        ucMmcVsn = MMC_VERSION_2_2;
+        break;
+    case 3:
+        ucMmcVsn = MMC_VERSION_3;
+        break;
+    case 4:
+        ucMmcVsn = MMC_VERSION_4;
+        break;
+    }
+
+    psdcsdDec->DEVCSD_ucStructure = ucMmcVsn;
+
+    uiMnt = __getBits(pRawCSD, 115, 4);
+    uiExp = __getBits(pRawCSD, 112, 3);
+    psdcsdDec->DEVCSD_uiTaccNs     = (_G_puiCsdTaccExp[uiExp] * _G_puiCsdTaccMnt[uiMnt] + 9) / 10;
+    psdcsdDec->DEVCSD_usTaccClks   = __getBits(pRawCSD, 104, 8) * 100;
+
+    uiMnt = __getBits(pRawCSD, 99, 4);
+    uiExp = __getBits(pRawCSD, 96, 3);
+    psdcsdDec->DEVCSD_uiTranSpeed = _G_CsdTrspExp[uiExp] * _G_CsdTrspMnt[uiMnt];
+    psdcsdDec->DEVCSD_usCmdclass  = __getBits(pRawCSD, 84, 12);
+
+    uiExp = __getBits(pRawCSD, 47, 3);
+    uiMnt = __getBits(pRawCSD, 62, 12);
+    psdcsdDec->DEVCSD_uiCapacity = (1 + uiMnt) << (uiExp + 2);
+
+    psdcsdDec->DEVCSD_ucReadBlkLenBits  = __getBits(pRawCSD, 80, 4);
+    psdcsdDec->DEVCSD_bReadBlkPartial   = __getBits(pRawCSD, 79, 1);
+    psdcsdDec->DEVCSD_bWriteMissAlign   = __getBits(pRawCSD, 78, 1);
+    psdcsdDec->DEVCSD_bReadMissAlign    = __getBits(pRawCSD, 77, 1);
+    psdcsdDec->DEVCSD_ucR2W_Factor      = __getBits(pRawCSD, 26, 3);
+    psdcsdDec->DEVCSD_ucWriteBlkLenBits = __getBits(pRawCSD, 22, 4);
+    psdcsdDec->DEVCSD_bWriteBlkPartial  = __getBits(pRawCSD, 21, 1);
+    psdcsdDec->DEVCSD_ucEraseBlkLen     = 1;
+
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** º¯ÊýÃû³Æ: API_SdCoreDevSendExtCSD
+** ¹¦ÄÜÃèÊö: »ñµÃÀ©Õ¹CSDÊý¾Ý
+** Êä    Èë: psdcoredevice    SDºËÐÄ´«Êä¶ÔÏó
+**           pucExtCsd        ±£´æ»ñÈ¡µÄÊý¾Ý»º³åÇø(²»Ð¡ÓÚ512×Ö½Ú)
+** Êä    ³ö: ERROR CODE
+** ·µ    »Ø: NONE
+** È«¾Ö±äÁ¿:
+** µ÷ÓÃÄ£¿é:
+*********************************************************************************************************/
+INT  API_SdCoreDevSendExtCSD (PLW_SDCORE_DEVICE psdcoredevice, UINT8 *pucExtCsd)
+{
+
+    LW_SD_MESSAGE   sdmsg;
+    LW_SD_COMMAND   sdcmd;
+    LW_SD_DATA      sddat;
+    INT             iError;
+
+    sdcmd.SDCMD_uiOpcode = MMC_CMD_SEND_EXT_CSD;
+    sdcmd.SDCMD_uiFlag   = SD_RSP_R1;
+    sdcmd.SDCMD_uiArg    = 0;
+    sdcmd.SDCMD_uiRetry  = 0;
+
+    sddat.SDDAT_uiBlkNum  = 1;
+    sddat.SDDAT_uiBlkSize = 512;
+    sddat.SDDAT_uiFlags   = SD_DAT_READ;
+
+    sdmsg.SDMSG_psdcmdCmd    = &sdcmd;
+    sdmsg.SDMSG_psddata      = &sddat;
+    sdmsg.SDMSG_psdcmdStop   = LW_NULL;
+    sdmsg.SDMSG_pucRdBuffer  = pucExtCsd;
+    sdmsg.SDMSG_pucWrtBuffer = LW_NULL;
+
+    iError = API_SdCoreDevTransfer(psdcoredevice, &sdmsg, 1);
+
+    return iError;
+}
+/*********************************************************************************************************
+** º¯ÊýÃû³Æ: API_SdCoreDevSwitch
+** ¹¦ÄÜÃèÊö: SD Éè±¸¹¦ÄÜ/Ä£Ê½ÇÐ»»
+** Êä    Èë: psdcoredevice    SDºËÐÄ´«Êä¶ÔÏó
+**           ucCmdSet         ÃüÁî¼¯´úÂë(Í¨³£Îª0)
+**           ucIndex          ÃüÁîË÷Òý
+**           ucValue          ÃüÁîÖµ
+** Êä    ³ö: ERROR CODE
+** ·µ    »Ø: NONE
+** È«¾Ö±äÁ¿:
+** µ÷ÓÃÄ£¿é:
+*********************************************************************************************************/
+INT  API_SdCoreDevSwitch (PLW_SDCORE_DEVICE     psdcoredevice,
+                          UINT8                 ucCmdSet,
+                          UINT8                 ucIndex,
+                          UINT8                 ucValue)
+{
+    LW_SD_COMMAND   sdcmd;
+    INT             iRet;
+
+    sdcmd.SDCMD_uiOpcode = SD_SWITCH_FUNC;
+    sdcmd.SDCMD_uiFlag   = SD_RSP_R1B;
+    sdcmd.SDCMD_uiArg    = (SD_SWITCH_WRITE_BYTE << 24)
+                         | (ucIndex << 16)
+                         | (ucValue << 8);
+    sdcmd.SDCMD_uiRetry  = 0;
+    iRet = API_SdCoreDevCmd(psdcoredevice, &sdcmd, 0);
+
+    return  (iRet);
+}
+/*********************************************************************************************************
+** º¯ÊýÃû³Æ: API_SdCoreDecodeExtCSD
+** ¹¦ÄÜÃèÊö: »ñÈ¡²¢½âÎöÀ©Õ¹CSDÐÅÏ¢(Í¬Ê±¸üÐÂ±ê×¼CSDÐÅÏ¢½á¹¹)
+** Êä    Èë: psdcoredevice    SDºËÐÄ´«Êä¶ÔÏó
+**           psdcsd           ±ê×¼CSDÐÅÏ¢
+**           psdextcsd        À©Õ¹CSDÐÅÏ¢
+** Êä    ³ö: ERROR CODE
+** ·µ    »Ø: NONE
+** È«¾Ö±äÁ¿:
+** µ÷ÓÃÄ£¿é:
+*********************************************************************************************************/
+INT API_SdCoreDecodeExtCSD (PLW_SDCORE_DEVICE  psdcoredevice,
+                            LW_SDDEV_CSD      *psdcsd,
+                            LW_SDDEV_EXT_CSD  *psdextcsd)
+{
+    UINT   uiExtCsdStruct;
+    UINT8  pucExtCsd[512];
+    INT    iError;
+
+
+    if (!psdcoredevice || !psdcsd || !psdextcsd) {
+        _ErrorHandle(EINVAL);
+        return  (PX_ERROR);
+    }
+
+    if (psdcsd->DEVCSD_ucStructure < (MMC_VERSION_4 | MMC_VERSION_MMC)) {
+        return  (ERROR_NONE);
+    }
+
+
+    iError = API_SdCoreDevSwitch(psdcoredevice, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_HS_TIMING, 0);
+    if (iError != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+
+    iError = API_SdCoreDevSwitch(psdcoredevice, EXT_CSD_CMD_SET_NORMAL,
+                EXT_CSD_BUS_WIDTH,
+                EXT_CSD_BUS_WIDTH_1);
+    if (iError) {
+        return  (PX_ERROR);
+    }
+
+    iError = API_SdCoreDevSendExtCSD(psdcoredevice, pucExtCsd);
+    if (iError) {
+        /*
+         * High capacity cards should have this "magic" size
+         * stored in their CSD. But here we ignore it
+         */
+        return  (ERROR_NONE);
+    }
+
+    uiExtCsdStruct = pucExtCsd[EXT_CSD_REV];
+    psdextcsd->DEVEXTCSD_uiBootSizeMulti = pucExtCsd[BOOT_SIZE_MULTI];
+    if (uiExtCsdStruct > 6) {
+        return  (PX_ERROR);
+    }
+
+    if (uiExtCsdStruct >= 2) {
+        psdextcsd->DEVEXTCSD_uiSectorCnt = (pucExtCsd[EXT_CSD_SEC_CNT + 0] << 0)
+                                         | (pucExtCsd[EXT_CSD_SEC_CNT + 1] << 8)
+                                         | (pucExtCsd[EXT_CSD_SEC_CNT + 2] << 16)
+                                         | (pucExtCsd[EXT_CSD_SEC_CNT + 3] << 24);
+
+        if (psdextcsd->DEVEXTCSD_uiSectorCnt) {
+            psdcsd->DEVCSD_uiCapacity = psdextcsd->DEVEXTCSD_uiSectorCnt;
+        }
+    }
+
+    if ((pucExtCsd[EXT_CSD_CARD_TYPE] & 0xf) &
+        (EXT_CSD_CARD_TYPE_52 | EXT_CSD_CARD_TYPE_52_DDR_18_30 | EXT_CSD_CARD_TYPE_52_DDR_12)) {
+        psdcsd->DEVCSD_uiTranSpeed = 52000000;
+    } else if (pucExtCsd[EXT_CSD_CARD_TYPE] & EXT_CSD_CARD_TYPE_26) {
+        psdcsd->DEVCSD_uiTranSpeed = 26000000;
+
+    } else {
+        /*
+         * will never happen
+         */
+    }
+
+    return iError;
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: __printCID
@@ -256,6 +468,11 @@ INT API_SdCoreDecodeCSD (LW_SDDEV_CSD  *psdcsdDec, UINT32 *pRawCSD, UINT8 ucType
 
     lib_bzero(psdcsdDec, sizeof(LW_SDDEV_CSD));
 
+    if (ucType == SDDEV_TYPE_MMC) {
+        __mmcCsdDecode(psdcsdDec, pRawCSD);
+        goto __end;
+    }
+
     /*
      * SD¹æ·¶ÖÐ£¬CSD ÓÐÁ½¸ö°æ±¾. v1.0ÓÃÓÚÕë¶ÔÒ»°ãSD¿¨.Ö®ºó³öÏÖÁËv2.0,ÊÇÎªÁËÖ§³Ö SDHC ºÍ SDXC ¿¨.
      * ÔÚ SDHC ºÍ SDXC ÖÐ,ºÜ¶àÓò¶¼ÊÇ¹Ì¶¨µÄ.
@@ -263,15 +480,9 @@ INT API_SdCoreDecodeCSD (LW_SDDEV_CSD  *psdcsdDec, UINT32 *pRawCSD, UINT8 ucType
     ucStruct = __getBits(pRawCSD, 126, 2);
     psdcsdDec->DEVCSD_ucStructure = ucStruct;
 
-    if (ucType == SDDEV_TYPE_MMC) {
-        goto    __decsd_mmc_sd;
-    }
-
     switch (ucStruct) {
     
     case CSD_STRUCT_VER_1_0:
-__decsd_mmc_sd:                                                         /*  mmcÓësd1.0µÄcsd½á¹¹»ù±¾ÏàÍ¬ */
-                                                                        /*  ÕâÀïÖ»½âÎöÁËÆäÖÐ¹Ø¼üµÄÊý¾ÝÓò*/
         uiMnt = __getBits(pRawCSD, 115, 4);
         uiExp = __getBits(pRawCSD, 112, 3);
         /*
@@ -337,6 +548,8 @@ __decsd_mmc_sd:                                                         /*  mmcÓ
         SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "unknown CSD structure.\r\n");
         return  (PX_ERROR);
     }
+
+__end:
 
 #ifdef  __SYLIXOS_DEBUG
     __printCSD(psdcsdDec);
@@ -450,7 +663,8 @@ INT API_SdCoreDevSendIfCond (PLW_SDCORE_DEVICE psdcoredevice)
         }
 
         if (ucChkPattern != 0xaa) {
-            SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "the check pattern is not correct, it maybe I/0 error.\r\n");
+            SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL,
+                             "the check pattern is not correct, it maybe I/0 error.\r\n");
             return  (PX_ERROR);
         } else {
             return  (ERROR_NONE);
@@ -504,12 +718,11 @@ INT API_SdCoreDevSendAppOpCond (PLW_SDCORE_DEVICE  psdcoredevice,
                        : (uiOCR & SD_OCR_MEM_VDD_MSK);
     sdcmd.SDCMD_uiFlag = SD_RSP_SPI_R1| SD_RSP_R3 | SD_CMD_BCR;
 
-    for (i = 0; i < SD_OPCOND_DELAY_CONTS; i++) {
+    for (i = 0; i < (SD_OPCOND_DELAY_CONTS); i++) {
         iError = API_SdCoreDevAppCmd(psdcoredevice,
                                      &sdcmd,
                                      LW_FALSE,
                                      SD_CMD_GEN_RETRY);
-
         if (iError != ERROR_NONE) {
             goto    __mmc_ident;
         }
@@ -545,9 +758,12 @@ __mmc_ident:                                                            /*  mmc 
     /*
      * ¼ÓÈëMMCµÄÊ¶±ð
      */
+    API_SdCoreDevReset(psdcoredevice);
+
     sdcmd.SDCMD_uiOpcode = SD_SEND_OP_COND;
-    sdcmd.SDCMD_uiArg    = COREDEV_IS_SPI(psdcoredevice) ? 0 : uiOCR;
-    sdcmd.SDCMD_uiFlag   = SD_RSP_SPI_R1| SD_RSP_R3 | SD_CMD_BCR;
+    sdcmd.SDCMD_uiArg    = COREDEV_IS_SPI(psdcoredevice) ? 0 : (uiOCR | SD_OCR_HCS);
+    sdcmd.SDCMD_uiFlag   = SD_RSP_SPI_R1 | SD_RSP_R3 | SD_CMD_BCR;
+    sdcmd.SDCMD_uiRetry  = 3;
     for (i = 0; i < SD_OPCOND_DELAY_CONTS; i++) {
         iError = API_SdCoreDevCmd(psdcoredevice, &sdcmd, 0);
         if (iError != ERROR_NONE) {                                     /*  ´íÎóÍË³ö                    */

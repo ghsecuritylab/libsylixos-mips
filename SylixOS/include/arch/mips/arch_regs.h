@@ -17,7 +17,6 @@
 ** 文件创建日期: 2015 年 09 月 01 日
 **
 ** 描        述: MIPS 寄存器相关.
-**
 *********************************************************************************************************/
 
 #ifndef __MIPS_ARCH_REGS_H
@@ -65,7 +64,7 @@ typedef struct {
 
     ARCH_REG_T REG_uiAT;                                                /*  汇编综合寄存器              */
 
-    ARCH_REG_T REG_uiCP0_STATUS;                                        /*  CP0 协处理器状态寄存器      */
+    ARCH_REG_T REG_uiCP0Status;                                         /*  CP0 协处理器状态寄存器      */
     ARCH_REG_T REG_uiEPC;                                               /*  程序计数器寄存器			*/
 } ARCH_REG_CTX;
 

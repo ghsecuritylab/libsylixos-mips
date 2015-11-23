@@ -78,9 +78,11 @@ struct pbuf *aodv_rreq_create (u8_t flags, struct in_addr *dest_addr,
   GRP_MERGE_EXT gme;
 #endif /* AODV_MCAST */
   
+#if AODV_MCAST
   if (!grp_addr) {
     grp_addr = &aodv_addr_any;
   }
+#endif /* AODV_MCAST */
   
 #if AODV_MCAST
   if (flags & RREQ_GRP_REBUILD) {

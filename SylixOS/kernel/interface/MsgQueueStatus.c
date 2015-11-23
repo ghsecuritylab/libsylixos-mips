@@ -72,14 +72,14 @@ ULONG  API_MsgQueueStatus (LW_OBJECT_HANDLE   ulId,
 #endif
     pevent = &_K_eventBuffer[usIndex];
     
-    LW_SPIN_LOCK_QUICK(&pevent->EVENT_slLock, &iregInterLevel);         /*  关闭中断同时锁住 spinlock   */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核                    */
     if (_Event_Type_Invalid(usIndex, LW_TYPE_EVENT_MSGQUEUE)) {
-        LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);    /*  打开中断, 同时打开 spinlock */
+        __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核                    */
         _DebugHandle(__ERRORMESSAGE_LEVEL, "msgqueue handle invalidate.\r\n");
         _ErrorHandle(ERROR_MSGQUEUE_TYPE);
         return  (ERROR_MSGQUEUE_TYPE);
     }
+    
     pmsgqueue = (PLW_CLASS_MSGQUEUE)pevent->EVENT_pvPtr;
     
     if (pulMaxMsgNum) {
@@ -107,11 +107,11 @@ ULONG  API_MsgQueueStatus (LW_OBJECT_HANDLE   ulId,
     if (pulThreadBlockNum) {
         *pulThreadBlockNum = _EventWaitNum(pevent);                     /*  线程等待数量                */
     }
-    
-    LW_SPIN_UNLOCK_QUICK(&pevent->EVENT_slLock, iregInterLevel);        /*  打开中断, 同时打开 spinlock */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  退出内核                    */
     
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  LW_CFG_MSGQUEUE_EN > 0      */
                                                                         /*  LW_CFG_MAX_MSGQUEUES > 0    */
 /*********************************************************************************************************

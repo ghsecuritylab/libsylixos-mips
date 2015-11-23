@@ -125,7 +125,7 @@ static LW_INLINE INT  __ARCH_FLOAT_ISINF (float  x)
 #define __ARCH_DOUBLE_INC_FLOAT_H          0                            /*  是否引用编译器 float.h 文件 */
 
 /*********************************************************************************************************
-  arm-none-eabi-gcc ... GNU
+  arm-sylixos-eabi-gcc ... GNU
 *********************************************************************************************************/
 
 #if LW_CFG_DOUBLE_MIX_ENDIAN > 0

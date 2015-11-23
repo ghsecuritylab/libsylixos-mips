@@ -105,6 +105,7 @@
 
 #define Lw_Thread_IsSuspend                     API_ThreadIsSuspend
 #define Lw_Thread_IsReady                       API_ThreadIsReady
+#define Lw_Thread_IsRunning                     API_ThreadIsRunning
 
 #define Lw_Thread_SetName                       API_ThreadSetName
 #define Lw_Thread_GetName                       API_ThreadGetName

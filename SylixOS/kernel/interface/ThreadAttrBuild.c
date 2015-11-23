@@ -88,7 +88,6 @@ LW_CLASS_THREADATTR  API_ThreadAttrGet (LW_OBJECT_HANDLE  ulId)
 #endif
 
     __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
     if (_Thread_Invalid(usIndex)) {
         __KERNEL_EXIT();                                                /*  退出内核                    */
         _ErrorHandle(ERROR_THREAD_NULL);

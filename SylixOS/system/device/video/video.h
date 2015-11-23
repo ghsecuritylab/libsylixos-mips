@@ -140,6 +140,13 @@
 #define VIDIOC_SCAPCTL          _IOW( 'v', 10, video_cap_ctl)           /*  设置视频捕获状态 1:ON 0:OFF */
 
 /*********************************************************************************************************
+  video image effect.
+*********************************************************************************************************/
+
+#define VIDIOC_GEFFCTL          _IOR('v', 12, video_effect_info)        /*  获得图像特效信息            */
+#define VIDIOC_SEFFCTL          _IOW('v', 12, video_effect_ctl)         /*  设置设置图像特效            */
+
+/*********************************************************************************************************
   video memory format.
 *********************************************************************************************************/
 
@@ -334,6 +341,51 @@ typedef struct video_cap_stat {
     
     UINT32  reserve[8];
 } video_cap_stat;
+
+/*********************************************************************************************************
+  video image effect control.
+*********************************************************************************************************/
+
+typedef enum {
+    VIDEO_EFFECT_BRIGHTNESS         = 0,
+    VIDEO_EFFECT_CONTRAST           = 1,
+    VIDEO_EFFECT_SATURATION         = 2,
+    VIDEO_EFFECT_HUE                = 3,
+    VIDEO_EFFECT_BLACK_LEVEL        = 4,
+    VIDEO_EFFECT_AUTO_WHITE_BALANCE = 5,
+    VIDEO_EFFECT_DO_WHITE_BALANCE   = 6,
+    VIDEO_EFFECT_RED_BALANCE        = 7,
+    VIDEO_EFFECT_BLUE_BALANCE       = 8,
+    VIDEO_EFFECT_GAMMA              = 9,
+    VIDEO_EFFECT_WHITENESS          = 10,
+    VIDEO_EFFECT_EXPOSURE           = 11,
+    VIDEO_EFFECT_AUTOGAIN           = 12,
+    VIDEO_EFFECT_GAIN               = 13,
+    VIDEO_EFFECT_HFLIP              = 14,
+    VIDEO_EFFECT_VFLIP              = 15,
+} video_effect_id;
+
+/*********************************************************************************************************
+  video image effect control.
+*********************************************************************************************************/
+
+typedef struct video_effect_info {
+    UINT32  effect_id;
+
+    INT32   is_support;
+    INT32   min_val;
+    INT32   max_val;
+    INT32   curr_val;
+
+    UINT32  reserve[8];
+} video_effect_info;
+
+typedef struct video_effect_ctl {
+    UINT32  effect_id;
+    INT32   val;
+
+    UINT32  reserve[8];
+} video_effect_ctl;
 
 #endif                                                                  /*  __VIDEO_H                   */
 /*********************************************************************************************************
