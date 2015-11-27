@@ -112,10 +112,7 @@ VOID  _ThreadStatusChangeCur (PLW_CLASS_CPU    pcpuCur)
     PLW_CLASS_PCB  ppcb;
 
     ptcbCur = pcpuCur->CPU_ptcbTCBCur;                                  /*  当前线程                    */
-    
-    LW_CPU_CLR_IPI_PEND2(pcpuCur, LW_IPI_STATUS_REQ_MSK);               /*  清除核间中断标记            */
-    LW_SPINLOCK_NOTIFY();
-    
+
     if (ptcbCur->TCB_plineStatusReqHeader) {                            /*  需要阻塞                    */
         if (__LW_THREAD_IS_READY(ptcbCur)) {
             ppcb = _GetPcb(ptcbCur);
@@ -200,7 +197,7 @@ ULONG  _ThreadStatusChange (PLW_CLASS_TCB  ptcb, UINT  uiStatusReq)
             goto    __change2;
         
         } else {                                                        /*  目标任务正在执行            */
-            _SmpSendIpi(ptcb->TCB_ulCPUId, LW_IPI_STATUS_REQ, 0);       /*  发送核间中断通知改变状态    */
+            _SmpUpdateIpi(LW_CPU_GET(ptcb->TCB_ulCPUId));               /*  发送核间中断通知改变状态    */
             _ThreadWaitStatus(ptcbCur, ptcb, uiStatusReq);              /*  设置等待对方完成状态        */
         }
         

@@ -54,6 +54,7 @@
 2014.09.29  API_ModuleGetBase() 加入长度参数.
 2015.03.02  修正 vprocNotifyParent() 获取父系进程主线程错误.
 2015.08.17  vprocDetach() 需要通知父进程.
+2015.11.25  加入进程内线程独立堆栈管理体系.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -116,9 +117,7 @@ PCHAR __moduleVpPatchVersion (LW_LD_EXEC_MODULE *pmodule)
     
     funcVpVersion = (PCHAR (*)())API_ModuleSym(pmodule, __LW_VP_PATCH_VERSION);
     if (funcVpVersion) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpVersion));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+        LW_SOFUNC_PREPARE(funcVpVersion);
         pcVersion = funcVpVersion(pmodule->EMOD_pvproc);
     }
     
@@ -141,9 +140,7 @@ PVOID __moduleVpPatchHeap (LW_LD_EXEC_MODULE *pmodule)
 
     funcVpHeap = (PVOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_HEAP);
     if (funcVpHeap) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpHeap));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+        LW_SOFUNC_PREPARE(funcVpHeap);
         pvHeap = funcVpHeap(pmodule->EMOD_pvproc);
     }
     
@@ -168,9 +165,7 @@ INT __moduleVpPatchVmem (LW_LD_EXEC_MODULE *pmodule, PVOID  ppvArea[], INT  iSiz
 
     funcVpVmem = (FUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_VMEM);
     if (funcVpVmem) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpVmem));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+        LW_SOFUNC_PREPARE(funcVpVmem);
         iRet = funcVpVmem(pmodule->EMOD_pvproc, ppvArea, iSize);
     }
     
@@ -190,11 +185,10 @@ VOID __moduleVpPatchInit (LW_LD_EXEC_MODULE *pmodule)
     
     funcVpCtor = (VOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_CTOR);
     if (funcVpCtor) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpCtor));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
-
-        funcVpCtor(pmodule->EMOD_pvproc, pmodule->EMOD_pcModulePath);
+        LW_SOFUNC_PREPARE(funcVpCtor);
+        funcVpCtor(pmodule->EMOD_pvproc, 
+                   &pmodule->EMOD_pvproc->VP_pfuncMalloc,
+                   &pmodule->EMOD_pvproc->VP_pfuncFree);
     }
 }
 /*********************************************************************************************************
@@ -211,9 +205,7 @@ VOID __moduleVpPatchFini (LW_LD_EXEC_MODULE *pmodule)
 
     funcVpDtor = (VOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_DTOR);
     if (funcVpDtor) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpDtor));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+        LW_SOFUNC_PREPARE(funcVpDtor);
         funcVpDtor(pmodule->EMOD_pvproc);
     }
 }
@@ -231,9 +223,7 @@ static VOID __moduleVpPatchAerun (LW_LD_EXEC_MODULE *pmodule)
 
     funcVpAerun = (VOIDFUNCPTR)API_ModuleSym(pmodule, __LW_VP_PATCH_AERUN);
     if (funcVpAerun) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(funcVpAerun));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+        LW_SOFUNC_PREPARE(funcVpAerun);
         funcVpAerun(pmodule->EMOD_pvproc);
     }
 }
@@ -572,6 +562,13 @@ INT vprocDestroy (LW_LD_VPROC *pvproc)
     API_SemaphoreBDelete(&pvproc->VP_ulWaitForExit);
 
     _IosEnvDelete(pvproc->VP_pioeIoEnv);                                /*  删除当前进程 IO 环境        */
+    
+#if LW_CFG_VMM_EN > 0
+    if (pvproc->VP_pvMainStack) {
+        API_VmmFree(pvproc->VP_pvMainStack);                            /*  释放主任务堆栈              */
+    }
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
+    
     LW_LD_SAFEFREE(pvproc->VP_pcName);
     LW_LD_SAFEFREE(pvproc);
 
@@ -1093,7 +1090,7 @@ static VOID  vprocSetFilesid (LW_LD_VPROC *pvproc, CPCHAR  pcFile)
 }
 /*********************************************************************************************************
 ** 函数名称: vprocPatchVerCheck
-** 功能描述: 检查进程补丁的版本, 如果没有则不允许运行 (补丁至少要是 1.3.1 版本)
+** 功能描述: 检查进程补丁的版本, 如果没有则不允许运行 (补丁至少要是 1.5.0 版本)
 ** 输　入  : pvproc      进程控制块
 ** 输　出  : 
 ** 全局变量:
@@ -1105,7 +1102,7 @@ static INT  vprocPatchVerCheck (LW_LD_VPROC *pvproc)
     PCHAR              pcVersion;
     ULONG              ulMajor = 0, ulMinor = 0, ulRevision = 0;
     
-    ULONG              ulLowVpVer = __SYLIXOS_MAKEVER(1, 3, 1);         /*  最低进程补丁版本要求        */
+    ULONG              ulLowVpVer = __SYLIXOS_MAKEVER(1, 5, 0);         /*  最低进程补丁版本要求        */
     ULONG              ulCurrent;
     
     pmodule   = _LIST_ENTRY(pvproc->VP_ringModules, LW_LD_EXEC_MODULE, EMOD_ringModules);
@@ -1129,7 +1126,7 @@ static INT  vprocPatchVerCheck (LW_LD_VPROC *pvproc)
     
 __bad_version:
     fprintf(stderr, "bad version of vprocess patch, "
-                    "the minimum version of vprocess patch MUST higher than 1.3.1\n");
+                    "the minimum version of vprocess patch MUST higher than 1.5.0\n");
     return  (PX_ERROR);
 }
 /*********************************************************************************************************
@@ -1227,11 +1224,8 @@ INT  vprocRun (LW_LD_VPROC      *pvproc,
     FUNCPTR            pfunEntry;
     union sigval       sigvalue;
 
-    pvproc->VP_ulMainThread = API_ThreadIdSelf();                       /*  当前线程即为主线程          */
-    
-    __LW_VP_SET_CUR_PROC(pvproc);                                       /*  主线程记录进程控制块        */
-    
-    _ThreadMakeLocal(pvproc->VP_ulMainThread);                          /*  此线程不再是全局线程        */
+    _ThreadMakeMain(API_ThreadIdSelf(), (PVOID)pvproc);                 /*  当前线程即为主线程          */
+                                                                        /*  此线程不再是全局线程        */
                                                                         /*  而且为此线程重新确定 pid    */
     if (LW_NULL == pcFile || LW_NULL == pcEntry) {
         _ErrorHandle(ERROR_LOADER_PARAM_NULL);
@@ -1268,9 +1262,7 @@ INT  vprocRun (LW_LD_VPROC      *pvproc,
                 sigqueue(pvpstop->VPS_ulId, pvpstop->VPS_iSigNo, sigvalue);
                 API_ThreadStop(pvproc->VP_ulMainThread);                /*  等待调试器命令              */
             }
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-            MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfunEntry));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+            LW_SOFUNC_PREPARE(pfunEntry);
             iError = pfunEntry(iArgC, ppcArgV, ppcEnv);                 /*  执行进程入口函数            */
         } else {
             iError = 0;

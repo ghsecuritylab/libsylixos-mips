@@ -433,6 +433,10 @@ typedef struct __lw_tcb {
     PLW_STACK             TCB_pstkStackLowAddr;                         /*  总堆栈最低地址              */
     
     PLW_STACK             TCB_pstkStackGuard;                           /*  堆栈警戒点                  */
+    INT                   TCB_iStkLocation;                             /*  堆栈位置                    */
+#define LW_TCB_STK_HEAP   0
+#define LW_TCB_STK_MAIN   1
+#define LW_TCB_STK_VP     2
     
 #if LW_CFG_CPU_FPU_EN > 0
     LW_FPU_CONTEXT        TCB_fpuctxContext;                            /*  FPU 上下文                  */

@@ -35,9 +35,16 @@
 2013.05.07  TCB 不再放在堆栈中, 而是从 TCB 池中开始分配.
 2013.08.27  加入内核事件监控器.
 2013.09.17  加入线程堆栈警戒指针处理.
+2015.11.24  进程内的线程使用 vmm 堆栈.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
+/*********************************************************************************************************
+  进程相关
+*********************************************************************************************************/
+#if LW_CFG_MODULELOADER_EN > 0
+#include "../SylixOS/loader/include/loader_vppatch.h"
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
 /*********************************************************************************************************
 ** 函数名称: API_ThreadInit
 ** 功能描述: 初始化一个线程
@@ -68,7 +75,7 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
     
              size_t                stStackSize;                         /*  堆栈大小(单位：字)          */
              size_t                stGuardSize;
-             
+                         
              PLW_CLASS_TCB         ptcb;
              ULONG                 ulIdTemp;
              
@@ -141,14 +148,25 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
         _ThreadSafeInternal();                                          /*  进入安全模式                */
     }
     
+    lib_bzero(&ptcb->TCB_pstkStackTop, 
+              sizeof(LW_CLASS_TCB) - 
+              _LIST_OFFSETOF(LW_CLASS_TCB, TCB_pstkStackTop));          /*  TCB 清零                    */
+    
     if (!pthreadattr->THREADATTR_pstkLowAddr) {                         /*  是否从内核堆中开辟堆栈      */
+#if LW_CFG_MODULELOADER_EN > 0
+        pstkLowAddress = (PLW_STACK)vprocStackAlloc(ptcb, 
+                                                    pthreadattr->THREADATTR_ulOption,
+                                                    pthreadattr->THREADATTR_stStackByteSize);
+#else
         pstkLowAddress = (PLW_STACK)__KHEAP_ALLOC(pthreadattr->THREADATTR_stStackByteSize);
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
         if (!pstkLowAddress) {                                          /*  开辟失败                    */
             iErrLevel = 1;
             _DebugHandle(__ERRORMESSAGE_LEVEL, "kernel low memory.\r\n");
             _ErrorHandle(ERROR_KERNEL_LOW_MEMORY);
             goto    __error_handle;
         }
+    
     } else {
         pstkLowAddress = pthreadattr->THREADATTR_pstkLowAddr;           /*  堆栈的低地址                */
     }
@@ -180,12 +198,9 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
                                       pstkTop, 
                                       pthreadattr->THREADATTR_ulOption);
     
-    lib_bzero(&ptcb->TCB_pstkStackTop, 
-              sizeof(LW_CLASS_TCB) - 
-              _LIST_OFFSETOF(LW_CLASS_TCB, TCB_pstkStackTop));          /*  TCB 清零                    */
-    
     if (pcName) {                                                       /*  拷贝名字                    */
         lib_strcpy(ptcb->TCB_cThreadName, pcName);
+    
     } else {
         ptcb->TCB_cThreadName[0] = PX_EOS;
     }
@@ -214,6 +229,7 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
 
     if (pthreadattr->THREADATTR_pstkLowAddr) {                          /*  自动开辟检查                */
         ptcb->TCB_ucStackAutoAllocFlag = LW_STACK_MANUAL_ALLOC;
+    
     } else {
         ptcb->TCB_ucStackAutoAllocFlag = LW_STACK_AUTO_ALLOC;
     }
@@ -245,7 +261,11 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
 __error_handle:
     if (iErrLevel > 1) {
         if (!pthreadattr->THREADATTR_pstkLowAddr) {
+#if LW_CFG_MODULELOADER_EN > 0
+            vprocStackFree(ptcb, pstkLowAddress, LW_TRUE);
+#else
             __KHEAP_FREE(pstkLowAddress);                               /*  释放堆栈空间                */
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
         }
     }
     if (iErrLevel > 0) {

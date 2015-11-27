@@ -25,6 +25,7 @@
 
 #include <arch/assembler.h>
 #include <config/kernel/kernel_cfg.h>
+#include "mipsContextAsm.h"
 
     FILE_BEGIN()
 
@@ -48,8 +49,7 @@ FUNC_DEF(archTaskCtxStart)
     LW     T0 , 0(A0)                                                   ;/*  获取该任务堆栈栈顶地址      */
     LW     SP , 0(T0)                                                   ;/*  堆栈指针赋值                */
 
-    RESTORE_REG_RET()                                                   ;/*  所有寄存器出栈              */
-                                                                        ;/*  同时更新 CP0 Status 寄存器  */
+    RESTORE_REGS()                                                      ;/*  所有寄存器出栈              */
 FUNC_END(archTaskCtxStart)
 
 ;/*********************************************************************************************************
@@ -57,8 +57,7 @@ FUNC_END(archTaskCtxStart)
 ;  参数为当前 CPU 控制块, 即 A0 为当前 CPU 控制块指针
 ;*********************************************************************************************************/
 FUNC_DEF(archTaskCtxSwitch)
-    STORE_REG_RET(RA)                                                   ;/*  所有寄存器入栈              */
-                                                                        ;/*  并保存 CP0 Status 寄存器    */
+    SAVE_REGS()                                                         ;/*  所有寄存器入栈              */
 
     LW     T1 , 0(A0)                                                   ;/*  stack current = SP          */
     SW     SP , 0(T1)
@@ -75,8 +74,7 @@ FUNC_DEF(archTaskCtxSwitch)
     LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)
 
-    RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */
-                                                                        ;/*  同时更新 CP0 Status 寄存器  */
+    RESTORE_REGS()                                                      ;/*  所有寄存器出栈              */
 FUNC_END(archTaskCtxSwitch)
 
 ;/*********************************************************************************************************
@@ -86,8 +84,7 @@ FUNC_END(archTaskCtxSwitch)
 
 #if LW_CFG_COROUTINE_EN > 0
 FUNC_DEF(archCrtCtxSwitch)
-    STORE_REG_RET(RA)                                                   ;/*  所有寄存器入栈              */
-                                                                        ;/*  并保存 CP0 Status 寄存器    */
+    SAVE_REGS()                                                         ;/*  所有寄存器入栈              */
 
     LW     T1 , 0(A0)                                                   ;/*  stack current = SP          */
     SW     SP , 0(T1)
@@ -104,8 +101,7 @@ FUNC_DEF(archCrtCtxSwitch)
     LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)
 
-    RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */
-                                                                        ;/*  同时更新 CP0 Status 寄存器  */
+    RESTORE_REGS()                                                      ;/*  所有寄存器出栈              */
 FUNC_END(archCrtCtxSwitch)
 #endif
 
@@ -127,8 +123,7 @@ FUNC_DEF(archIntCtxLoad)
     LW     T1 , 0(A0)                                                   ;/*  SP = stack current          */
     LW     SP , 0(T1)
 
-    RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */
-                                                                        ;/*  同时更新 CP0 Status 寄存器  */
+    RESTORE_REGS()                                                      ;/*  所有寄存器出栈              */
 FUNC_END(archIntCtxLoad)
 
 ;/*********************************************************************************************************
@@ -139,8 +134,7 @@ FUNC_END(archIntCtxLoad)
 FUNC_DEF(archSigCtxLoad)
     MOV    SP , A0                                                      ;/*  返回的堆栈指针              */
 
-    RESTORE_REG_ERET()                                                  ;/*  所有寄存器出栈              */
-                                                                        ;/*  同时更新 CP0 Status 寄存器  */
+    RESTORE_REGS()                                                      ;/*  所有寄存器出栈              */
 FUNC_END(archSigCtxLoad)
 
     FILE_END()

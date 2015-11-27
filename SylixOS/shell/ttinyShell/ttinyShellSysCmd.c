@@ -189,7 +189,7 @@ static INT  __tshellSysCmdHelp (INT  iArgC, PCHAR  ppcArgV[])
                 printf("\npress ENTER to continue, 'Q' to quit.\n");    /*  需要翻屏                    */
                 read(0, &cData, 1);
                 if (cData == 'q' || cData == 'Q') {                     /*  是否需要退出                */
-                    ioctl(STD_IN, FIOFLUSH, 0);                         /*  清空接收缓冲                */
+                    ioctl(STD_IN, FIOFLUSH);                            /*  清空接收缓冲                */
                     break;                                              /*  退出                        */
                 }
                 pskwNodeStart = pskwNode[__SHELL_LINE_PER_SCREEN - 1];

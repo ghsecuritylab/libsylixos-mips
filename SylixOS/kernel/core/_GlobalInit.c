@@ -101,6 +101,10 @@ static VOID  __cpuPrimaryInit (VOID)
     for (i = 0; i < LW_CFG_MAX_PROCESSORS; i++) {
         LW_CPU_GET(i)->CPU_ulStatus = LW_CPU_STATUS_INACTIVE;           /*  CPU INACTIVE                */
         LW_SPIN_INIT(&_K_tcbDummy[i].TCB_slLock);                       /*  初始化自旋锁                */
+        
+#if LW_CFG_SMP_EN > 0
+        LW_CPU_CLR_IPI_PEND(i, ((ULONG)~0));                            /*  清除所有中断标志            */
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
     }
 }
 /*********************************************************************************************************
@@ -117,6 +121,10 @@ static VOID  __cpuSecondaryInit (ULONG   ulCPUId)
 {
     LW_CPU_GET(ulCPUId)->CPU_ulStatus = LW_CPU_STATUS_INACTIVE;         /*  CPU INACTIVE                */
     LW_SPIN_INIT(&_K_tcbDummy[ulCPUId].TCB_slLock);                     /*  初始化自旋锁                */
+    
+#if LW_CFG_SMP_EN > 0
+    LW_CPU_CLR_IPI_PEND(ulCPUId, ((ULONG)~0));                          /*  清除所有中断标志            */
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
 }
 
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */

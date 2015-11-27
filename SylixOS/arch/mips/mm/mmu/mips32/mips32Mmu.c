@@ -87,7 +87,41 @@ static VOID  mips32MmuInvalidateTLB (VOID)
         mipsCp0EntryLo0Write(0);
         mipsCp0EntryLo1Write(0);
         mipsCp0EntryHiWrite(0);
+
         MIPS_EXEC_INS("tlbwi");
+        MIPS_EXEC_INS("ehb");
+    }
+
+    mipsCp0EntryHiWrite(uiEntryHiBak);
+}
+/*********************************************************************************************************
+** 函数名称: mips32MmuDumpTLB
+** 功能描述: Dump TLB
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+VOID  mips32MmuDumpTLB (VOID)
+{
+    UINT32  uiEntryHiBak = mipsCp0EntryHiRead();
+    UINT32  uiEntryLo0;
+    UINT32  uiEntryLo1;
+    UINT32  uiEntryHi;
+    INT     i;
+
+    for (i = 0; i < _G_uiTlbSize; i++) {
+        mipsCp0IndexWrite(i);
+
+        MIPS_EXEC_INS("tlbr");
+        MIPS_EXEC_INS("ehb");
+
+        uiEntryLo0 = mipsCp0EntryLo0Read();
+        uiEntryLo1 = mipsCp0EntryLo1Read();
+        uiEntryHi  = mipsCp0EntryHiRead();
+
+        _PrintFormat("TLB[%d]: uiEntryLo0=0x%x, uiEntryLo1=0x%x, uiEntryHi=0x%x\r\n",
+                     i, uiEntryLo0, uiEntryLo1, uiEntryHi);
     }
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
@@ -108,13 +142,16 @@ static VOID  mips32MmuInvalidateTLBMVA (addr_t  ulAddr)
     mipsCp0EntryHiWrite((ulAddr >> LW_CFG_VMM_PAGE_SHIFT) << MIPS32_ENTRYHI_VPN_SHIFT);
 
     MIPS_EXEC_INS("tlbp");
+    MIPS_EXEC_INS("ehb");
 
     iIndex = mipsCp0IndexRead();
     if (iIndex >= 0) {
         mipsCp0EntryLo0Write(0);
         mipsCp0EntryLo1Write(0);
         mipsCp0EntryHiWrite(0);
+
         MIPS_EXEC_INS("tlbwi");
+        MIPS_EXEC_INS("ehb");
     }
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
@@ -148,6 +185,8 @@ static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
     UINT32              uiPFN;
 
     if (ulFlag & LW_VMM_FLAG_ACCESS) {
+        stDescriptor.PTE_uiSoftware = 0;
+
         uiPFN = uiBaseAddr >> LW_CFG_VMM_PAGE_SHIFT;                    /*  计算 PFN                    */
 
         stDescriptor.PTE_uiEntryLO = uiPFN << MIPS32_ENTRYLO_PFN_SHIFT; /*  填充 PFN                    */
@@ -205,6 +244,8 @@ static INT  mips32MmuMemInit (PLW_MMU_CONTEXT  pmmuctx)
         return  (PX_ERROR);
     }
     
+    lib_bzero(pvPteTable, 8 * LW_CFG_MB_SIZE);
+
     _G_pvPTETable = pvPteTable;
 
     _G_hPGDPartition = API_PartitionCreate("pgd_pool", pvPgdTable, ulPgdNum, PGD_BLOCK_SIZE,
@@ -226,6 +267,7 @@ static INT  mips32MmuMemInit (PLW_MMU_CONTEXT  pmmuctx)
 *********************************************************************************************************/
 static INT  mips32MmuGlobalInit (CPCHAR  pcMachineName)
 {
+    UINT32  uiMMUSize;
     UINT32  uiConfig = mipsCp0ConfigRead();                             /*  读 Config0                  */
 
     if (((uiConfig & M_ConfigMT) >> S_ConfigMT) != 1) {                 /*  Config0 MT 域 != 1，没有 MMU*/
@@ -234,8 +276,8 @@ static INT  mips32MmuGlobalInit (CPCHAR  pcMachineName)
     }
 
     if (uiConfig & (M_ConfigMore)) {                                    /*  有 Config1                  */
-        uiConfig = mipsCp0Config1Read();                                /*  读 Config1                  */
-        UINT32  uiMMUSize = (uiConfig >> 25) & 0x3F;                    /*  获得 MMUSize 域             */
+        uiConfig     = mipsCp0Config1Read();                            /*  读 Config1                  */
+        uiMMUSize    = (uiConfig >> 25) & 0x3F;                         /*  获得 MMUSize 域             */
         _G_uiTlbSize = uiMMUSize + 1;
 
     } else {
@@ -639,7 +681,6 @@ VOID  mips32MmuInit (LW_MMU_OP  *pmmuop, CPCHAR  pcMachineName)
     pmmuop->MMUOP_ulOption = 0ul;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    pmmuop->MMUOP_ulOption        = 0ul;
     pmmuop->MMUOP_pfuncMemInit    = mips32MmuMemInit;
     pmmuop->MMUOP_pfuncGlobalInit = mips32MmuGlobalInit;
     

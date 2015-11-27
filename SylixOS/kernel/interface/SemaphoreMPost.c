@@ -57,7 +57,6 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
              
              PLW_CLASS_TCB         ptcbCur;
     REGISTER UINT16                usIndex;
-    REGISTER UINT8                 ucPriorityOld;
     REGISTER PLW_CLASS_EVENT       pevent;
     REGISTER PLW_CLASS_TCB         ptcb;
     REGISTER PLW_LIST_RING        *ppringList;                          /*  等待队列地址                */
@@ -126,11 +125,7 @@ ULONG  API_SemaphoreMPost (LW_OBJECT_HANDLE  ulId)
         
         KN_INT_ENABLE(iregInterLevel);
         
-        ucPriorityOld = (UINT8)pevent->EVENT_ulMaxCounter;
-        
-        if (!LW_PRIO_IS_EQU(ptcbCur->TCB_ucPriority, ucPriorityOld)) {  /*  产生了优先级变换            */
-            _SchedSetPrio(ptcbCur, ucPriorityOld);                      /*  返回优先级                  */
-        }
+        _EventPrioTryResume(pevent, ptcbCur);                           /*  尝试返回之前的优先级        */
         
         pevent->EVENT_ulMaxCounter = (ULONG)ptcb->TCB_ucPriority;
         pevent->EVENT_pvTcbOwn     = (PVOID)ptcb;                       /*  保存线程信息                */

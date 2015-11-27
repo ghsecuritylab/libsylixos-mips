@@ -57,11 +57,39 @@
         (LW_PRIO_LOWEST / LW_CFG_MAX_EVENT_PRIORITY_Q_SIZE)
 
 /*********************************************************************************************************
+  内核配置
+*********************************************************************************************************/
+
+#define LW_KERN_FLAG_INT_FPU        0x01
+#define LW_KERN_FLAG_BUG_REBOOT     0x02
+
+/*********************************************************************************************************
   内核是否支持浮点状态
 *********************************************************************************************************/
 
-#define LW_KERN_FPU_EN_SET(en)      (_K_bInterFpuEn = en)
-#define LW_KERN_FPU_EN_GET()        (_K_bInterFpuEn)
+#define LW_KERN_FPU_EN_SET(en)                              \
+        do {                                                \
+            if (en) {                                       \
+                _K_ulKernFlags |= LW_KERN_FLAG_INT_FPU;     \
+            } else {                                        \
+                _K_ulKernFlags &= ~LW_KERN_FLAG_INT_FPU;    \
+            }                                               \
+        } while (0)
+#define LW_KERN_FPU_EN_GET()        (_K_ulKernFlags & LW_KERN_FLAG_INT_FPU)
+
+/*********************************************************************************************************
+  内核 bug 检测到 bug 后是否重启
+*********************************************************************************************************/
+
+#define LW_KERN_BUG_REBOOT_EN_SET(en)                       \
+        do {                                                \
+            if (en) {                                       \
+                _K_ulKernFlags |= LW_KERN_FLAG_BUG_REBOOT;  \
+            } else {                                        \
+                _K_ulKernFlags &= ~LW_KERN_FLAG_BUG_REBOOT; \
+            }                                               \
+        } while (0)
+#define LW_KERN_BUG_REBOOT_EN_GET() (_K_ulKernFlags & LW_KERN_FLAG_BUG_REBOOT)
 
 /*********************************************************************************************************
   系统状态

@@ -243,13 +243,13 @@ int  tcflush (int  fd, int  queue)
     switch (queue) {
     
     case TCIFLUSH:
-        return  (ioctl(fd, FIORFLUSH, 0));
+        return  (ioctl(fd, FIORFLUSH));
     
     case TCOFLUSH:
-        return  (ioctl(fd, FIOWFLUSH, 0));
+        return  (ioctl(fd, FIOWFLUSH));
     
     case TCIOFLUSH:
-        return  (ioctl(fd, FIOFLUSH, 0));
+        return  (ioctl(fd, FIOFLUSH));
     
     default:
         errno = EINVAL;
@@ -400,17 +400,17 @@ int  tcsetattr (int  fd, int  opt, const struct termios  *tp)
     INT     iError;
 
     if (opt == TCSADRAIN) {
-        iError = ioctl(fd, FIOSYNC, 0);
+        iError = ioctl(fd, FIOSYNC);
         if (iError < ERROR_NONE) {
             return  (iError);
         }
     
     } else if (opt == TCSAFLUSH) {
-        iError = ioctl(fd, FIOSYNC, 0);
+        iError = ioctl(fd, FIOSYNC);
         if (iError < ERROR_NONE) {
             return  (iError);
         }
-        iError = ioctl(fd, FIOFLUSH, 0);
+        iError = ioctl(fd, FIOFLUSH);
         if (iError < ERROR_NONE) {
             return  (iError);
         }

@@ -77,13 +77,23 @@ VOID  _DebugFmtMsg(INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcFmt, ...);
 #define _BugHandle(cond, stop, msg) \
         if (cond) {     \
             _DebugMessage(__BUGMESSAGE_LEVEL, __func__, (msg)); \
+            if (LW_KERN_BUG_REBOOT_EN_GET()) {  \
+                archReboot(LW_REBOOT_FORCE, 0ul);   \
+            }   \
             if (stop) { \
                 for (;;);   \
             }   \
         }
 #else
 #define _BugHandle(cond, stop, msg) \
-        if (cond) { if (stop) { for (;;); }}
+        if (cond) {     \
+            if (LW_KERN_BUG_REBOOT_EN_GET()) {  \
+                archReboot(LW_REBOOT_FORCE, 0ul);   \
+            }   \
+            if (stop) { \
+                for (;;);   \
+            }   \
+        }
 #endif                                                                  /*  LW_CFG_BUGMESSAGE_EN > 0    */
 
 /*********************************************************************************************************
@@ -94,13 +104,23 @@ VOID  _DebugFmtMsg(INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcFmt, ...);
 #define _BugFormat(cond, stop, fmt, ...)    \
         if (cond) {     \
             _DebugFmtMsg(__BUGMESSAGE_LEVEL, __func__, (fmt), ##__VA_ARGS__); \
+            if (LW_KERN_BUG_REBOOT_EN_GET()) {  \
+                archReboot(LW_REBOOT_FORCE, 0ul);   \
+            }   \
             if (stop) { \
                 for (;;);   \
             }   \
         }
 #else
 #define _BugFormat(cond, stop, fmt, ...)    \
-        if (cond) { if (stop) { for (;;); }}
+        if (cond) {     \
+            if (LW_KERN_BUG_REBOOT_EN_GET()) {  \
+                archReboot(LW_REBOOT_FORCE, 0ul);   \
+            }   \
+            if (stop) { \
+                for (;;);   \
+            }   \
+        }
 #endif                                                                  /*  LW_CFG_BUGMESSAGE_EN > 0    */
 
 /*********************************************************************************************************

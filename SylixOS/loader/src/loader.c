@@ -463,17 +463,13 @@ static INT initArrayCall (LW_LD_EXEC_MODULE *pmodule)
             for (i = 0; i < pmodTemp->EMOD_ulInitArrCnt; i++) {         /*  ÕýË³Ðòµ÷ÓÃ³õÊ¼»¯º¯Êý        */
                 pfuncInit = pmodTemp->EMOD_ppfuncInitArray[i];
                 if (pfuncInit != LW_NULL && pfuncInit != (VOIDFUNCPTR)(~0)) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS ÉèÖÃ T9 ¼Ä´æÆ÷         */
-                    MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncInit));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+                    LW_SOFUNC_PREPARE(pfuncInit);
                     pfuncInit();
                 }
             }
 
             if (pmodTemp->EMOD_pfuncInit) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS ÉèÖÃ T9 ¼Ä´æÆ÷         */
-                MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pmodTemp->EMOD_pfuncInit));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+                LW_SOFUNC_PREPARE(pmodTemp->EMOD_pfuncInit);
                 if (pmodTemp->EMOD_pfuncInit() < 0) {
                     LW_VP_UNLOCK(pmodule->EMOD_pvproc);
                     return  (PX_ERROR);
@@ -515,9 +511,7 @@ static INT finiArrayCall (LW_LD_EXEC_MODULE *pmodule, BOOL  bRunFini)
             pmodTemp->EMOD_ulStatus = LW_LD_STATUS_FINIED;
 
             if (pmodTemp->EMOD_pfuncExit) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS ÉèÖÃ T9 ¼Ä´æÆ÷         */
-                MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pmodTemp->EMOD_pfuncExit));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+                LW_SOFUNC_PREPARE(pmodTemp->EMOD_pfuncExit);
                 pmodTemp->EMOD_pfuncExit();
             }
             
@@ -525,9 +519,7 @@ static INT finiArrayCall (LW_LD_EXEC_MODULE *pmodule, BOOL  bRunFini)
                 for (i = (INT)pmodTemp->EMOD_ulFiniArrCnt - 1; i >= 0; i--) {
                     pfuncFini = pmodTemp->EMOD_ppfuncFiniArray[i];
                     if (pfuncFini != LW_NULL && pfuncFini != (VOIDFUNCPTR)(~0)) {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS ÉèÖÃ T9 ¼Ä´æÆ÷         */
-                        MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncFini));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+                        LW_SOFUNC_PREPARE(pfuncFini);
                         pfuncFini();
                     }
                 }

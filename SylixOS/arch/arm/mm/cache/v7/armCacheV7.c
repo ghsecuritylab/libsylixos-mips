@@ -21,6 +21,8 @@
 ** BUG:
 2014.11.12  L2 CACHE 只有 CPU 0 才能操作.
 2015.08.21  修正 Invalidate 操作结束地址计算错误.
+2015.11.25  Text Update 不需要清分支预测.
+            Text Update 使用 armDCacheV7FlushPoU() 回写 DCACHE.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
@@ -52,6 +54,7 @@ static INT      iCacheStatus = 0;
 #define ARMV7_CSSELR_IND_INSTRUCTION    1
 
 extern VOID     armDCacheV7Disable(VOID);
+extern VOID     armDCacheV7FlushPoU(PVOID  pvStart, PVOID  pvEnd, UINT32  uiStep);
 extern VOID     armDCacheV7FlushAll(VOID);
 extern VOID     armDCacheV7ClearAll(VOID);
 extern UINT32   armCacheV7CCSIDR(VOID);
@@ -426,12 +429,13 @@ static INT	armCacheV7TextUpdate (PVOID  pvAdrs, size_t  stBytes)
         
     } else {
         ARM_CACHE_GET_END(pvAdrs, stBytes, ulEnd, uiArmV7CacheLineSize);
+        
+#if LW_CFG_ARM_CACHE_L2 > 0
+        armDCacheV7FlushPoU(pvAdrs, (PVOID)ulEnd, uiArmV7CacheLineSize);
+#else
         armDCacheFlush(pvAdrs, (PVOID)ulEnd, uiArmV7CacheLineSize);     /*  部分回写                    */
+#endif                                                                  /*  LW_CFG_ARM_CACHE_L2 > 0     */
         armICacheInvalidate(pvAdrs, (PVOID)ulEnd, uiArmV7CacheLineSize);
-    }
-    
-    if (LW_NCPUS > 1) {
-        armBranchPredictorInvalidateInnerShareable();                   /*  所有核清除分支预测          */
     }
     
     return  (ERROR_NONE);

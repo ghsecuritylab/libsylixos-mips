@@ -119,28 +119,28 @@ LW_API LW_CACHE_OP *API_CacheGetLibBlock(VOID);
 LW_API INT          API_CacheLocation(LW_CACHE_TYPE  cachetype);
 LW_API INT          API_CacheLine(VOID);
 
-LW_API ULONG        API_CacheEnable(LW_CACHE_TYPE  cachetype);
-LW_API ULONG        API_CacheDisable(LW_CACHE_TYPE cachetype);
+LW_API INT          API_CacheEnable(LW_CACHE_TYPE  cachetype);
+LW_API INT          API_CacheDisable(LW_CACHE_TYPE cachetype);
 
-LW_API ULONG        API_CacheLock(LW_CACHE_TYPE   cachetype, PVOID  pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheUnlock(LW_CACHE_TYPE cachetype, PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheLock(LW_CACHE_TYPE   cachetype, PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheUnlock(LW_CACHE_TYPE cachetype, PVOID  pvAdrs, size_t  stBytes);
 
-LW_API ULONG        API_CacheFlush(LW_CACHE_TYPE      cachetype, PVOID pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheFlushPage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs,size_t stBytes);
-LW_API ULONG        API_CacheInvalidate(LW_CACHE_TYPE cachetype, PVOID pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheInvalidatePage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs, size_t stBytes);
-LW_API ULONG        API_CacheClear(LW_CACHE_TYPE cachetype, PVOID  pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheClearPage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs, size_t stBytes);
-LW_API ULONG        API_CacheTextUpdate(PVOID  pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheLocalTextUpdate(PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheFlush(LW_CACHE_TYPE      cachetype, PVOID pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheFlushPage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs,size_t stBytes);
+LW_API INT          API_CacheInvalidate(LW_CACHE_TYPE cachetype, PVOID pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheInvalidatePage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs, size_t stBytes);
+LW_API INT          API_CacheClear(LW_CACHE_TYPE cachetype, PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheClearPage(LW_CACHE_TYPE cachetype, PVOID pvAdrs, PVOID pvPdrs, size_t stBytes);
+LW_API INT          API_CacheTextUpdate(PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheLocalTextUpdate(PVOID  pvAdrs, size_t  stBytes);
 
 LW_API PVOID        API_CacheDmaMalloc(size_t   stBytes);
 LW_API PVOID        API_CacheDmaMallocAlign(size_t   stBytes, size_t  stAlign);
 LW_API VOID         API_CacheDmaFree(PVOID      pvBuf);
 
-LW_API ULONG        API_CacheDmaFlush(PVOID  pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheDmaInvalidate(PVOID  pvAdrs, size_t  stBytes);
-LW_API ULONG        API_CacheDmaClear(PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheDmaFlush(PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheDmaInvalidate(PVOID  pvAdrs, size_t  stBytes);
+LW_API INT          API_CacheDmaClear(PVOID  pvAdrs, size_t  stBytes);
 
 /*********************************************************************************************************
   根据 CACHE 类型, 优化相应的函数设置.

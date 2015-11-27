@@ -29,6 +29,12 @@
 *********************************************************************************************************/
 extern "C" {
 /*********************************************************************************************************
+  sylixos 内核定义
+*********************************************************************************************************/
+#ifndef LW_OPTION_OBJECT_GLOBAL
+#define LW_OPTION_OBJECT_GLOBAL     0x80000000
+#endif
+/*********************************************************************************************************
   sylixos 内核函数
 *********************************************************************************************************/
 extern VOID  _List_Line_Add_Ahead(PLW_LIST_LINE  plineNew, LW_LIST_LINE_HEADER  *pplineHeader);
@@ -240,6 +246,7 @@ void __cxa_finalize (void  *d)
                 _List_Line_Del(&pcppfl->CPPFL_lineManage, &_G_plineCppFuncList);
                 __LW_CPP_RT_UNLOCK();
                 if (pcppfl->CPPFL_pfunc) {
+                    LW_SOFUNC_PREPARE(pcppfl->CPPFL_pfunc);
                     pcppfl->CPPFL_pfunc(pcppfl->CPPFL_pvArg);
                 }
                 lib_free(pcppfl);
@@ -256,6 +263,7 @@ void __cxa_finalize (void  *d)
             _List_Line_Del(&pcppfl->CPPFL_lineManage, &_G_plineCppFuncList);
             __LW_CPP_RT_UNLOCK();
             if (pcppfl->CPPFL_pfunc) {
+                LW_SOFUNC_PREPARE(pcppfl->CPPFL_pfunc);
                 pcppfl->CPPFL_pfunc(pcppfl->CPPFL_pvArg);
             }
             lib_free(pcppfl);
@@ -289,6 +297,7 @@ void __cxa_module_finalize (void *pvBase, size_t stLen, BOOL bCall)
             _List_Line_Del(&pcppfl->CPPFL_lineManage, &_G_plineCppFuncList);
             __LW_CPP_RT_UNLOCK();
             if (pcppfl->CPPFL_pfunc && bCall) {
+                LW_SOFUNC_PREPARE(pcppfl->CPPFL_pfunc);
                 pcppfl->CPPFL_pfunc(pcppfl->CPPFL_pvArg);
             }
             lib_free(pcppfl);

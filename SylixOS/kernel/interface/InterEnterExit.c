@@ -159,7 +159,7 @@ VOID    API_InterExit (VOID)
         return;
     }
     
-    __KERNEL_SCHED_INT();                                               /*  中断中的调度                */
+    __KERNEL_SCHED_INT(pcpu);                                           /*  中断中的调度                */
     
 #if LW_CFG_CPU_FPU_EN > 0
     if (LW_KERN_FPU_EN_GET()) {

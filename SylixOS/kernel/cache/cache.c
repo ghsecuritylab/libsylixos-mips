@@ -73,10 +73,6 @@
 *********************************************************************************************************/
 #if LW_CFG_CACHE_EN > 0
 /*********************************************************************************************************
-  宏定义 
-*********************************************************************************************************/
-#define __ERROR     (ULONG)(PX_ERROR)                                   /*  返回错误                    */
-/*********************************************************************************************************
   全局变量定义 
 *********************************************************************************************************/
 static CACHE_MODE   _G_uiICacheMode = CACHE_DISABLED;
@@ -231,20 +227,20 @@ INT  API_CacheLine (VOID)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheEnable (LW_CACHE_TYPE  cachetype)
+INT    API_CacheEnable (LW_CACHE_TYPE  cachetype)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
 
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncEnable == LW_NULL) ? __ERROR : 
-               (_G_cacheopLib.CACHEOP_pfuncEnable)(cachetype));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncEnable == LW_NULL) ? PX_ERROR : 
+              (_G_cacheopLib.CACHEOP_pfuncEnable)(cachetype));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
     _DebugFormat(__LOGMESSAGE_LEVEL, "%sCACHE enable.\r\n",
                  (cachetype == INSTRUCTION_CACHE) ? "I-" : "D-");
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheDisable
@@ -257,20 +253,20 @@ ULONG    API_CacheEnable (LW_CACHE_TYPE  cachetype)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheDisable (LW_CACHE_TYPE  cachetype)
+INT    API_CacheDisable (LW_CACHE_TYPE  cachetype)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
 
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncDisable == LW_NULL) ? __ERROR : 
-               (_G_cacheopLib.CACHEOP_pfuncDisable)(cachetype));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncDisable == LW_NULL) ? PX_ERROR : 
+              (_G_cacheopLib.CACHEOP_pfuncDisable)(cachetype));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
     _DebugFormat(__LOGMESSAGE_LEVEL, "%sCACHE disable.\r\n",
                  (cachetype == INSTRUCTION_CACHE) ? "I-" : "D-");
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheLock
@@ -284,19 +280,19 @@ ULONG    API_CacheDisable (LW_CACHE_TYPE  cachetype)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheLock (LW_CACHE_TYPE   cachetype, 
-                        PVOID           pvAdrs, 
-                        size_t          stBytes)
+INT    API_CacheLock (LW_CACHE_TYPE   cachetype, 
+                      PVOID           pvAdrs, 
+                      size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncLock == LW_NULL) ? __ERROR : 
-               (_G_cacheopLib.CACHEOP_pfuncLock)(cachetype, pvAdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncLock == LW_NULL) ? PX_ERROR : 
+              (_G_cacheopLib.CACHEOP_pfuncLock)(cachetype, pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheUnlock
@@ -310,19 +306,19 @@ ULONG    API_CacheLock (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheUnlock (LW_CACHE_TYPE   cachetype, 
-                          PVOID           pvAdrs, 
-                          size_t          stBytes)
+INT    API_CacheUnlock (LW_CACHE_TYPE   cachetype, 
+                        PVOID           pvAdrs, 
+                        size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncUnlock == LW_NULL) ? __ERROR : 
-               (_G_cacheopLib.CACHEOP_pfuncUnlock)(cachetype, pvAdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncUnlock == LW_NULL) ? PX_ERROR : 
+              (_G_cacheopLib.CACHEOP_pfuncUnlock)(cachetype, pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheFlush
@@ -336,19 +332,19 @@ ULONG    API_CacheUnlock (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheFlush (LW_CACHE_TYPE   cachetype, 
-                         PVOID           pvAdrs, 
-                         size_t          stBytes)
+INT    API_CacheFlush (LW_CACHE_TYPE   cachetype, 
+                       PVOID           pvAdrs, 
+                       size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncFlush == LW_NULL) ? ERROR_NONE : 
-               (_G_cacheopLib.CACHEOP_pfuncFlush)(cachetype, pvAdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncFlush == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncFlush)(cachetype, pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheFlushPage
@@ -363,20 +359,20 @@ ULONG    API_CacheFlush (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheFlushPage (LW_CACHE_TYPE   cachetype, 
-                             PVOID           pvAdrs, 
-                             PVOID           pvPdrs,
-                             size_t          stBytes)
+INT    API_CacheFlushPage (LW_CACHE_TYPE   cachetype, 
+                           PVOID           pvAdrs, 
+                           PVOID           pvPdrs,
+                           size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncFlushPage == LW_NULL) ? ERROR_NONE : 
-               (_G_cacheopLib.CACHEOP_pfuncFlushPage)(cachetype, pvAdrs, pvPdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncFlushPage == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncFlushPage)(cachetype, pvAdrs, pvPdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheInvalidate
@@ -392,19 +388,19 @@ ULONG    API_CacheFlushPage (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheInvalidate (LW_CACHE_TYPE   cachetype, 
-                              PVOID           pvAdrs, 
-                              size_t          stBytes)
+INT    API_CacheInvalidate (LW_CACHE_TYPE   cachetype, 
+                            PVOID           pvAdrs, 
+                            size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncInvalidate == LW_NULL) ? ERROR_NONE : 
-               (_G_cacheopLib.CACHEOP_pfuncInvalidate)(cachetype, pvAdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncInvalidate == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncInvalidate)(cachetype, pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheInvalidatePage
@@ -421,20 +417,42 @@ ULONG    API_CacheInvalidate (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheInvalidatePage (LW_CACHE_TYPE   cachetype, 
-                                  PVOID           pvAdrs, 
-                                  PVOID           pvPdrs,
-                                  size_t          stBytes)
+INT    API_CacheInvalidatePage (LW_CACHE_TYPE   cachetype, 
+                                PVOID           pvAdrs, 
+                                PVOID           pvPdrs,
+                                size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncInvalidatePage == LW_NULL) ? ERROR_NONE : 
-               (_G_cacheopLib.CACHEOP_pfuncInvalidatePage)(cachetype, pvAdrs, pvPdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncInvalidatePage == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncInvalidatePage)(cachetype, pvAdrs, pvPdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
+}
+/*********************************************************************************************************
+** 函数名称: __cacheInsInvalidate
+** 功能描述: 无效指令CACHE
+** 输　入  : pvAdrs                        虚拟地址
+**           stBytes                       长度
+** 输　出  : BSP 函数返回值
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+static INT    __cacheInsInvalidate (PVOID      pvAdrs, 
+                                      size_t     stBytes)
+{
+    INTREG  iregInterLevel;
+    INT     iError;
+    
+    __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
+    iError = ((_G_cacheopLib.CACHEOP_pfuncInvalidate == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncInvalidate)(INSTRUCTION_CACHE, pvAdrs, stBytes));
+    __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
+    
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheClear
@@ -448,19 +466,19 @@ ULONG    API_CacheInvalidatePage (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheClear (LW_CACHE_TYPE   cachetype, 
-                         PVOID           pvAdrs, 
-                         size_t          stBytes)
+INT    API_CacheClear (LW_CACHE_TYPE   cachetype, 
+                       PVOID           pvAdrs, 
+                       size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
 
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncClear == LW_NULL) ? ERROR_NONE : 
-               (_G_cacheopLib.CACHEOP_pfuncClear)(cachetype, pvAdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncClear == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncClear)(cachetype, pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheClearPage
@@ -475,20 +493,20 @@ ULONG    API_CacheClear (LW_CACHE_TYPE   cachetype,
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheClearPage (LW_CACHE_TYPE   cachetype, 
-                             PVOID           pvAdrs, 
-                             PVOID           pvPdrs,
-                             size_t          stBytes)
+INT    API_CacheClearPage (LW_CACHE_TYPE   cachetype, 
+                           PVOID           pvAdrs, 
+                           PVOID           pvPdrs,
+                           size_t          stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
 
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncClearPage == LW_NULL) ? ERROR_NONE : 
-               (_G_cacheopLib.CACHEOP_pfuncClearPage)(cachetype, pvAdrs, pvPdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncClearPage == LW_NULL) ? ERROR_NONE : 
+              (_G_cacheopLib.CACHEOP_pfuncClearPage)(cachetype, pvAdrs, pvPdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: __cacheTextUpdate
@@ -525,18 +543,18 @@ static INT __cacheTextUpdate (LW_CACHE_TU_ARG *ptuarg)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
+INT    API_CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
 {
     INTREG  iregInterLevel;
-    ULONG   ulError;
+    INT     iError;
 
 #if LW_CFG_SMP_EN > 0
     LW_CACHE_TU_ARG tuarg;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    ulError = ((_G_cacheopLib.CACHEOP_pfuncTextUpdate == LW_NULL) ? ERROR_NONE :
-               (_G_cacheopLib.CACHEOP_pfuncTextUpdate)(pvAdrs, stBytes));
+    iError = ((_G_cacheopLib.CACHEOP_pfuncTextUpdate == LW_NULL) ? ERROR_NONE :
+              (_G_cacheopLib.CACHEOP_pfuncTextUpdate)(pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
 #if LW_CFG_SMP_EN > 0
@@ -551,7 +569,7 @@ ULONG    API_CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
     }
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    return  (ulError);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheLocalTextUpdate
@@ -564,16 +582,17 @@ ULONG    API_CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheLocalTextUpdate (PVOID  pvAdrs, size_t  stBytes)
+INT    API_CacheLocalTextUpdate (PVOID  pvAdrs, size_t  stBytes)
 {
     INTREG  iregInterLevel;
+    INT     iError;
     
     __CACHE_OP_ENTER(iregInterLevel);                                   /*  开始操作 cache              */
-    (_G_cacheopLib.CACHEOP_pfuncTextUpdate == LW_NULL) ? ERROR_NONE :
-    (_G_cacheopLib.CACHEOP_pfuncTextUpdate)(pvAdrs, stBytes);
+    iError = ((_G_cacheopLib.CACHEOP_pfuncTextUpdate == LW_NULL) ? ERROR_NONE :
+              (_G_cacheopLib.CACHEOP_pfuncTextUpdate)(pvAdrs, stBytes));
     __CACHE_OP_EXIT(iregInterLevel);                                    /*  结束操作 cache              */
     
-    return  (ERROR_NONE);
+    return  (iError);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheDmaMalloc
@@ -646,7 +665,7 @@ VOID    API_CacheDmaFree (PVOID  pvBuf)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheDmaFlush (PVOID  pvAdrs, size_t  stBytes)
+INT    API_CacheDmaFlush (PVOID  pvAdrs, size_t  stBytes)
 {
     return  ((_G_cacheopLib.CACHEOP_pfuncDmaMalloc == LW_NULL) ?
              (API_CacheFlush(DATA_CACHE, pvAdrs, stBytes)) : 
@@ -663,7 +682,7 @@ ULONG    API_CacheDmaFlush (PVOID  pvAdrs, size_t  stBytes)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheDmaInvalidate (PVOID  pvAdrs, size_t  stBytes)
+INT    API_CacheDmaInvalidate (PVOID  pvAdrs, size_t  stBytes)
 {
     return  ((_G_cacheopLib.CACHEOP_pfuncDmaMalloc == LW_NULL) ?
              (API_CacheInvalidate(DATA_CACHE, pvAdrs, stBytes)) : 
@@ -680,7 +699,7 @@ ULONG    API_CacheDmaInvalidate (PVOID  pvAdrs, size_t  stBytes)
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-ULONG    API_CacheDmaClear (PVOID  pvAdrs, size_t  stBytes)
+INT    API_CacheDmaClear (PVOID  pvAdrs, size_t  stBytes)
 {
     return  ((_G_cacheopLib.CACHEOP_pfuncDmaMalloc == LW_NULL) ?
              (API_CacheClear(DATA_CACHE, pvAdrs, stBytes)) : 
@@ -698,17 +717,19 @@ ULONG    API_CacheDmaClear (PVOID  pvAdrs, size_t  stBytes)
 LW_API  
 VOID    API_CacheFuncsSet (VOID)
 {
+    if (_G_uiDCacheMode & CACHE_WRITETHROUGH) {                         /*  属于写通模式 D CACHE        */
+        _G_cacheopLib.CACHEOP_pfuncFlush      = LW_NULL;
+        _G_cacheopLib.CACHEOP_pfuncFlushPage  = LW_NULL;
+        _G_cacheopLib.CACHEOP_pfuncTextUpdate = __cacheInsInvalidate;
+    }
+    
     if (_G_uiDCacheMode & CACHE_SNOOP_ENABLE) {                         /*  D CACHE 始终与内存一致      */
         _G_cacheopLib.CACHEOP_pfuncFlush      = LW_NULL;
         _G_cacheopLib.CACHEOP_pfuncFlushPage  = LW_NULL;
         _G_cacheopLib.CACHEOP_pfuncTextUpdate = LW_NULL;
     }
-    
-    if (_G_uiDCacheMode & CACHE_WRITETHROUGH) {                         /*  属于写通模式 D CACHE        */
-        _G_cacheopLib.CACHEOP_pfuncFlush      = LW_NULL;
-        _G_cacheopLib.CACHEOP_pfuncFlushPage  = LW_NULL;
-    }
 }
+
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 /*********************************************************************************************************
   END

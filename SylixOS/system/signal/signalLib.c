@@ -572,15 +572,11 @@ static VOID  __sigRunHandle (PLW_CLASS_SIGCONTEXT  psigctx,
               : LW_NULL;
               
         if (psigaction->sa_flags & SA_SIGINFO) {                        /*  需要 siginfo_t 信息         */
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-            MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncHandle));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+            LW_SOFUNC_PREPARE(pfuncHandle);
             pfuncHandle(iSigNo, psiginfo, pvCtx);                       /*  执行信号句柄                */
         
         } else {
-#ifdef  LW_CFG_CPU_ARCH_MIPS                                            /*  MIPS 设置 T9 寄存器         */
-            MIPS_EXEC_INS("move " MIPS_T9 ", %0" : : "r"(pfuncHandle));
-#endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
+            LW_SOFUNC_PREPARE(pfuncHandle);
             pfuncHandle(iSigNo, pvCtx);                                 /*  XXX 是否传入 pvCtx 参数 ?   */
         }
     

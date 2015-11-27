@@ -774,8 +774,12 @@ static VOID  __vmmAbortKill (PLW_VMM_PAGE_FAIL_CTX  pvmpagefailctx)
 #endif                                                                  /*  LW_CFG_SIGNAL_EN > 0        */
     
     if (__KERNEL_ISENTER()) {                                           /*  出现致命错误                */
-        for (;;);
+        API_KernelReboot(LW_REBOOT_FORCE);                              /*  直接重新启动操作系统        */
     }
+    
+#if LW_CFG_SIGNAL_EN == 0
+    API_KernelReboot(LW_REBOOT_FORCE);                                  /*  直接重新启动操作系统        */
+#endif
     
     for (;;) {                                                          /*  1.0.0-rc36 开始这里不退出   */
         API_TimeSleep(__ARCH_ULONG_MAX);                                /*  等待被删除                  */

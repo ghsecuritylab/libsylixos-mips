@@ -172,71 +172,23 @@ ULONG  _ThreadContinue (PLW_CLASS_TCB  ptcb, BOOL  bForce)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: _ThreadMakeGlobal
-** 功能描述: 将指定线程转换为内核线程, 而不被进程回收资源 (进入内核后被调用)
+** 函数名称: _ThreadMakeMain
+** 功能描述: 将指定线程转化为进程内主线程
 ** 输　入  : ulId          线程 ID
+**           pvVProc       进程控制块
 ** 输　出  : ERROR
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-ULONG  _ThreadMakeGlobal (LW_HANDLE  ulId)
-{
-             INTREG         iregInterLevel;
-    REGISTER UINT16         usIndex;
-    REGISTER PLW_CLASS_TCB  ptcb;
-             BOOL           bVpDel;
-    
-    usIndex = _ObjectGetIndex(ulId);
-    
-    if (!_ObjectClassOK(ulId, _OBJECT_THREAD)) {                        /*  检查 ID 类型有效性          */
-        return  (ERROR_KERNEL_HANDLE_NULL);
-    }
-    
-    if (_Thread_Index_Invalid(usIndex)) {                               /*  检查线程有效性              */
-        return  (ERROR_THREAD_NULL);
-    }
-    
-    if (_Thread_Invalid(usIndex)) {
-        return  (ERROR_THREAD_NULL);
-    }
-    
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-    
-    ptcb = _K_ptcbTCBIdTable[usIndex];
-    if (!(ptcb->TCB_ulOption & LW_OPTION_OBJECT_GLOBAL)) {
-        ptcb->TCB_ulOption |= LW_OPTION_OBJECT_GLOBAL;
-        bVpDel = LW_TRUE;
-    } else {
-        bVpDel = LW_FALSE;
-    }
-    
-    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
-    
 #if LW_CFG_MODULELOADER_EN > 0
-    if (bVpDel) {
-        vprocThreadDel(ptcb->TCB_pvVProcessContext, ptcb);
-    }
-    __resHandleMakeGlobal(ulId);
-#else
-    (VOID)bVpDel;
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
-    
-    return  (ERROR_NONE);
-}
-/*********************************************************************************************************
-** 函数名称: _ThreadMakeLocal
-** 功能描述: 将指定线程去掉内核线程属性 (进入内核后被调用)
-** 输　入  : ulId          线程 ID
-** 输　出  : ERROR
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-ULONG  _ThreadMakeLocal (LW_HANDLE  ulId)
+
+ULONG  _ThreadMakeMain (LW_HANDLE  ulId, PVOID   pvVProc)
 {
              INTREG         iregInterLevel;
     REGISTER UINT16         usIndex;
     REGISTER PLW_CLASS_TCB  ptcb;
              BOOL           bVpAdd;
+             LW_LD_VPROC   *pvproc = (LW_LD_VPROC *)pvVProc;
     
     usIndex = _ObjectGetIndex(ulId);
     
@@ -252,29 +204,36 @@ ULONG  _ThreadMakeLocal (LW_HANDLE  ulId)
         return  (ERROR_THREAD_NULL);
     }
     
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-    
+    iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核关闭中断            */
     ptcb = _K_ptcbTCBIdTable[usIndex];
     if (ptcb->TCB_ulOption & LW_OPTION_OBJECT_GLOBAL) {
         ptcb->TCB_ulOption &= (~LW_OPTION_OBJECT_GLOBAL);
         bVpAdd = LW_TRUE;
+    
     } else {
         bVpAdd = LW_FALSE;
     }
     
-    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
+    ptcb->TCB_pvVProcessContext = pvVProc;
+    pvproc->VP_ulMainThread     = ulId;
     
-#if LW_CFG_MODULELOADER_EN > 0
+#if LW_CFG_VMM_EN > 0
+    if (ptcb->TCB_iStkLocation == LW_TCB_STK_MAIN) {
+        pvproc->VP_pvMainStack = (PVOID)ptcb->TCB_pstkStackLowAddr;
+    }
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
+    __KERNEL_EXIT_IRQ(iregInterLevel);                                  /*  进入内核打开中断            */
+    
     if (bVpAdd) {
         vprocThreadAdd(ptcb->TCB_pvVProcessContext, ptcb);
     }
+    
     __resHandleMakeLocal(ulId);
-#else
-    (VOID)bVpAdd;
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
     
     return  (ERROR_NONE);
 }
+
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
 /*********************************************************************************************************
 ** 函数名称: _ThreadTraversal
 ** 功能描述: 遍历所有的线程 (必须在锁定内核的前提下调用)

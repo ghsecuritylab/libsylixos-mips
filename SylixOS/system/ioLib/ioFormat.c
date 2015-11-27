@@ -48,24 +48,24 @@ INT  diskformat (CPCHAR  pcDevName)
     
     pcName = (pcDevName == LW_NULL) ? "." : pcDevName;
     
-    iFd = open(pcName, O_WRONLY, 0);                                    /*  打开设备                    */
+    iFd = open(pcName, O_WRONLY);                                       /*  打开设备                    */
     if (iFd < 0) {
         return  (PX_ERROR);
     }
     
-    iError = ioctl(iFd, FIODISKFORMAT, 0);                              /*  格式化文件                  */
+    iError = ioctl(iFd, FIODISKFORMAT);                                 /*  格式化文件                  */
     if (iError < 0) {
         close(iFd);
         return  (PX_ERROR);
     }
     
-    iError = ioctl(iFd, FIOFLUSH, 0);                                   /*  清空缓存                    */
+    iError = ioctl(iFd, FIOFLUSH);                                      /*  清空缓存                    */
     if (iError < 0) {
         close(iFd);
         return  (PX_ERROR);
     }
     
-    iError = ioctl(iFd, FIODISKINIT, 0);                                /*  重新初始化设备              */
+    iError = ioctl(iFd, FIODISKINIT);                                   /*  重新初始化设备              */
     if (iError < 0) {
         close(iFd);
         return  (PX_ERROR);
@@ -105,13 +105,13 @@ INT  diskinit (CPCHAR  pcDevName)
         return  (PX_ERROR);
     }
     
-    iError = ioctl(iFd, FIOFLUSH, 0);                                   /*  清空缓存                    */
+    iError = ioctl(iFd, FIOFLUSH);                                      /*  清空缓存                    */
     if (iError < 0) {
         close(iFd);
         return  (PX_ERROR);
     }
     
-    iError = ioctl(iFd, FIODISKINIT, 0);                                /*  重新初始化设备              */
+    iError = ioctl(iFd, FIODISKINIT);                                   /*  重新初始化设备              */
     if (iError < 0) {
         close(iFd);
         return  (PX_ERROR);

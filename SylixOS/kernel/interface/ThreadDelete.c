@@ -176,8 +176,12 @@ ULONG  __threadDelete (PLW_CLASS_TCB  ptcbDel, BOOL  bIsInSafe,
     
     pvVProc = ptcbDel->TCB_pvVProcessContext;                           /*  进程信息                    */
     
-    if (ptcbDel->TCB_ucStackAutoAllocFlag) {                            /*  是否是内核堆开辟堆栈        */        
-        (VOID)__KHEAP_FREE(pvFreeLowAddr);                              /*  释放内存                    */
+    if (ptcbDel->TCB_ucStackAutoAllocFlag) {                            /*  是否是内核堆开辟堆栈        */
+#if LW_CFG_MODULELOADER_EN > 0
+        vprocStackFree(ptcbDel, pvFreeLowAddr, LW_FALSE);
+#else
+        __KHEAP_FREE(pvFreeLowAddr);                                    /*  释放堆栈空间                */
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
     }
     
     _TCBDestroy(ptcbDel);                                               /*  销毁 TCB                    */

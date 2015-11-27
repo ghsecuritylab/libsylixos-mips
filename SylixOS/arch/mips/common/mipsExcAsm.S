@@ -24,6 +24,7 @@
 #endif
 
 #include <arch/assembler.h>
+#include "mipsContextAsm.h"
 
     FILE_BEGIN()
 
@@ -42,13 +43,56 @@
     EXPORT_LABEL(archExceptionEntry)
 
 ;/*********************************************************************************************************
+;  异常上下文
+;*********************************************************************************************************/
+
+    .data
+    .align (4)
+archExcContext:
+    .space    8
+
+/*********************************************************************************************************
+  Exception push the context: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc
+*********************************************************************************************************/
+
+#define EXC_SAVE_REGS()                 \
+    .set    push;                       \
+    .set    noat;                       \
+    .set    noreorder;                  \
+                                        \
+    MFC0(K1, CP0_STATUS);               \
+    LI      K0, 0xFFFFFFFD;             \
+    AND     K1, K1, K0;                 \
+                                        \
+    LI      K0, 0xFFFFFFFC;             \
+    AND     K0, K1, K0;                 \
+    MTC0(K0, CP0_STATUS);               \
+                                        \
+    LA      K0, archExcContext;         \
+    SW      K1, 0(K0);                  \
+                                        \
+    MFC0(K1, CP0_EPC);                  \
+    SW      K1, 4(K0);                  \
+                                        \
+    SUBU    SP, STK_CTX_SIZE;           \
+                                        \
+    OPERATE_REG(SW);                    \
+                                        \
+    LA      T0, archExcContext;         \
+    LW      T1, 0(T0);                  \
+    SW      T1, STK_OFFSET_SR(SP);      \
+                                        \
+    LW      T1, 4(T0);                  \
+    SW      T1, STK_OFFSET_EPC(SP);     \
+                                        \
+    .set    pop;
+
+;/*********************************************************************************************************
 ;  异常入口宏
 ;*********************************************************************************************************/
 
 MACRO_DEF(EXCEPTION_ENTRY handle)
-    MFC0(K0, CP0_EPC)                                                   ;/*  获得异常的返回地址          */
-
-    STORE_REG_RET(K0)                                                   ;/*  保存任务控制块              */
+    EXC_SAVE_REGS()                                                     ;/*  所有寄存器入栈              */
 
     ;/*
     ; *  if (API_InterEnter() == 1) {
@@ -56,7 +100,7 @@ MACRO_DEF(EXCEPTION_ENTRY handle)
     ; *      SP = interrupt stack;
     ; *  }
     ; */
-    JAL     API_InterEnter                                              ;/*  获取中断层数放到返回值V0    */
+    JAL     API_InterEnter                                              ;/*  获取中断层数放到返回值 V0   */
     NOP
 
     BNE     V0 , 1 , 1f
@@ -95,7 +139,7 @@ MACRO_DEF(EXCEPTION_ENTRY handle)
     JAL     API_InterExit
     NOP
 
-    RESTORE_REG_ERET()
+    RESTORE_REGS()                                                      ;/*  所有寄存器出栈              */
 MACRO_END()
 
 ;/*********************************************************************************************************

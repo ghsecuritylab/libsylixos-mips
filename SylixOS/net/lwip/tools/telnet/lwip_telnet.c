@@ -288,7 +288,7 @@ static VOID  __telnetCommunication (INT  iDevFd)
         API_ThreadTestCancel();                                         /*  检测是否被删除              */
                                                                         /*  如果 shell 退出这里直接删除 */
         if (sstWriteDevNum != sizeof(_G_cTelnetAbort)) {
-            ioctl(iDevFd, FIOFLUSH, 0);                                 /*  清除 PTY 缓存所有数据       */
+            ioctl(iDevFd, FIOFLUSH);                                    /*  清除 PTY 缓存所有数据       */
             sstWriteDevNum = write(iDevFd, (CPVOID)_G_cTelnetAbort, 
                                    sizeof(_G_cTelnetAbort));            /*  停止 shell                  */
         }

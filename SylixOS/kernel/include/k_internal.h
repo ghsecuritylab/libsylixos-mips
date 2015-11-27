@@ -225,10 +225,10 @@ CPCHAR              __kernelEnterFunc(VOID);
 *********************************************************************************************************/
 
 INT                 __kernelSched(VOID);
-VOID                __kernelSchedInt(VOID);
+VOID                __kernelSchedInt(PLW_CLASS_CPU  pcpuCur);
 
 #define __KERNEL_SCHED()                    __kernelSched()
-#define __KERNEL_SCHED_INT()                __kernelSchedInt()
+#define __KERNEL_SCHED_INT(pcpu)            __kernelSchedInt(pcpu)
                                             
 /*********************************************************************************************************
   内核 ticks
@@ -309,6 +309,13 @@ VOID  _EventWaitFifo(PLW_CLASS_EVENT         pevent, PLW_LIST_RING  *ppringList)
 VOID  _EventWaitPriority(PLW_CLASS_EVENT     pevent, PLW_LIST_RING  *ppringList);
 VOID  _EventTimeoutFifo(PLW_CLASS_EVENT      pevent, PLW_LIST_RING  *ppringList);
 VOID  _EventTimeoutPriority(PLW_CLASS_EVENT  pevent, PLW_LIST_RING  *ppringList);
+
+/*********************************************************************************************************
+  互斥信号量优先级继承
+*********************************************************************************************************/
+
+VOID  _EventPrioTryBoost(PLW_CLASS_EVENT   pevent, PLW_CLASS_TCB   ptcbCur);
+VOID  _EventPrioTryResume(PLW_CLASS_EVENT  pevent, PLW_CLASS_TCB   ptcbCur);
 
 /*********************************************************************************************************
   事件激活
@@ -399,7 +406,7 @@ VOID           _SmpCallFuncAllOther(FUNCPTR  pfunc, PVOID  pvArg,
                                     VOIDFUNCPTR  pfuncAsync, PVOID  pvAsync, INT  iOpt);
 VOID           _SmpProcIpi(PLW_CLASS_CPU  pcpuCur);
 VOID           _SmpTryProcIpi(PLW_CLASS_CPU  pcpuCur);
-VOID           _SmpUpdateIpi(PLW_CLASS_CPU  pcpuCur);
+VOID           _SmpUpdateIpi(PLW_CLASS_CPU  pcpu);
 #endif                                                                  /* LW_CFG_SMP_EN                */
 
 /*********************************************************************************************************
@@ -490,11 +497,12 @@ ULONG          _ThreadStop(PLW_CLASS_TCB  ptcb);
 ULONG          _ThreadContinue(PLW_CLASS_TCB  ptcb, BOOL  bForce);
 
 /*********************************************************************************************************
-  线程全局属性相关
+  线程进程相关
 *********************************************************************************************************/
 
-ULONG          _ThreadMakeGlobal(LW_HANDLE  ulId);
-ULONG          _ThreadMakeLocal(LW_HANDLE  ulId);
+#if LW_CFG_MODULELOADER_EN > 0
+ULONG          _ThreadMakeMain(LW_HANDLE  ulId, PVOID   pvVProc);
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
 
 /*********************************************************************************************************
   遍历所有线程

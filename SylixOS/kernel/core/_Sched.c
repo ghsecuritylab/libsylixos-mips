@@ -149,9 +149,6 @@ static LW_INLINE VOID  _SchedCpuDown (PLW_CLASS_CPU  pcpuCur, BOOL  bIsIntSwtich
     API_VmmMmuDisable();                                                /*  关闭 MMU                    */
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
     
-    LW_CPU_CLR_IPI_PEND(ulCPUId, ((ULONG)~0));                          /*  清除所有中断标志            */
-    KN_SMP_MB();
-    
     LW_SPIN_KERN_UNLOCK_SCHED(ptcbCur);                                 /*  解锁内核 spinlock           */
 
     LW_SPINLOCK_NOTIFY();
@@ -302,7 +299,6 @@ VOID  _ScheduleInt (VOID)
     ptcbCur = pcpuCur->CPU_ptcbTCBCur;
     
 #if LW_CFG_SMP_EN > 0
-    LW_CPU_CLR_IPI_PEND(ulCPUId, LW_IPI_SCHED_MSK);                     /*  清除核间调度中断标志        */
     if (__LW_STATUS_CHANGE_EN(ptcbCur, pcpuCur)) {                      /*  是否可以进行状态切换        */
         if (ptcbCur->TCB_plineStatusReqHeader) {                        /*  请求当前任务改变状态        */
             _ThreadStatusChangeCur(pcpuCur);                            /*  检查是否需要进行状态切换    */

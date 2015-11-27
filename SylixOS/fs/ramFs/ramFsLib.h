@@ -34,10 +34,19 @@
 #define __STR_IS_ROOT(pcName)           ((pcName[0] == PX_EOS) || (lib_strcmp(PX_STR_ROOT, pcName) == 0))
 
 /*********************************************************************************************************
+  内存配置
+*********************************************************************************************************/
+
+#if (LW_CFG_RAMFS_VMM_EN > 0) && (LW_CFG_VMM_EN > 0)
+#define __RAM_BSIZE_SHIFT               LW_CFG_VMM_PAGE_SHIFT           /*  page size                   */
+#else
+#define __RAM_BSIZE_SHIFT               11                              /*  (1 << 11) = 2048 (blk size) */
+#endif                                                                  /*  LW_CFG_RAMFS_VMM_EN         */
+
+/*********************************************************************************************************
   一个内存分片大小
 *********************************************************************************************************/
 
-#define __RAM_BSIZE_SHIFT               LW_CFG_RAMFS_BSIZE_SHIFT
 #define __RAM_BSIZE                     (1 << __RAM_BSIZE_SHIFT)
 #define __RAM_BSIZE_MASK                ((1 << __RAM_BSIZE_SHIFT) - 1)
 #define __RAM_BDATASIZE                 (__RAM_BSIZE - (sizeof(PVOID) * 2))
@@ -46,8 +55,13 @@
   文件缓存内存管理
 *********************************************************************************************************/
 
+#if (LW_CFG_RAMFS_VMM_EN > 0) && (LW_CFG_VMM_EN > 0)
+#define __RAM_BALLOC(size)              API_VmmMalloc(size);
+#define __RAM_BFREE(ptr)                API_VmmFree(ptr);
+#else
 #define __RAM_BALLOC(size)              __SHEAP_ALLOC(size)
 #define __RAM_BFREE(ptr)                __SHEAP_FREE(ptr)
+#endif                                                                  /*  LW_CFG_RAMFS_VMM_EN         */
 
 /*********************************************************************************************************
   类型

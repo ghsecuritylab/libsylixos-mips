@@ -905,7 +905,7 @@ static VOID  __ldShellInit (VOID)
     API_TShellFormatAdd("which", " [program file]");
     API_TShellHelpAdd("which",   "find a program file real path.\n");
      
-    API_TShellKeywordAddEx("exec", __tshellExec, LW_OPTION_KEYWORD_SYNCBG);
+    API_TShellKeywordAddEx("exec", __tshellExec, LW_OPTION_KEYWORD_SYNCBG | LW_OPTION_KEYWORD_STK_MAIN);
     API_TShellFormatAdd("exec", " [program file] [argments...]");
     API_TShellHelpAdd("exec",   "execute a program.\n");
     

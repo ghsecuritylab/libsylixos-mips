@@ -756,7 +756,7 @@ INT  API_TShellExecBg (CPCHAR  pcCommandExec, INT  iFd[3], BOOL  bClosed[3],
         }
     }
     
-    iError = __tshellBgCreateEx(iFd, bClosed, pcCommandExec, 
+    iError = __tshellBgCreateEx(iFd, bClosed, pcCommandExec, 0ul,
                                 lib_strlen(pcCommandExec), bIsJoin, 0, pulSh, &iRet);
     if (iError < 0) {                                                   /*  ±³¾°´´½¨Ê§°Ü                */
         /*

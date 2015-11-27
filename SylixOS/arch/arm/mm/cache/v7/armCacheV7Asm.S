@@ -32,6 +32,7 @@
     
     EXPORT_LABEL(armCacheV7CCSIDR)
     EXPORT_LABEL(armDCacheV7Disable)
+    EXPORT_LABEL(armDCacheV7FlushPoU)
     EXPORT_LABEL(armDCacheV7FlushAll)
     EXPORT_LABEL(armDCacheV7ClearAll)
     EXPORT_LABEL(armDCacheV7InvalidateAll)
@@ -73,7 +74,25 @@ LINE_LABEL(dcache_not_en)
     LDMFD   SP!, {LR}
     BX      LR
     FUNC_END()
-    
+
+;/*********************************************************************************************************
+;  将指定虚拟地址的 DCACHE 回写 (point of unification (PoU))
+;  R0=void *start; R1=void *end; R2=cache line size
+;*********************************************************************************************************/
+
+FUNC_DEF(armDCacheV7FlushPoU)
+    ARM_DSB()
+    ARM_ISB()
+1:
+    MCR     p15, 0, R0, c7, c11, 1
+    ADD     R0, R0, R2
+    CMP     R0, R1
+    BCC     1b
+    ARM_DSB()
+    ARM_ISB()
+    BX      LR
+    FUNC_END()
+
 ;/*********************************************************************************************************
 ;  ARMv7 DCACHE 操作宏
 ;*********************************************************************************************************/

@@ -86,7 +86,6 @@ ULONG  API_SemaphoreMPend (LW_OBJECT_HANDLE  ulId, ULONG  ulTimeout)
     REGISTER PLW_CLASS_EVENT       pevent;
     REGISTER UINT8                 ucPriorityIndex;
     REGISTER PLW_LIST_RING        *ppringList;
-    REGISTER PLW_CLASS_TCB         ptcbOwner;
              ULONG                 ulTimeSave;                          /*  系统事件记录                */
              INT                   iSchedRet;
              
@@ -160,17 +159,7 @@ __wait_again:
         return  (ERROR_THREAD_WAIT_TIMEOUT);
     }
     
-    ptcbOwner = (PLW_CLASS_TCB)pevent->EVENT_pvTcbOwn;                  /*  获得拥有者 TCB              */
-    if (LW_PRIO_IS_HIGH(ptcbCur->TCB_ucPriority, 
-                        ptcbOwner->TCB_ucPriority)) {                   /*  需要改变优先级              */
-        if (pevent->EVENT_ulOption & LW_OPTION_INHERIT_PRIORITY) {      /*  优先级继承                  */
-            _SchedSetPrio(ptcbOwner, ptcbCur->TCB_ucPriority);
-        
-        } else if (LW_PRIO_IS_HIGH(pevent->EVENT_ucCeilingPriority,
-                                   ptcbOwner->TCB_ucPriority)) {        /*  优先级天花板                */
-            _SchedSetPrio(ptcbOwner, pevent->EVENT_ucCeilingPriority);
-        }
-    }
+    _EventPrioTryBoost(pevent, ptcbCur);                                /*  尝试提升所属任务优先级      */
     
     iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
     

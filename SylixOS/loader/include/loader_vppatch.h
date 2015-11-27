@@ -48,7 +48,10 @@ typedef struct lw_vproc_timer {
 typedef struct lw_ld_vproc {
     LW_LIST_LINE            VP_lineManage;                              /*  管理链表                    */
     LW_LIST_RING_HEADER     VP_ringModules;                             /*  模块链表                    */
+    
     FUNCPTR                 VP_pfuncProcess;                            /*  进程主入口                  */
+    PVOIDFUNCPTR            VP_pfuncMalloc;                             /*  进程私有内存分配            */
+    VOIDFUNCPTR             VP_pfuncFree;                               /*  进程私有内存回收            */
     
     LW_OBJECT_HANDLE        VP_ulModuleMutex;                           /*  进程模块链表锁              */
     
@@ -92,7 +95,8 @@ typedef struct lw_ld_vproc {
     LW_LD_VPROC_T           VP_vptimer[3];                              /*  REAL / VIRTUAL / PROF 定时器*/
     
     LW_LIST_LINE_HEADER     VP_plineMap;                                /*  虚拟内存空间                */
-    ULONG                   VP_ulPad[7];                                /*  预留                        */
+    PVOID                   VP_pvMainStack;                             /*  主线程 stack                */
+    ULONG                   VP_ulPad[4];                                /*  预留                        */
 } LW_LD_VPROC;
 
 /*********************************************************************************************************
@@ -234,6 +238,13 @@ INT                 vprocIoFileRefDecByPid(pid_t  pid, INT  iFd);
 *********************************************************************************************************/
 
 VOID                vprocIoReclaim(pid_t  pid, BOOL  bIsExec);
+
+/*********************************************************************************************************
+  进程线程堆栈
+*********************************************************************************************************/
+
+PVOID               vprocStackAlloc(PLW_CLASS_TCB  ptcbNew, ULONG  ulOption, size_t  stSize);
+VOID                vprocStackFree(PLW_CLASS_TCB  ptcbDel, PVOID  pvStack, BOOL  bImmed);
 
 /*********************************************************************************************************
   进程定时器

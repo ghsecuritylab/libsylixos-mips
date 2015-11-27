@@ -525,7 +525,7 @@ char *getpass_r (const char *prompt, char *buffer, size_t buflen)
   pcRet = buffer;
 
 __out:
-  ioctl(STD_IN, FIOFLUSH, 0);
+  ioctl(STD_IN, FIOFLUSH);
   ioctl(STD_IN, FIOSETOPTIONS, iOldOpt);
   write(STD_OUT, "\n", 1);
   return pcRet;

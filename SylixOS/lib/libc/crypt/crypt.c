@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 
+#define __SYLIXOS_KERNEL
 #include "sys/cdefs.h"
 
 #ifndef SYLIXOS

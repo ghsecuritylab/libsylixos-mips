@@ -34,17 +34,18 @@
 ** 函数名称: API_KernelStartParam
 ** 功能描述: 系统内核启动参数
 ** 输　入  : pcParam       启动参数, 是以空格分开的一个字符串列表，通常具有如下形式:
-                           ncpus=1     CPU 个数
-                           dlog=no     DEBUG LOG 信息打印
-                           derror=yes  DEBUG ERROR 信息打印
-                           kfpu=no     内核态对浮点支持 (推荐为 no)
-                           heapchk=yes 堆栈越界检查
-                           varea=*     * 表示虚拟内存起始点, 默认为 0xC000_0000
-                           vsize=*     * 表示虚拟内存大小, 默认为 1GB
-                           hz=100      系统 tick 频率, 默认为 100 (推荐 100 ~ 10000 中间)
-                           hhz=100     高速定时器频率, 默认与 hz 相同 (需 BSP 支持)
-                           irate=5     应用定时器分辨率, 默认为 5 个 tick. (推荐 1 ~ 10 中间)
-                           hpsec=1     热插拔循环检测间隔时间, 单位: 秒 (推荐 1 ~ 5 秒)
+                           ncpus=1      CPU 个数
+                           dlog=no      DEBUG LOG 信息打印
+                           derror=yes   DEBUG ERROR 信息打印
+                           kfpu=no      内核态对浮点支持 (推荐为 no)
+                           heapchk=yes  堆栈越界检查
+                           varea=*      * 表示虚拟内存起始点, 默认为 0xC000_0000
+                           vsize=*      * 表示虚拟内存大小, 默认为 1GB
+                           hz=100       系统 tick 频率, 默认为 100 (推荐 100 ~ 10000 中间)
+                           hhz=100      高速定时器频率, 默认与 hz 相同 (需 BSP 支持)
+                           irate=5      应用定时器分辨率, 默认为 5 个 tick. (推荐 1 ~ 10 中间)
+                           hpsec=1      热插拔循环检测间隔时间, 单位: 秒 (推荐 1 ~ 5 秒)
+                           bugreboot=no 内核探测到 bug 时是否自动重启.
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
@@ -103,6 +104,13 @@ ULONG  API_KernelStartParam (CPCHAR  pcParam)
                 LW_KERN_FPU_EN_SET(LW_TRUE);
             }
         
+        } else if (lib_strncmp(pcTok, "bugreboot=", 5) == 0) {          /*  探测到 bug 时是否自动重启   */
+            if (pcTok[10] == 'n') {
+                LW_KERN_BUG_REBOOT_EN_SET(LW_FALSE);
+            } else {
+                LW_KERN_BUG_REBOOT_EN_SET(LW_TRUE);
+            }
+            
         } else if (lib_strncmp(pcTok, "heapchk=", 8) == 0) {            /*  是否进行堆内存越界检查      */
             if (pcTok[8] == 'n') {
                 _K_bHeapCrossBorderEn = LW_FALSE;

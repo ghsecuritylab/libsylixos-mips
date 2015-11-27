@@ -99,6 +99,7 @@ ULONG  __tshellUserAuthen (INT  iTtyFd)
     if (lib_strcmp(cUserName, __TTINY_SHELL_FORCE_ABORT) == 0) {
         return  (ERROR_TSHELL_EUSER);                                   /*  需要 shell 退出             */
     }
+    ioctl(iTtyFd, FIOSYNC);                                             /*  等待所有输出结束            */
     
     /*
      *  转为无回显终端模式
@@ -113,7 +114,7 @@ ULONG  __tshellUserAuthen (INT  iTtyFd)
     /*
      *  获得用户密码
      */
-    ioctl(iTtyFd, FIOFLUSH, 0);                                         /*  清除缓冲区                  */
+    ioctl(iTtyFd, FIOFLUSH);                                            /*  清除缓冲区                  */
     write(iTtyFd, "password: ", 10);
     
     iRetValue = waitread(iTtyFd, &tv);                                  /*  等待用户输入密码            */
@@ -133,7 +134,7 @@ ULONG  __tshellUserAuthen (INT  iTtyFd)
     
     iRetValue = userlogin(cUserName, cPassword, 1);                     /*  用户登陆                    */
     
-    ioctl(iTtyFd, FIOFLUSH, 0);                                         /*  清除缓冲区                  */
+    ioctl(iTtyFd, FIOFLUSH);                                            /*  清除缓冲区                  */
     ioctl(iTtyFd, FIOSETOPTIONS, iOldOpt);                              /*  返回先前的模式              */
     
     if (iRetValue == 0) {

@@ -17,6 +17,9 @@
 ** 文件创建日期: 2014 年 05 月 24 日
 **
 ** 描        述: 内存文件系统内部函数.
+**
+** BUG:
+2015.11.25  修正 ramFs seek 反向查找错误.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -466,16 +469,18 @@ static PRAM_BUFFER  __ram_getbuf (PRAM_NODE  pramn, size_t  stOft, size_t  *pstB
             }
         }
     } else {                                                            /*  需要通过 start end 查询     */
-        ulFoot = pramn->RAMN_ulCnt - ulBlkIndex;
-        if (ulFoot > ulBlkIndex) {                                      /*  通过 start 指针查找更快     */
+        REGISTER ULONG  ulForward  = ulBlkIndex;
+        REGISTER ULONG  ulBackward = pramn->RAMN_ulCnt - ulBlkIndex - 1;
+        
+        if (ulForward <= ulBackward) {                                  /*  通过 start 指针查找更快     */
             plineTemp = pramn->RAMN_plineBStart;
-            for (i = 0; i < ulBlkIndex; i++) {
+            for (i = 0; i < ulForward; i++) {
                 plineTemp = _list_line_get_next(plineTemp);
                 RAM_BCHK_VALID(plineTemp);
             }
-        } else {
+        } else {                                                        /*  通过 end 指针查找更快       */
             plineTemp = pramn->RAMN_plineBEnd;
-            for (i = 0; i < ulFoot; i++) {
+            for (i = 0; i < ulBackward; i++) {
                 plineTemp = _list_line_get_prev(plineTemp);
                 RAM_BCHK_VALID(plineTemp);
             }

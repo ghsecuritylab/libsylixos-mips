@@ -127,6 +127,7 @@ typedef __TSHELL_PROMPT_CTX     *__PTSHELL_PROMPT_CTX;
 static INT    __tshellBgCreate(INT      iFd, 
                                CPCHAR   pcCommand, 
                                size_t   stCommandLen, 
+                               ULONG    ulKeywordOpt,
                                BOOL     bIsJoin, 
                                ULONG    ulMagic);
 /*********************************************************************************************************
@@ -585,6 +586,7 @@ INT  __tshellExec (CPCHAR  pcCommandExec, VOIDFUNCPTR  pfuncHook)
     
 __bg_run:                                                               /*  异步执行命令                */
     return  (__tshellBgCreate(iStdFd, pcBgCmd, stBgCmdLen, 
+                              pskwNode->SK_ulOption,
                               bIsJoin, ulMagic));                       /*  创建背景线程执行命令        */
 }
 /*********************************************************************************************************
@@ -860,6 +862,7 @@ static PVOID  __tshellBackground (PVOID  pvArg)
 ** 输　入  : iFd[3]         标准文件
 **           pcCommand      需要执行的命令
 **           stCommandLen   命令长度
+**           ulKeywordOpt   关键字选项
 **           bIsJoin        是否等待命令结束.
 **           ulMagic        识别号
 **           pulSh          背景线程句柄 (仅当 bIsJoin = LW_FALSE 时返回)
@@ -873,6 +876,7 @@ INT    __tshellBgCreateEx (INT               iFd[3],
                            BOOL              bClosed[3],
                            CPCHAR            pcCommand, 
                            size_t            stCommandLen, 
+                           ULONG             ulKeywordOpt,
                            BOOL              bIsJoin,
                            ULONG             ulMagic,
                            LW_OBJECT_HANDLE *pulSh,
@@ -886,6 +890,7 @@ INT    __tshellBgCreateEx (INT               iFd[3],
              PLW_CLASS_TCB              ptcbShellBg;
              PLW_CLASS_TCB              ptcbCur;
     REGISTER ULONG                      ulOption;
+             ULONG                      ulTaskOpt = LW_CFG_SHELL_THREAD_OPTION | LW_OPTION_OBJECT_GLOBAL;
     
     LW_TCB_GET_CUR_SAFE(ptcbCur);
     
@@ -918,10 +923,16 @@ INT    __tshellBgCreateEx (INT               iFd[3],
     
     lib_strcpy(tsbg->TSBG_cCommand, pcCommand);
     
+#if LW_CFG_VMM_EN > 0
+    if (ulKeywordOpt & LW_OPTION_KEYWORD_STK_MAIN) {
+        ulTaskOpt |= LW_OPTION_THREAD_STK_MAIN;
+    }
+#endif
+    
     API_ThreadAttrBuild(&threadattrTShell,
                         _G_stShellStackSize,                            /*  shell 堆栈大小              */
                         LW_PRIO_T_SHELL,
-                        LW_CFG_SHELL_THREAD_OPTION | LW_OPTION_OBJECT_GLOBAL,
+                        ulTaskOpt,
                         (PVOID)tsbg);                                   /*  构建属性块                  */
                         
     hTShellHandle = API_ThreadInit("t_tshellbg", __tshellBackground,
@@ -962,17 +973,19 @@ INT    __tshellBgCreateEx (INT               iFd[3],
 ** 输　入  : iFd            文件描述符
 **           pcCommand      需要执行的命令
 **           stCommandLen   命令长度
+**           ulKeywordOpt   关键字选项
 **           bIsJoin        是否等待命令结束.
 **           ulMagic        识别号
 ** 输　出  : 如果是同步执行, 则返回执行命令结果.
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-INT    __tshellBgCreate (INT     iFd, 
-                         CPCHAR  pcCommand, 
-                         size_t  stCommandLen, 
-                         BOOL    bIsJoin,
-                         ULONG   ulMagic)
+static INT    __tshellBgCreate (INT     iFd, 
+                                CPCHAR  pcCommand, 
+                                size_t  stCommandLen, 
+                                ULONG   ulKeywordOpt,
+                                BOOL    bIsJoin,
+                                ULONG   ulMagic)
 {
     INT  iError;
     INT  iRet;
@@ -984,7 +997,7 @@ INT    __tshellBgCreate (INT     iFd,
     iFdArry[2] = iFd;
     
     iError = __tshellBgCreateEx(iFdArry, bClosed, pcCommand, stCommandLen, 
-                                bIsJoin, ulMagic, LW_NULL, &iRet);
+                                ulKeywordOpt, bIsJoin, ulMagic, LW_NULL, &iRet);
     if (iError < 0) {
         return  (iError);
     }

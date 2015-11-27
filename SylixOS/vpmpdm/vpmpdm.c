@@ -50,7 +50,7 @@
 #include "./loader/include/loader_lib.h" /* need _Unwind_Ptr */
 #endif /* LW_CFG_CPU_ARCH_ARM */
 
-#define __VP_PATCH_VERSION      "1.4.2" /* vp patch version */
+#define __VP_PATCH_VERSION      "1.5.0" /* vp patch version */
 
 /*
  * fixed gcc old version.
@@ -182,7 +182,7 @@ int __vp_patch_vmem (void *pvproc, void **pvmem, int size)
  *  init vp patch process 
  *  (sylixos load this module will call this function first)
  */
-void __vp_patch_ctor (void *pvproc)
+void __vp_patch_ctor (void *pvproc, PVOIDFUNCPTR *ppfuncMalloc, VOIDFUNCPTR *ppfuncFree)
 {
     char buf[12] = "8192"; /* default 8192 pages */
 
@@ -222,6 +222,14 @@ void __vp_patch_ctor (void *pvproc)
         lib_itoa(getpid(), ctx.heap.HEAP_cHeapName, 10);
         VP_MEM_CTOR(&ctx.heap, ctx.vmem[0], ctx.blksize);
         ctx.allc_en = 1;
+    }
+    
+    if (ppfuncMalloc) {
+       *ppfuncMalloc = lib_malloc;
+    }
+
+    if (ppfuncFree) {
+       *ppfuncFree = lib_free;
     }
 }
 
