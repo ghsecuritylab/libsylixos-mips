@@ -52,7 +52,7 @@ archExcContext:
     .space    8
 
 /*********************************************************************************************************
-  Exception push the context: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc
+  Exception push the context: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc, sr, lo, hi, cause
 *********************************************************************************************************/
 
 #define EXC_SAVE_REGS()                 \
@@ -61,29 +61,38 @@ archExcContext:
     .set    noreorder;                  \
                                         \
     MFC0(K1, CP0_STATUS);               \
-    LI      K0, 0xFFFFFFFD;             \
-    AND     K1, K1, K0;                 \
+    LI      K0 , ~M_StatusEXL;          \
+    AND     K1 , K1, K0;                \
                                         \
-    LI      K0, 0xFFFFFFFC;             \
-    AND     K0, K1, K0;                 \
+    LI      K0 , ~M_StatusIE;           \
+    AND     K0 , K1, K0;                \
     MTC0(K0, CP0_STATUS);               \
                                         \
-    LA      K0, archExcContext;         \
-    SW      K1, 0(K0);                  \
+    LA      K0 , archExcContext;        \
+    SW      K1 , 0(K0);                 \
                                         \
     MFC0(K1, CP0_EPC);                  \
-    SW      K1, 4(K0);                  \
+    SW      K1 , 4(K0);                 \
                                         \
-    SUBU    SP, STK_CTX_SIZE;           \
+    SUBU    SP , STK_CTX_SIZE;          \
                                         \
     OPERATE_REG(SW);                    \
                                         \
-    LA      T0, archExcContext;         \
-    LW      T1, 0(T0);                  \
-    SW      T1, STK_OFFSET_SR(SP);      \
+    LA      T0 , archExcContext;        \
+    LW      T1 , 0(T0);                 \
+    SW      T1 , STK_OFFSET_SR(SP);     \
                                         \
-    LW      T1, 4(T0);                  \
-    SW      T1, STK_OFFSET_EPC(SP);     \
+    LW      T1 , 4(T0);                 \
+    SW      T1 , STK_OFFSET_EPC(SP);    \
+                                        \
+    MFC0(T1, CP0_CAUSE);                \
+    SW      T1 , STK_OFFSET_CAUSE(SP);  \
+                                        \
+    MFLO    T1;                         \
+    SW      T1 , STK_OFFSET_LO(SP);     \
+                                        \
+    MFHI    T1;                         \
+    SW      T1 , STK_OFFSET_HI(SP);     \
                                         \
     .set    pop;
 

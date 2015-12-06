@@ -85,6 +85,9 @@ mipsCp0RegReadWrite(Context, CP0_CTXT)
 mipsCp0RegReadWrite(PageMask, CP0_PAGEMASK)
 mipsCp0RegReadWrite(EntryHi, CP0_TLBHI)
 
+mipsCp0RegReadWrite(TagLo, CP0_TAGLO)
+mipsCp0RegReadWrite(TagHi, CP0_TAGHI)
+
 #endif                                                                  /*  MIPSCP0_H_                  */
 /*********************************************************************************************************
   END

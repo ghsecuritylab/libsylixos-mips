@@ -31,11 +31,11 @@
     .set    noat;                       \
     .set    noreorder;                  \
                                         \
-    MFC0    K1, CP0_CTXT;               \
-    LW      K0, 0(K1);                  \
-    LW      K1, 8(K1);                  \
-    MTC0    K0, CP0_TLBLO0;             \
-    MTC0    K1, CP0_TLBLO1;             \
+    MFC0    K1 , CP0_CTXT;              \
+    LW      K0 , 0(K1);                 \
+    LW      K1 , 8(K1);                 \
+    MTC0    K0 , CP0_TLBLO0;            \
+    MTC0    K1 , CP0_TLBLO1;            \
     EHB;                                \
     TLBWR;                              \
     ERET;                               \

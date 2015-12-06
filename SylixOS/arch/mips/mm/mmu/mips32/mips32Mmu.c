@@ -26,6 +26,14 @@
 #if LW_CFG_VMM_EN > 0
 #include "arch/mips/common/cp0/mipsCp0.h"
 /*********************************************************************************************************
+  全局变量
+*********************************************************************************************************/
+static LW_OBJECT_HANDLE     _G_hPGDPartition    = LW_HANDLE_INVALID;    /*  系统目前仅使用一个 PGD      */
+static PVOID                _G_pvPTETable       = LW_NULL;              /*  PTE 表                      */
+static UINT32               _G_uiTlbSize        = 0;                    /*  TLB 数组大小                */
+static INT32                _G_iHwNeverExecBit  = -1;                   /*  硬件的代码永不执行位        */
+static UINT32               _G_uiEntryLoPFNMask = 0;                    /*  ENTRYLO PFN 域掩码          */
+/*********************************************************************************************************
   ENTRYLO
 *********************************************************************************************************/
 #define MIPS32_ENTRYLO_G_BIT            (1 << 0)
@@ -35,18 +43,13 @@
 #define MIPS32_ENTRYLO_C_SHIFT          (3)
 #define MIPS32_ENTRYLO_C_MASK           (0x07 << MIPS32_ENTRYLO_C_SHIFT)
 
-#define MIPS32_ENTRYLO_PFN_MASK         (UINT32)(~0x3F)
+#define MIPS32_ENTRYLO_PFN_DEFAULT_MASK (UINT32)(~0x3F)
+#define MIPS32_ENTRYLO_PFN_MASK         _G_uiEntryLoPFNMask
 #define MIPS32_ENTRYLO_PFN_SHIFT        (6)
 
 #define MIPS32_ENTRYHI_VPN_SHIFT        (12)
 
 #define MIPS32_PTE_EXEC_SHIFT           (0)
-/*********************************************************************************************************
-  全局变量
-*********************************************************************************************************/
-static LW_OBJECT_HANDLE     _G_hPGDPartition;                           /*  系统目前仅使用一个 PGD      */
-static PVOID                _G_pvPTETable;                              /*  PTE 表                      */
-static UINT32               _G_uiTlbSize = 0;                           /*  TLB 数组大小                */
 /*********************************************************************************************************
 ** 函数名称: mips32MmuEnable
 ** 功能描述: 使能 MMU
@@ -120,7 +123,7 @@ VOID  mips32MmuDumpTLB (VOID)
         uiEntryLo1 = mipsCp0EntryLo1Read();
         uiEntryHi  = mipsCp0EntryHiRead();
 
-        _PrintFormat("TLB[%d]: uiEntryLo0=0x%x, uiEntryLo1=0x%x, uiEntryHi=0x%x\r\n",
+        _PrintFormat("TLB[%02d]: uiEntryLo0=0x%08x, uiEntryLo1=0x%08x, uiEntryHi=0x%08x\r\n",
                      i, uiEntryLo0, uiEntryLo1, uiEntryHi);
     }
 
@@ -205,6 +208,10 @@ static LW_PTE_TRANSENTRY  mips32MmuBuildPtentry (UINT32  uiBaseAddr,
 
         if (ulFlag & LW_VMM_FLAG_EXECABLE) {
             stDescriptor.PTE_uiSoftware |= 1 << MIPS32_PTE_EXEC_SHIFT;  /*  填充软件的可执行位          */
+        } else {
+            if (_G_iHwNeverExecBit >= 0) {
+                stDescriptor.PTE_uiEntryLO |= 1 << _G_iHwNeverExecBit;
+            }
         }
 
     } else {
@@ -360,7 +367,7 @@ static  LW_PTE_TRANSENTRY *mips32MmuPteOffset (LW_PMD_TRANSENTRY  *p_pmdentry, a
      * 一段有 256 个页面）
      */
     p_pteentry = (LW_PTE_TRANSENTRY *)((addr_t)p_pteentry
-               | ((ulAddr >> (LW_CFG_VMM_PAGE_SHIFT - 3) & 0x7F8)));    /*  获得虚拟地址页表描述符地址  */
+               | (((ulAddr >> (LW_CFG_VMM_PAGE_SHIFT - 3)) & 0x7F8)));  /*  获得虚拟地址页表描述符地址  */
     
     return  (p_pteentry);
 }
@@ -675,40 +682,48 @@ static VOID  mips32MmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
 *********************************************************************************************************/
 VOID  mips32MmuInit (LW_MMU_OP  *pmmuop, CPCHAR  pcMachineName)
 {
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1B) == 0) {
+        _G_iHwNeverExecBit  = 31;
+        _G_uiEntryLoPFNMask = MIPS32_ENTRYLO_PFN_DEFAULT_MASK & (~(1 << _G_iHwNeverExecBit));
+    } else {
+        _G_iHwNeverExecBit  = -1;
+        _G_uiEntryLoPFNMask = MIPS32_ENTRYLO_PFN_DEFAULT_MASK;
+    }
+
 #if LW_CFG_SMP_EN > 0
-    pmmuop->MMUOP_ulOption = LW_VMM_MMU_FLUSH_TLB_MP;
+    pmmuop->MMUOP_ulOption          = LW_VMM_MMU_FLUSH_TLB_MP;
 #else
-    pmmuop->MMUOP_ulOption = 0ul;
+    pmmuop->MMUOP_ulOption          = 0ul;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    pmmuop->MMUOP_pfuncMemInit    = mips32MmuMemInit;
-    pmmuop->MMUOP_pfuncGlobalInit = mips32MmuGlobalInit;
+    pmmuop->MMUOP_pfuncMemInit      = mips32MmuMemInit;
+    pmmuop->MMUOP_pfuncGlobalInit   = mips32MmuGlobalInit;
     
-    pmmuop->MMUOP_pfuncPGDAlloc = mips32MmuPgdAlloc;
-    pmmuop->MMUOP_pfuncPGDFree  = mips32MmuPgdFree;
-    pmmuop->MMUOP_pfuncPMDAlloc = mips32MmuPmdAlloc;
-    pmmuop->MMUOP_pfuncPMDFree  = mips32MmuPmdFree;
-    pmmuop->MMUOP_pfuncPTEAlloc = mips32MmuPteAlloc;
-    pmmuop->MMUOP_pfuncPTEFree  = mips32MmuPteFree;
+    pmmuop->MMUOP_pfuncPGDAlloc     = mips32MmuPgdAlloc;
+    pmmuop->MMUOP_pfuncPGDFree      = mips32MmuPgdFree;
+    pmmuop->MMUOP_pfuncPMDAlloc     = mips32MmuPmdAlloc;
+    pmmuop->MMUOP_pfuncPMDFree      = mips32MmuPmdFree;
+    pmmuop->MMUOP_pfuncPTEAlloc     = mips32MmuPteAlloc;
+    pmmuop->MMUOP_pfuncPTEFree      = mips32MmuPteFree;
     
-    pmmuop->MMUOP_pfuncPGDIsOk = mips32MmuPgdIsOk;
-    pmmuop->MMUOP_pfuncPMDIsOk = mips32MmuPgdIsOk;
-    pmmuop->MMUOP_pfuncPTEIsOk = mips32MmuPteIsOk;
+    pmmuop->MMUOP_pfuncPGDIsOk      = mips32MmuPgdIsOk;
+    pmmuop->MMUOP_pfuncPMDIsOk      = mips32MmuPgdIsOk;
+    pmmuop->MMUOP_pfuncPTEIsOk      = mips32MmuPteIsOk;
     
-    pmmuop->MMUOP_pfuncPGDOffset = mips32MmuPgdOffset;
-    pmmuop->MMUOP_pfuncPMDOffset = mips32MmuPmdOffset;
-    pmmuop->MMUOP_pfuncPTEOffset = mips32MmuPteOffset;
+    pmmuop->MMUOP_pfuncPGDOffset    = mips32MmuPgdOffset;
+    pmmuop->MMUOP_pfuncPMDOffset    = mips32MmuPmdOffset;
+    pmmuop->MMUOP_pfuncPTEOffset    = mips32MmuPteOffset;
     
-    pmmuop->MMUOP_pfuncPTEPhysGet = mips32MmuPtePhysGet;
+    pmmuop->MMUOP_pfuncPTEPhysGet   = mips32MmuPtePhysGet;
     
-    pmmuop->MMUOP_pfuncFlagGet = mips32MmuFlagGet;
-    pmmuop->MMUOP_pfuncFlagSet = mips32MmuFlagSet;
+    pmmuop->MMUOP_pfuncFlagGet      = mips32MmuFlagGet;
+    pmmuop->MMUOP_pfuncFlagSet      = mips32MmuFlagSet;
     
-    pmmuop->MMUOP_pfuncMakeTrans     = mips32MmuMakeTrans;
-    pmmuop->MMUOP_pfuncMakeCurCtx    = mips32MmuMakeCurCtx;
-    pmmuop->MMUOP_pfuncInvalidateTLB = mips32MmuInvalidateTLB;
-    pmmuop->MMUOP_pfuncSetEnable     = mips32MmuEnable;
-    pmmuop->MMUOP_pfuncSetDisable    = mips32MmuDisable;
+    pmmuop->MMUOP_pfuncMakeTrans    = mips32MmuMakeTrans;
+    pmmuop->MMUOP_pfuncMakeCurCtx   = mips32MmuMakeCurCtx;
+    pmmuop->MMUOP_pfuncInvalidateTLB= mips32MmuInvalidateTLB;
+    pmmuop->MMUOP_pfuncSetEnable    = mips32MmuEnable;
+    pmmuop->MMUOP_pfuncSetDisable   = mips32MmuDisable;
 }
 
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */

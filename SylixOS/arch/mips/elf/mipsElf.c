@@ -95,7 +95,7 @@ static VOID mipsElfFreeHI16Relocatelist (PMIPS_HI16_RELOC_INFO  pHi16Info)
 {
     PMIPS_HI16_RELOC_INFO  pNext;
 
-    while (pHi16Info) {
+    while (pHi16Info != NULL) {
         pNext = pHi16Info->HI16_pNext;
         LW_LD_SAFEFREE(pHi16Info);
         pHi16Info = pNext;
@@ -128,7 +128,7 @@ static INT mipsElfLO16RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
             Elf_Addr               addrInsn;
 
             /*
-             * 检查 HI16 & LO16 的重定位是否一致，不管高低，offset 必须是一样的
+             * 检查 HI16 和 LO16 的重定位 offset 是否一致
              */
             if (addrSymVal != pHi16Info->HI16_value) {
                 mipsElfFreeHI16Relocatelist(pHi16Info);

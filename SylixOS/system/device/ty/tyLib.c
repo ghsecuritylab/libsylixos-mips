@@ -54,6 +54,7 @@
 2014.08.03  FIOWBUFSET 时需要激活等待写的线程.
 2014.12.08  修正 _TyIRd() 忘记释放 spinlock 错误.
 2015.05.07  优化中断程序操作.
+2015.12.04  修正 SMP 并发操作问题.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -127,11 +128,24 @@ static VOID     _TyWrtXoff(  TY_DEV_ID  ptyDev, BOOL  bXoff);           /*  设置
   锁
 *********************************************************************************************************/
 #define TYDEV_LOCK(ptyDev, code)    \
-        if (API_SemaphoreMPend(ptyDev->TYDEV_hMutexSemM, LW_OPTION_WAIT_INFINITE)) {    \
+        if (API_SemaphoreMPend((ptyDev)->TYDEV_hMutexSemM, LW_OPTION_WAIT_INFINITE)) {  \
             code;   \
         }
 #define TYDEV_UNLOCK(ptyDev)        \
-        API_SemaphoreMPost(ptyDev->TYDEV_hMutexSemM)
+        API_SemaphoreMPost((ptyDev)->TYDEV_hMutexSemM)
+/*********************************************************************************************************
+  等待中断结束
+*********************************************************************************************************/
+#if LW_CFG_SMP_EN > 0
+#define TYDEV_WAIT_ISR(ptyDev)      \
+        do {    \
+            INTREG  iregInterLevel; \
+            LW_SPIN_LOCK_QUICK(&((ptyDev)->TYDEV_slLock), &iregInterLevel); \
+            LW_SPIN_UNLOCK_QUICK(&((ptyDev)->TYDEV_slLock), iregInterLevel);    \
+        } while (0)
+#else
+#define TYDEV_WAIT_ISR(ptyDev)
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
 /*********************************************************************************************************
 ** 函数名称: _TyDevInit
 ** 功能描述: 初始化一个 TY 设备
@@ -280,9 +294,6 @@ INT  _TyDevRemove (TY_DEV_ID  ptyDev)
     ptyDev->TYDEV_tydevrdstat.TYDEVRDSTAT_bFlushingRdBuf  = LW_TRUE;
     ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf = LW_TRUE;
     
-    ptyDev->TYDEV_tydevrdstat.TYDEVRDSTAT_bFlushingRdBuf  = LW_TRUE;
-    ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf = LW_TRUE;
-    
     LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);        /*  解锁 spinlock 并打开中断    */
     
     if (ptyDev->TYDEV_vxringidRdBuf) {
@@ -328,22 +339,27 @@ static VOID  _TyFlush (TY_DEV_ID  ptyDev)
 *********************************************************************************************************/
 static VOID  _TyFlushRd (TY_DEV_ID  ptyDev)
 {
+    INTREG  iregInterLevel;
+    
     TYDEV_LOCK(ptyDev, return);                                         /*  等待设备使用权              */
     
     ptyDev->TYDEV_tydevrdstat.TYDEVRDSTAT_bFlushingRdBuf = LW_TRUE;
-    KN_SMP_MB();
+    
+    LW_SPIN_LOCK_QUICK(&ptyDev->TYDEV_slLock, &iregInterLevel);         /*  锁定 spinlock 并关闭中断    */
     
     rngFlush(ptyDev->TYDEV_vxringidRdBuf);                              /*  清除缓冲区                  */
-    
-    API_SemaphoreBClear(ptyDev->TYDEV_hRdSyncSemB);                     /*  清除读同步                  */
     
     ptyDev->TYDEV_ucInNBytes    = 0;
     ptyDev->TYDEV_ucInBytesLeft = 0;
     
+    LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);        /*  解锁 spinlock 并打开中断    */
+    
     _TyRdXoff(ptyDev, LW_FALSE);                                        /*  可以允许对方发送            */
-    KN_SMP_MB();
+    
+    API_SemaphoreBClear(ptyDev->TYDEV_hRdSyncSemB);                     /*  清除读同步                  */
     
     ptyDev->TYDEV_tydevrdstat.TYDEVRDSTAT_bFlushingRdBuf = LW_FALSE;
+    KN_SMP_MB();
     
     TYDEV_UNLOCK(ptyDev);                                               /*  释放设备使用权              */
 }
@@ -358,20 +374,27 @@ static VOID  _TyFlushRd (TY_DEV_ID  ptyDev)
 *********************************************************************************************************/
 static VOID  _TyFlushWrt (TY_DEV_ID  ptyDev)
 {
+    INTREG  iregInterLevel;
+    
     TYDEV_LOCK(ptyDev, return);                                         /*  等待设备使用权              */
     
     ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf = LW_TRUE;
     
+    LW_SPIN_LOCK_QUICK(&ptyDev->TYDEV_slLock, &iregInterLevel);         /*  锁定 spinlock 并关闭中断    */
+    
     rngFlush(ptyDev->TYDEV_vxringidWrBuf);
+    
+    LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);        /*  解锁 spinlock 并打开中断    */
+    
+    ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf = LW_FALSE;
+    KN_SMP_MB();
     
     API_SemaphoreBPost(ptyDev->TYDEV_hWrtSyncSemB);                     /*  通知线程可写                */
     API_SemaphoreBPost(ptyDev->TYDEV_hDrainSyncSemB);                   /*  drain                       */
     
-    ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf = LW_FALSE;
+    SEL_WAKE_UP_ALL(&ptyDev->TYDEV_selwulList, SELWRITE);               /*  通知 select 线程可写        */
     
     TYDEV_UNLOCK(ptyDev);                                               /*  释放设备使用权              */
-
-    SEL_WAKE_UP_ALL(&ptyDev->TYDEV_selwulList, SELWRITE);               /*  通知 select 线程可写        */
 }
 /*********************************************************************************************************
 ** 函数名称: API_TyAbortFuncSet
@@ -588,6 +611,7 @@ INT  _TyIoctl (TY_DEV_ID  ptyDev,
         TYDEV_LOCK(ptyDev, return (PX_ERROR));                          /*  等待设备使用权              */
         ptyDev->TYDEV_tydevrdstat.TYDEVRDSTAT_bFlushingRdBuf = LW_TRUE;
         KN_SMP_MB();
+        TYDEV_WAIT_ISR(ptyDev);                                         /*  等待一个种中断结束          */
         ringId = rngCreate((INT)lArg);                                  /*  重新建立缓冲区              */
         if (ringId) {
             if (ptyDev->TYDEV_vxringidRdBuf) {
@@ -606,6 +630,7 @@ INT  _TyIoctl (TY_DEV_ID  ptyDev,
         TYDEV_LOCK(ptyDev, return (PX_ERROR));                          /*  等待设备使用权              */
         ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf = LW_TRUE;
         KN_SMP_MB();
+        TYDEV_WAIT_ISR(ptyDev);                                         /*  等待一个中断结束            */
         ringId = rngCreate((INT)lArg);                                  /*  重新建立缓冲区              */
         if (ringId) {
             if (ptyDev->TYDEV_vxringidWrBuf) {
@@ -1119,6 +1144,7 @@ INT  _TyITx (TY_DEV_ID  ptyDev, PCHAR  pcChar)
 
     REGISTER VX_RING_ID    ringId = ptyDev->TYDEV_vxringidWrBuf;
     REGISTER INT           iNTemp;
+             INT           iRet;
     
     LW_SPIN_LOCK_QUICK(&ptyDev->TYDEV_slLock, &iregInterLevel);         /*  锁定 spinlock 并关闭中断    */
     
@@ -1133,14 +1159,10 @@ INT  _TyITx (TY_DEV_ID  ptyDev, PCHAR  pcChar)
         } else {
             *pcChar = __TTY_CC(ptyDev, VSTART);
         }
-        
-        LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);    /*  解锁 spinlock 打开中断      */
 
     } else if (ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bXoff || 
                ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bFlushingWrtBuf) { /*  对方禁止接收或者缓冲区占用  */
         ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bBusy = LW_FALSE;
-    
-        LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);    /*  解锁 spinlock 打开中断      */
         
     } else if (ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bCR) {             /*  是否需要追加 CR 字符        */
         *pcChar = '\n';
@@ -1155,6 +1177,8 @@ INT  _TyITx (TY_DEV_ID  ptyDev, PCHAR  pcChar)
                                                                         /*  解锁 spinlock 打开中断      */
             API_SemaphoreBPost(ptyDev->TYDEV_hDrainSyncSemB);           /*  产生传输完成信号量          */
             
+            return  (PX_ERROR);                                         /*  没有数据需要发送            */
+
         } else {
             ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bBusy = LW_TRUE;
             
@@ -1165,21 +1189,22 @@ INT  _TyITx (TY_DEV_ID  ptyDev, PCHAR  pcChar)
             }
             
 __release_wrt:
-            if (rngFreeBytes(ringId) == ptyDev->TYDEV_iWrtThreshold) {  /*  可以激活下一个需要写的线程  */
+            if (rngFreeBytes(ringId) >= ptyDev->TYDEV_iWrtThreshold) {  /*  可以激活下一个需要写的线程  */
                 LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);  
                                                                         /*  解锁 spinlock 打开中断      */
                 API_SemaphoreBPost(ptyDev->TYDEV_hWrtSyncSemB);         /*  释放信号量                  */
                 SEL_WAKE_UP_ALL(&ptyDev->TYDEV_selwulList, SELWRITE);   /*  释放所有等待写的线程        */
             
-            } else {
-                LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);  
-                                                                        /*  解锁 spinlock 打开中断      */
+                return  (ERROR_NONE);                                   /*  可以发送数据                */
             }
         }
     }
+    
+    iRet = (ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bBusy) ? (ERROR_NONE) : (PX_ERROR);
+    
+    LW_SPIN_UNLOCK_QUICK(&ptyDev->TYDEV_slLock, iregInterLevel);        /*  解锁 spinlock 打开中断      */
         
-    return  ((ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bBusy) ? 
-                                 (ERROR_NONE) : (PX_ERROR));            /*  返回                        */
+    return  (iRet);                                                     /*  返回                        */
 }
 /*********************************************************************************************************
 ** 函数名称: _TyIRx
@@ -1207,10 +1232,11 @@ INT  _TyIRd (TY_DEV_ID  ptyDev, CHAR   cInchar)
              BOOL        bNeedBsOrKill;
     
     
-    if (ptyDev->TYDEV_pfuncProtoHook)
-    if ((*ptyDev->TYDEV_pfuncProtoHook)(ptyDev->TYDEV_iProtoArg, 
-                                        cInchar)) {                     /*  有链接的协议时调用协议栈    */
-        return  (iStatus);
+    if (ptyDev->TYDEV_pfuncProtoHook) {
+        if ((*ptyDev->TYDEV_pfuncProtoHook)(ptyDev->TYDEV_iProtoArg, 
+                                            cInchar)) {                 /*  有链接的协议时调用协议栈    */
+            return  (iStatus);
+        }
     }
     
     if (iOpt & OPT_7_BIT) {                                             /*  仅接收 7 位数据             */

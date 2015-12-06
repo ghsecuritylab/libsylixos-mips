@@ -77,6 +77,12 @@ LW_API ULONG    API_DtraceGetRegs(PVOID  pvDtrace,
 LW_API ULONG    API_DtraceSetRegs(PVOID  pvDtrace, 
                                   LW_OBJECT_HANDLE  ulThread, 
                                   const ARCH_REG_CTX  *pregctx);
+LW_API ULONG    API_DtraceGetFpuRegs(PVOID  pvDtrace, 
+                                    LW_OBJECT_HANDLE  ulThread, 
+                                    ARCH_FPU_CTX  *pfpuctx);
+LW_API ULONG    API_DtraceSetFpuRegs(PVOID  pvDtrace, 
+                                     LW_OBJECT_HANDLE  ulThread, 
+                                     const ARCH_FPU_CTX  *pfpuctx);
 LW_API ULONG    API_DtraceGetMems(PVOID  pvDtrace, addr_t  ulAddr, PVOID  pvBuffer, size_t  stSize);
 LW_API ULONG    API_DtraceSetMems(PVOID  pvDtrace, addr_t  ulAddr, const PVOID  pvBuffer, size_t  stSize);
 LW_API ULONG    API_DtraceBreakpointInsert(PVOID  pvDtrace, addr_t  ulAddr, size_t stSize, ULONG  *pulIns);

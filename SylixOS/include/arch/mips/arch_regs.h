@@ -64,6 +64,9 @@ typedef struct {
 
     ARCH_REG_T REG_uiAT;                                                /*  汇编综合寄存器              */
 
+    ARCH_REG_T REG_uiCP0DataLO;                                         /*  除数低位寄存器              */
+    ARCH_REG_T REG_uiCP0DataHI;                                         /*  除数高位寄存器              */
+    ARCH_REG_T REG_uiCP0Cause;                                          /*  产生中断或者异常查看的寄存器*/
     ARCH_REG_T REG_uiCP0Status;                                         /*  CP0 协处理器状态寄存器      */
     ARCH_REG_T REG_uiEPC;                                               /*  程序计数器寄存器			*/
 } ARCH_REG_CTX;
@@ -80,7 +83,7 @@ typedef struct {
 /*********************************************************************************************************
   堆栈中的寄存器信息所占大小
 *********************************************************************************************************/
-#define ARCH_REG_CTX_WORD_SIZE  32
+#define ARCH_REG_CTX_WORD_SIZE  35
 #define ARCH_STK_MIN_WORD_SIZE  128
 
 /*********************************************************************************************************

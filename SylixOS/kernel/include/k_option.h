@@ -61,16 +61,11 @@
   THREAD 
      
   注意: 浮点运算器上下文指针是否有效, 由 BSP FPU 相关实现决定, 
-        可以使用 LW_OPTION_THREAD_USED_FP 创建选项, 来强制打开对应任务对 FPU 的支持, 
-        当然, 如果操作系统会在运行中自动判断该任务是否使用浮点运算器, 视情况而打开相应任务的支持.
-        所以建议用户不必使用此创建选项
-        
-        用户禁止使用 LW_OPTION_THREAD_STK_MAIN 选项.
+        用户禁止使用 LW_OPTION_THREAD_USED_FP / LW_OPTION_THREAD_STK_MAIN 选项.
 *********************************************************************************************************/
 
 #define  LW_OPTION_THREAD_STK_CHK                       0x00000003      /*  允许对任务堆栈进行检查      */
 #define  LW_OPTION_THREAD_STK_CLR                       0x00000002      /*  在任务建立时堆栈所有数据清零*/
-#define  LW_OPTION_THREAD_USED_FP                       0x00000004      /*  保存浮点运算器              */
 #define  LW_OPTION_THREAD_SUSPEND                       0x00000010      /*  建立任务后阻塞              */
 #define  LW_OPTION_THREAD_UNPREEMPTIVE                  0x00000020      /*  任务不可抢占 (当前不可用)   */
 #define  LW_OPTION_THREAD_INIT                          0x00000040      /*  初始化任务                  */
@@ -81,7 +76,8 @@
 #define  LW_OPTION_THREAD_SCOPE_PROCESS                 0x00000800      /*  进程区域内竞争 (当前不支持) */
 
 #ifdef __SYLIXOS_KERNEL
-#define  LW_OPTION_THREAD_STK_MAIN                       0x40000000     /*  进程主线程 stack            */
+#define  LW_OPTION_THREAD_USED_FP                       0x00000004      /*  保存浮点运算器              */
+#define  LW_OPTION_THREAD_STK_MAIN                      0x40000000      /*  进程主线程 stack            */
 #endif                                                                  /*  __SYLIXOS_KERNEL            */
 
 /*********************************************************************************************************

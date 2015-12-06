@@ -52,9 +52,10 @@ VOID  archSpinInit (spinlock_t  *psl)
 *********************************************************************************************************/
 VOID  archSpinDelay (VOID)
 {
-    /*
-     * TODO
-     */
+    volatile INT  i;
+
+    for (i = 0; i < 10; i++) {
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: archSpinNotify
@@ -66,9 +67,6 @@ VOID  archSpinDelay (VOID)
 *********************************************************************************************************/
 VOID  archSpinNotify (VOID)
 {
-    /*
-     * TODO
-     */
 }
 /*********************************************************************************************************
 ** 函数名称: archSpinLock
@@ -81,10 +79,18 @@ VOID  archSpinNotify (VOID)
 *********************************************************************************************************/
 INT  archSpinLock (spinlock_t  *psl)
 {
-    /*
-     * TODO
-     */
-     return  (1);                                                        /*  加锁成功                    */
+    if (psl->SL_pcpuOwner == LW_CPU_GET_CUR()) {
+        psl->SL_ulCounter++;
+        _BugFormat((psl->SL_ulCounter > 10), LW_TRUE,
+                   "spinlock RECURSIVE %lu!\r\n", psl->SL_ulCounter);
+        return  (1);                                                    /*  重复调用                    */
+    }
+
+    mipsSpinLock(&psl->SL_sltData);
+
+    psl->SL_pcpuOwner = LW_CPU_GET_CUR();                               /*  保存当前 CPU                */
+
+    return  (1);                                                        /*  加锁成功                    */
 }
 /*********************************************************************************************************
 ** 函数名称: archSpinTryLock
@@ -97,9 +103,19 @@ INT  archSpinLock (spinlock_t  *psl)
 *********************************************************************************************************/
 INT  archSpinTryLock (spinlock_t  *psl)
 {
-    /*
-     * TODO
-     */
+    if (psl->SL_pcpuOwner == LW_CPU_GET_CUR()) {
+        psl->SL_ulCounter++;
+        _BugFormat((psl->SL_ulCounter > 10), LW_TRUE,
+                   "spinlock RECURSIVE %lu!\r\n", psl->SL_ulCounter);
+        return  (1);                                                    /*  重复调用                    */
+    }
+
+    if (mipsSpinTryLock(&psl->SL_sltData)) {                            /*  尝试加锁                    */
+        return  (0);
+    }
+
+    psl->SL_pcpuOwner = LW_CPU_GET_CUR();                               /*  保存当前 CPU                */
+
     return  (1);
 }
 /*********************************************************************************************************
@@ -113,9 +129,19 @@ INT  archSpinTryLock (spinlock_t  *psl)
 *********************************************************************************************************/
 INT  archSpinUnlock (spinlock_t  *psl)
 {
-    /*
-     * TODO
-     */
+    if (psl->SL_pcpuOwner != LW_CPU_GET_CUR()) {
+        return  (0);                                                    /*  没有权利释放                */
+    }
+
+    if (psl->SL_ulCounter) {
+        psl->SL_ulCounter--;                                            /*  减少重复调用次数            */
+        return  (1);
+    }
+
+    psl->SL_pcpuOwner = LW_NULL;                                        /*  没有 CPU 获取               */
+
+    mipsSpinUnlock(&psl->SL_sltData);                                   /*  解锁                        */
+
     return  (1);
 }
 /*********************************************************************************************************
@@ -129,9 +155,8 @@ INT  archSpinUnlock (spinlock_t  *psl)
 *********************************************************************************************************/
 INT  archSpinLockRaw (spinlock_t  *psl)
 {
-    /*
-     * TODO
-     */
+    mipsSpinLock(&psl->SL_sltData);
+
     return  (1);                                                        /*  加锁成功                    */
 }
 /*********************************************************************************************************
@@ -145,9 +170,10 @@ INT  archSpinLockRaw (spinlock_t  *psl)
 *********************************************************************************************************/
 INT  archSpinTryLockRaw (spinlock_t  *psl)
 {
-    /*
-     * TODO
-     */
+    if (mipsSpinTryLock(&psl->SL_sltData)) {                            /*  尝试加锁                    */
+        return  (0);
+    }
+
     return  (1);                                                        /*  加锁成功                    */
 }
 /*********************************************************************************************************
@@ -161,9 +187,8 @@ INT  archSpinTryLockRaw (spinlock_t  *psl)
 *********************************************************************************************************/
 INT  archSpinUnlockRaw (spinlock_t  *psl)
 {
-    /*
-     * TODO
-     */
+    mipsSpinUnlock(&psl->SL_sltData);                                   /*  解锁                        */
+
     return  (1);
 }
 

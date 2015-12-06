@@ -82,7 +82,7 @@ static const CHAR   cTargetSystem[] = \
   编译器移位操作必须支持符号位扩展
 *********************************************************************************************************/
 #if (((INT32)-1L) >> 1) > 0
-#   error right shifting an int does not perform sign extension
+#  error right shifting an int does not perform sign extension
 #endif
 /*********************************************************************************************************
   分支预测过程中使用的位操作

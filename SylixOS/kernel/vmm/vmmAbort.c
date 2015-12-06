@@ -291,13 +291,11 @@ static INT  __vmmAbortNoPage (PLW_VMM_PAGE           pvmpagePhysical,
             printk(KERN_CRIT "kernel physical page map error.\n");      /*  系统无法映射物理页面        */
             return  (PX_ERROR);
         }
-        
-        if (pvmpagep->PAGEP_pfuncFiller) {                              /*  新页面需要填充              */
-            pvmpagep->PAGEP_pfuncFiller(pvmpagep->PAGEP_pvArg,          
-                                        pvirdesc->ulVirtualSwitch,      /*  需要拷贝的缓存目标虚拟地址  */
-                                        ulVirtualPageAlign,             /*  缓存最后切换的目标虚拟地址  */
-                                        ulAllocPageNum);                /*  拷贝的页面个数              */
-        }
+
+        pvmpagep->PAGEP_pfuncFiller(pvmpagep->PAGEP_pvArg,          
+                                    pvirdesc->ulVirtualSwitch,          /*  需要拷贝的缓存目标虚拟地址  */
+                                    ulVirtualPageAlign,                 /*  缓存最后切换的目标虚拟地址  */
+                                    ulAllocPageNum);                    /*  拷贝的页面个数              */
                                                                         /*  cache 刷新                  */
         __vmmAbortCacheRefresh(LW_FALSE, ulVirtualPageAlign, ulAllocPageNum);
     
@@ -566,7 +564,7 @@ static VOID  __vmmAbortShell (PLW_VMM_PAGE_FAIL_CTX  pvmpagefailctx)
         pvmpagep = (PLW_VMM_PAGE_PRIVATE)pvmpageVirtual->PAGE_pvAreaCb;
     } else {
         __VMM_UNLOCK();
-        __vmmAbortAccess(pvmpagefailctx);                               /*  访问异常                    */
+        //__vmmAbortAccess(pvmpagefailctx);                               /*  访问异常                    */
         goto    __abort_return;                                         /*  不会运行到这里              */
     }
     

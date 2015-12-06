@@ -22,6 +22,8 @@
 #ifndef __ASMMIPS_HWCAP_H
 #define __ASMMIPS_HWCAP_H
 
+#define HWCAP_VFP       (1 << 6)
+
 #endif                                                                 /*  __ASMMIPS_HWCAP_H            */
 /*********************************************************************************************************
   END

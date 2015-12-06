@@ -26,13 +26,13 @@
   Number of fp registers on coprocessor
 *********************************************************************************************************/
 
-#define FP_NUM_DREGS    16
+#define FP_NUM_DREGS    32
 
-typedef struct arch_cpu_fpu_context {                                   /* FP_CONTEXT 上下文            */
+typedef struct arch_fpu_ctx {                                           /* FP_CONTEXT 上下文            */
     UINT32              FPUCTX_uiFpcsr;                                 /* status and control register  */
     UINT32              FPUCTX_uiDreg[FP_NUM_DREGS * 2];                /* general purpose Reg  D0 ~ D16*/
                                                                         /* equ -> S0 ~ S32              */
-} ARCH_CPU_FPU_CONTEXT;
+} ARCH_FPU_CTX;
 
 /*********************************************************************************************************
   float 格式 (使用 union 类型作为中间转换, 避免 GCC 3.x.x strict aliasing warning)

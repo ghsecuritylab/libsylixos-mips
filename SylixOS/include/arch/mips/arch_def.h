@@ -27,75 +27,75 @@
 *********************************************************************************************************/
 
 #if defined(__ASSEMBLY__) || defined(ASSEMBLY)
-#define ZERO            $0                                              /* wired zero                   */
-#define AT              $at                                             /* assembler temp               */
-#define V0              $2                                              /* return reg 0                 */
-#define V1              $3                                              /* return reg 1                 */
-#define A0              $4                                              /* arg reg 0                    */
-#define A1              $5                                              /* arg reg 1                    */
-#define A2              $6                                              /* arg reg 2                    */
-#define A3              $7                                              /* arg reg 3                    */
-#define T0              $8                                              /* caller saved 0               */
-#define T1              $9                                              /* caller saved 1               */
-#define T2              $10                                             /* caller saved 2               */
-#define T3              $11                                             /* caller saved 3               */
-#define T4              $12                                             /* caller saved 4               */
-#define T5              $13                                             /* caller saved 5               */
-#define T6              $14                                             /* caller saved 6               */
-#define T7              $15                                             /* caller saved 7               */
-#define S0              $16                                             /* callee saved 0               */
-#define S1              $17                                             /* callee saved 1               */
-#define S2              $18                                             /* callee saved 2               */
-#define S3              $19                                             /* callee saved 3               */
-#define S4              $20                                             /* callee saved 4               */
-#define S5              $21                                             /* callee saved 5               */
-#define S6              $22                                             /* callee saved 6               */
-#define S7              $23                                             /* callee saved 7               */
-#define T8              $24                                             /* caller saved 8               */
-#define T9              $25                                             /* caller saved 9               */
-#define K0              $26                                             /* kernel temp 0                */
-#define K1              $27                                             /* kernel temp 1                */
-#define GP              $28                                             /* global pointer               */
-#define SP              $29                                             /* stack pointer                */
-#define S8              $30                                             /* callee saved 8               */
-#define FP              S8                                              /* callee saved 8               */
-#define RA              $31                                             /* return address               */
+#define ZERO            $0                                              /*  wired zero                  */
+#define AT              $at                                             /*  assembler temp              */
+#define V0              $2                                              /*  return reg 0                */
+#define V1              $3                                              /*  return reg 1                */
+#define A0              $4                                              /*  arg reg 0                   */
+#define A1              $5                                              /*  arg reg 1                   */
+#define A2              $6                                              /*  arg reg 2                   */
+#define A3              $7                                              /*  arg reg 3                   */
+#define T0              $8                                              /*  caller saved 0              */
+#define T1              $9                                              /*  caller saved 1              */
+#define T2              $10                                             /*  caller saved 2              */
+#define T3              $11                                             /*  caller saved 3              */
+#define T4              $12                                             /*  caller saved 4              */
+#define T5              $13                                             /*  caller saved 5              */
+#define T6              $14                                             /*  caller saved 6              */
+#define T7              $15                                             /*  caller saved 7              */
+#define S0              $16                                             /*  callee saved 0              */
+#define S1              $17                                             /*  callee saved 1              */
+#define S2              $18                                             /*  callee saved 2              */
+#define S3              $19                                             /*  callee saved 3              */
+#define S4              $20                                             /*  callee saved 4              */
+#define S5              $21                                             /*  callee saved 5              */
+#define S6              $22                                             /*  callee saved 6              */
+#define S7              $23                                             /*  callee saved 7              */
+#define T8              $24                                             /*  caller saved 8              */
+#define T9              $25                                             /*  caller saved 9              */
+#define K0              $26                                             /*  kernel temp 0               */
+#define K1              $27                                             /*  kernel temp 1               */
+#define GP              $28                                             /*  global pointer              */
+#define SP              $29                                             /*  stack pointer               */
+#define S8              $30                                             /*  callee saved 8              */
+#define FP              S8                                              /*  callee saved 8              */
+#define RA              $31                                             /*  return address              */
 
 #elif defined(__SYLIXOS_KERNEL)
-#define MIPS_ZERO       "$0"                                            /* wired zero                   */
-#define MIPS_AT         "$at"                                           /* assembler temp               */
-#define MIPS_V0         "$2"                                            /* return reg 0                 */
-#define MIPS_V1         "$3"                                            /* return reg 1                 */
-#define MIPS_A0         "$4"                                            /* arg reg 0                    */
-#define MIPS_A1         "$5"                                            /* arg reg 1                    */
-#define MIPS_A2         "$6"                                            /* arg reg 2                    */
-#define MIPS_A3         "$7"                                            /* arg reg 3                    */
-#define MIPS_T0         "$8"                                            /* caller saved 0               */
-#define MIPS_T1         "$9"                                            /* caller saved 1               */
-#define MIPS_T2         "$10"                                           /* caller saved 2               */
-#define MIPS_T3         "$11"                                           /* caller saved 3               */
-#define MIPS_T4         "$12"                                           /* caller saved 4               */
-#define MIPS_T5         "$13"                                           /* caller saved 5               */
-#define MIPS_T6         "$14"                                           /* caller saved 6               */
-#define MIPS_T7         "$15"                                           /* caller saved 7               */
-#define MIPS_S0         "$16"                                           /* callee saved 0               */
-#define MIPS_S1         "$17"                                           /* callee saved 1               */
-#define MIPS_S2         "$18"                                           /* callee saved 2               */
-#define MIPS_S3         "$19"                                           /* callee saved 3               */
-#define MIPS_S4         "$20"                                           /* callee saved 4               */
-#define MIPS_S5         "$21"                                           /* callee saved 5               */
-#define MIPS_S6         "$22"                                           /* callee saved 6               */
-#define MIPS_S7         "$23"                                           /* callee saved 7               */
-#define MIPS_T8         "$24"                                           /* caller saved 8               */
-#define MIPS_T9         "$25"                                           /* caller saved 9               */
-#define MIPS_K0         "$26"                                           /* kernel temp 0                */
-#define MIPS_K1         "$27"                                           /* kernel temp 1                */
-#define MIPS_GP         "$28"                                           /* global pointer               */
-#define MIPS_SP         "$29"                                           /* stack pointer                */
-#define MIPS_S8         "$30"                                           /* callee saved 8               */
-#define MIPS_FP         MIPS_S8                                         /* callee saved 8               */
-#define MIPS_RA         "$31"                                           /* return address               */
-#endif                                                                  /* __ASSEMBLY__                 */
+#define MIPS_ZERO       "$0"                                            /*  wired zero                  */
+#define MIPS_AT         "$at"                                           /*  assembler temp              */
+#define MIPS_V0         "$2"                                            /*  return reg 0                */
+#define MIPS_V1         "$3"                                            /*  return reg 1                */
+#define MIPS_A0         "$4"                                            /*  arg reg 0                   */
+#define MIPS_A1         "$5"                                            /*  arg reg 1                   */
+#define MIPS_A2         "$6"                                            /*  arg reg 2                   */
+#define MIPS_A3         "$7"                                            /*  arg reg 3                   */
+#define MIPS_T0         "$8"                                            /*  caller saved 0              */
+#define MIPS_T1         "$9"                                            /*  caller saved 1              */
+#define MIPS_T2         "$10"                                           /*  caller saved 2              */
+#define MIPS_T3         "$11"                                           /*  caller saved 3              */
+#define MIPS_T4         "$12"                                           /*  caller saved 4              */
+#define MIPS_T5         "$13"                                           /*  caller saved 5              */
+#define MIPS_T6         "$14"                                           /*  caller saved 6              */
+#define MIPS_T7         "$15"                                           /*  caller saved 7              */
+#define MIPS_S0         "$16"                                           /*  callee saved 0              */
+#define MIPS_S1         "$17"                                           /*  callee saved 1              */
+#define MIPS_S2         "$18"                                           /*  callee saved 2              */
+#define MIPS_S3         "$19"                                           /*  callee saved 3              */
+#define MIPS_S4         "$20"                                           /*  callee saved 4              */
+#define MIPS_S5         "$21"                                           /*  callee saved 5              */
+#define MIPS_S6         "$22"                                           /*  callee saved 6              */
+#define MIPS_S7         "$23"                                           /*  callee saved 7              */
+#define MIPS_T8         "$24"                                           /*  caller saved 8              */
+#define MIPS_T9         "$25"                                           /*  caller saved 9              */
+#define MIPS_K0         "$26"                                           /*  kernel temp 0               */
+#define MIPS_K1         "$27"                                           /*  kernel temp 1               */
+#define MIPS_GP         "$28"                                           /*  global pointer              */
+#define MIPS_SP         "$29"                                           /*  stack pointer               */
+#define MIPS_S8         "$30"                                           /*  callee saved 8              */
+#define MIPS_FP         MIPS_S8                                         /*  callee saved 8              */
+#define MIPS_RA         "$31"                                           /*  return address              */
+#endif                                                                  /*  __ASSEMBLY__                */
 
 /*********************************************************************************************************
   MIPS 协处理器 0 寄存器定义
@@ -132,6 +132,8 @@
 #define CP0_CACHEERR    $27
 #define CP0_TAGLO       $28
 #define CP0_TAGHI       $29
+#define CP0_DataLO      $28,1
+#define CP0_DataHI      $29,1
 #define CP0_ERRPC       $30
 
 #elif defined(__SYLIXOS_KERNEL)
@@ -165,6 +167,8 @@
 #define CP0_CACHEERR    "$27"
 #define CP0_TAGLO       "$28"
 #define CP0_TAGHI       "$29"
+#define CP0_DataLO      "$28,1"
+#define CP0_DataHI      "$29,1"
 #define CP0_ERRPC       "$30"
 #endif                                                                  /*  __ASSEMBLY__                */
 
@@ -211,6 +215,45 @@
 #define CP1_FEXR        $26                                             /*  Exception reg               */
 #define CP1_FENR        $28                                             /*  Enables reg                 */
 #define CP1_STATUS      $31                                             /*  control/status reg          */
+#elif defined(__SYLIXOS_KERNEL)
+#define FP0             "$f0"                                           /*  return reg 0~3              */
+#define FP1             "$f1"
+#define FP2             "$f2"
+#define FP3             "$f3"
+#define FP4             "$f4"                                           /*  caller saved 0~7            */
+#define FP5             "$f5"
+#define FP6             "$f6"
+#define FP7             "$f7"
+#define FP8             "$f8"
+#define FP9             "$f9"
+#define FP10            "$f10"
+#define FP11            "$f11"
+#define FP12            "$f12"                                          /*  arg reg 0~3                 */
+#define FP13            "$f13"
+#define FP14            "$f14"
+#define FP15            "$f15"
+#define FP16            "$f16"                                          /*  caller saved 8~11           */
+#define FP17            "$f17"
+#define FP18            "$f18"
+#define FP19            "$f19"
+#define FP20            "$f20"                                          /*  callee saved 0~11           */
+#define FP21            "$f21"
+#define FP22            "$f22"
+#define FP23            "$f23"
+#define FP24            "$f24"
+#define FP25            "$f25"
+#define FP26            "$f26"
+#define FP27            "$f27"
+#define FP28            "$f28"
+#define FP29            "$f29"
+#define FP30            "$f30"
+#define FP31            "$f31"
+
+#define CP1_FIR         "$0"                                            /*  implementation/revision reg */
+#define CP1_FCCR        "$25"                                           /*  Condition Code reg          */
+#define CP1_FEXR        "$26"                                           /*  Exception reg               */
+#define CP1_FENR        "$28"                                           /*  Enables reg                 */
+#define CP1_STATUS      "$31"                                           /*  control/status reg          */
 #endif                                                                  /*  __ASSEMBLY__                */
 
 /*********************************************************************************************************
@@ -252,7 +295,10 @@
 #define STK_OFFSET_V1   (STK_OFFSET_A0  + 4)
 #define STK_OFFSET_V0   (STK_OFFSET_V1  + 4)
 #define STK_OFFSET_AT   (STK_OFFSET_V0  + 4)
-#define STK_OFFSET_SR   (STK_OFFSET_AT  + 4)
+#define STK_OFFSET_LO   (STK_OFFSET_AT  + 4)
+#define STK_OFFSET_HI   (STK_OFFSET_LO  + 4)
+#define STK_OFFSET_CAUSE (STK_OFFSET_HI + 4)
+#define STK_OFFSET_SR   (STK_OFFSET_CAUSE+4)
 #define STK_OFFSET_EPC  (STK_OFFSET_SR  + 4)
 #define STK_CTX_SIZE    (STK_OFFSET_EPC + 4)
 
@@ -268,7 +314,7 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 *********************************************************************************************************/
 
-#define S_StatusCU      28                                              /* Coprocessor enable (R/W)     */
+#define S_StatusCU      28                                              /*  Coprocessor enable (R/W)    */
 #define M_StatusCU      (0xf << S_StatusCU)
 #define S_StatusCU3     31
 #define M_StatusCU3     (0x1 << S_StatusCU3)
@@ -278,31 +324,31 @@
 #define M_StatusCU1     (0x1 << S_StatusCU1)
 #define S_StatusCU0     28
 #define M_StatusCU0     (0x1 << S_StatusCU0)
-#define S_StatusRP      27                                              /* Enable reduced power
-                                                                         * mode (R/W)*/
+#define S_StatusRP      27                                              /*  Enable reduced power
+                                                                         *  mode (R/W)                  */
 #define M_StatusRP      (0x1 << S_StatusRP)
-#define S_StatusFR      26                                              /* Enable 64-bit FPRs
-                                                                         * (MIPS64 only) (R/W) */
+#define S_StatusFR      26                                              /*  Enable 64-bit FPRs
+                                                                         *  (MIPS64 only) (R/W)         */
 #define M_StatusFR      (0x1 << S_StatusFR)
-#define S_StatusRE      25                                              /* Enable reverse endian (R/W)  */
+#define S_StatusRE      25                                              /*  Enable reverse endian (R/W) */
 #define M_StatusRE      (0x1 << S_StatusRE)
-#define S_StatusMX      24                                              /* Enable access to MDMX
-                                                                         * resources (MIPS64 only) (R/W)*/
+#define S_StatusMX      24                                              /*  Enable access to MDMX
+                                                                         *  resources (MIPS64 only)(R/W)*/
 #define M_StatusMX      (0x1 << S_StatusMX)
-#define S_StatusPX      23                                              /* Enable access to 64-bit
-                                                                         * instructions/data
-                                                                         * (MIPS64 only) (R/W)          */
+#define S_StatusPX      23                                              /*  Enable access to 64-bit
+                                                                         *  instructions/data
+                                                                         *  (MIPS64 only) (R/W)         */
 #define M_StatusPX      (0x1 << S_StatusPX)
-#define S_StatusBEV     22                                              /* Enable Boot Exception
-                                                                         * Vectors (R/W)                */
+#define S_StatusBEV     22                                              /*  Enable Boot Exception
+                                                                         *  Vectors (R/W)               */
 #define M_StatusBEV     (0x1 << S_StatusBEV)
-#define S_StatusTS      21                                              /* Denote TLB shutdown (R/W)    */
+#define S_StatusTS      21                                              /*  Denote TLB shutdown (R/W)   */
 #define M_StatusTS      (0x1 << S_StatusTS)
-#define S_StatusSR      20                                              /* Denote soft reset (R/W)      */
+#define S_StatusSR      20                                              /*  Denote soft reset (R/W)     */
 #define M_StatusSR      (0x1 << S_StatusSR)
 #define S_StatusNMI     19
-#define M_StatusNMI     (0x1 << S_StatusNMI)                            /* Denote NMI (R/W)             */
-#define S_StatusIM      8                                               /* Interrupt mask (R/W)         */
+#define M_StatusNMI     (0x1 << S_StatusNMI)                            /*  Denote NMI (R/W)            */
+#define S_StatusIM      8                                               /*  Interrupt mask (R/W)        */
 #define M_StatusIM      (0xff << S_StatusIM)
 #define S_StatusIM7     15
 #define M_StatusIM7     (0x1 << S_StatusIM7)
@@ -320,29 +366,29 @@
 #define M_StatusIM1     (0x1 << S_StatusIM1)
 #define S_StatusIM0     8
 #define M_StatusIM0     (0x1 << S_StatusIM0)
-#define S_StatusKX      7                                               /* Enable access to extended    */
-                                                                        /* kernel addresses             */
-                                                                        /* (MIPS64 only) (R/W)          */
+#define S_StatusKX      7                                               /*  Enable access to extended   */
+                                                                        /*  kernel addresses            */
+                                                                        /*  (MIPS64 only) (R/W)         */
 #define M_StatusKX      (0x1 << S_StatusKX)
-#define S_StatusSX      6                                               /* Enable access to extended    */
-                                                                        /* supervisor addresses         */
-                                                                        /* (MIPS64 only) (R/W)          */
+#define S_StatusSX      6                                               /*  Enable access to extended   */
+                                                                        /*  supervisor addresses        */
+                                                                        /*  (MIPS64 only) (R/W)         */
 #define M_StatusSX      (0x1 << S_StatusSX)
-#define S_StatusUX      5                                               /* Enable access to extended    */
-                                                                        /* user addresses (MIPS64 only) */
+#define S_StatusUX      5                                               /*  Enable access to extended   */
+                                                                        /*  user addresses (MIPS64 only)*/
 #define M_StatusUX      (0x1 << S_StatusUX)
-#define S_StatusKSU     3                                               /* Two-bit current mode (R/W)   */
+#define S_StatusKSU     3                                               /*  Two-bit current mode (R/W)  */
 #define M_StatusKSU     (0x3 << S_StatusKSU)
-#define S_StatusUM      4                                               /* User mode if supervisor mode */
-                                                                        /* not implemented (R/W)        */
+#define S_StatusUM      4                                               /*  User mode if supervisor mode*/
+                                                                        /*  not implemented (R/W)       */
 #define M_StatusUM      (0x1 << S_StatusUM)
-#define S_StatusSM      3                                               /* Supervisor mode (R/W)        */
+#define S_StatusSM      3                                               /*  Supervisor mode (R/W)       */
 #define M_StatusSM      (0x1 << S_StatusSM)
-#define S_StatusERL     2                                               /* Denotes error level (R/W)    */
+#define S_StatusERL     2                                               /*  Denotes error level (R/W)   */
 #define M_StatusERL     (0x1 << S_StatusERL)
-#define S_StatusEXL     1                                               /* Denotes exception level (R/W)*/
+#define S_StatusEXL     1                                               /*  Denotes exception level(R/W)*/
 #define M_StatusEXL     (0x1 << S_StatusEXL)
-#define S_StatusIE      0                                               /* Enables interrupts (R/W)     */
+#define S_StatusIE      0                                               /*  Enables interrupts (R/W)    */
 #define M_StatusIE      (0x1 << S_StatusIE)
 
 /*********************************************************************************************************
@@ -391,52 +437,52 @@
 /*********************************************************************************************************
   Values in the ExcCode field
 *********************************************************************************************************/
-#define EX_INT          0                                               /* Interrupt                    */
+#define EX_INT          0                                               /*  Interrupt                   */
 #define EXC_INT         (EX_INT << S_CauseExcCode)
-#define EX_MOD          1                                               /* TLB modified                 */
+#define EX_MOD          1                                               /*  TLB modified                */
 #define EXC_MOD         (EX_MOD << S_CauseExcCode)
-#define EX_TLBL         2                                               /* TLB exception(load or ifetch)*/
+#define EX_TLBL         2                                               /*  TLB exception(load or ifetch*/
 #define EXC_TLBL        (EX_TLBL << S_CauseExcCode)
-#define EX_TLBS         3                                               /* TLB exception (store)        */
+#define EX_TLBS         3                                               /*  TLB exception (store)       */
 #define EXC_TLBS        (EX_TLBS << S_CauseExcCode)
-#define EX_ADEL         4                                               /* Address error(load or ifetch)*/
+#define EX_ADEL         4                                               /*  Address error(load or ifetch*/
 #define EXC_ADEL        (EX_ADEL << S_CauseExcCode)
-#define EX_ADES         5                                               /* Address error (store)        */
+#define EX_ADES         5                                               /*  Address error (store)       */
 #define EXC_ADES        (EX_ADES << S_CauseExcCode)
-#define EX_IBE          6                                               /* Instruction Bus Error        */
+#define EX_IBE          6                                               /*  Instruction Bus Error       */
 #define EXC_IBE         (EX_IBE << S_CauseExcCode)
-#define EX_DBE          7                                               /* Data Bus Error               */
+#define EX_DBE          7                                               /*  Data Bus Error              */
 #define EXC_DBE         (EX_DBE << S_CauseExcCode)
-#define EX_SYS          8                                               /* Syscall                      */
+#define EX_SYS          8                                               /*  Syscall                     */
 #define EXC_SYS         (EX_SYS << S_CauseExcCode)
 #define EX_SYSCALL      EX_SYS
 #define EXC_SYSCALL     EXC_SYS
-#define EX_BP           9                                               /* Breakpoint                   */
+#define EX_BP           9                                               /*  Breakpoint                  */
 #define EXC_BP          (EX_BP << S_CauseExcCode)
 #define EX_BREAK        EX_BP
 #define EXC_BREAK       EXC_BP
-#define EX_RI           10                                              /* Reserved instruction         */
+#define EX_RI           10                                              /*  Reserved instruction        */
 #define EXC_RI          (EX_RI << S_CauseExcCode)
-#define EX_CPU          11                                              /* CoProcessor Unusable         */
+#define EX_CPU          11                                              /*  CoProcessor Unusable        */
 #define EXC_CPU         (EX_CPU << S_CauseExcCode)
-#define EX_OV           12                                              /* OVerflow                     */
+#define EX_OV           12                                              /*  OVerflow                    */
 #define EXC_OV          (EX_OV << S_CauseExcCode)
-#define EX_TR           13                                              /* Trap instruction             */
+#define EX_TR           13                                              /*  Trap instruction            */
 #define EXC_TR          (EX_TR << S_CauseExcCode)
 #define EX_TRAP         EX_TR
 #define EXC_TRAP        EXC_TR
-#define EX_FPE          15                                              /* floating point exception     */
+#define EX_FPE          15                                              /*  floating point exception    */
 #define EXC_FPE         (EX_FPE << S_CauseExcCode)
-#define EX_C2E          18                                              /* COP2 exception               */
+#define EX_C2E          18                                              /*  COP2 exception              */
 #define EXC_C2E         (EX_C2E << S_CauseExcCode)
-#define EX_MDMX         22                                              /* MDMX exception               */
+#define EX_MDMX         22                                              /*  MDMX exception              */
 #define EXC_MDMX        (EX_MDMX << S_CauseExcCode)
-#define EX_WATCH        23                                              /* Watch exception              */
+#define EX_WATCH        23                                              /*  Watch exception             */
 #define EXC_WATCH       (EX_WATCH << S_CauseExcCode)
-#define EX_MCHECK       24                                              /* Machine check exception      */
+#define EX_MCHECK       24                                              /*  Machine check exception     */
 #define EXC_MCHECK      (EX_MCHECK << S_CauseExcCode)
-#define EX_CacheErr     30                                              /* Cache error caused re-entry  */
-                                                                        /* to Debug Mode                */
+#define EX_CacheErr     30                                              /*  Cache error caused re-entry */
+                                                                        /*  to Debug Mode               */
 #define EXC_CacheErr    (EX_CacheErr << S_CauseExcCode)
 
 /*********************************************************************************************************
@@ -450,23 +496,23 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 *********************************************************************************************************/
 
-#define S_ConfigMore    31                                              /* Additional config registers  */
-                                                                        /* present (R)                  */
+#define S_ConfigMore    31                                              /*  Additional config registers */
+                                                                        /*  present (R)                 */
 #define M_ConfigMore    (0x1 << S_ConfigMore)
-#define S_ConfigImpl    16                                              /* Implementation-specific      */
-                                                                        /* fields                       */
+#define S_ConfigImpl    16                                              /*  Implementation-specific     */
+                                                                        /*  fields                      */
 #define M_ConfigImpl    (0x7fff << S_ConfigImpl)
-#define S_ConfigBE      15                                              /* Denotes big-endian           */
-                                                                        /* operation (R)                */
+#define S_ConfigBE      15                                              /*  Denotes big-endian          */
+                                                                        /*  operation (R)               */
 #define M_ConfigBE      (0x1 << S_ConfigBE)
-#define S_ConfigAT      13                                              /* Architecture type (R)        */
+#define S_ConfigAT      13                                              /*  Architecture type (R)       */
 #define M_ConfigAT      (0x3 << S_ConfigAT)
-#define S_ConfigAR      10                                              /* Architecture revision (R)    */
+#define S_ConfigAR      10                                              /*  Architecture revision (R)   */
 #define M_ConfigAR      (0x7 << S_ConfigAR)
-#define S_ConfigMT      7                                               /* MMU Type (R)                 */
+#define S_ConfigMT      7                                               /*  MMU Type (R)                */
 #define M_ConfigMT      (0x7 << S_ConfigMT)
-#define S_ConfigK0      0                                               /* Kseg0 coherency              */
-                                                                        /* algorithm (R/W)              */
+#define S_ConfigK0      0                                               /*  Kseg0 coherency             */
+                                                                        /*  algorithm (R/W)             */
 #define M_ConfigK0      (0x7 << S_ConfigK0)
 
 /*********************************************************************************************************
@@ -621,6 +667,8 @@
 #define S_FIRConfig3D   19
 #define M_FIRConfig3D   (0x1 << S_FIRConfig3D)
 #define M_FIRConfigAll  (M_FIRConfigS | M_FIRConfigD | M_FIRConfigPS | M_FIRConfig3D)
+#define S_FIRConfigF64  22
+#define M_FIRConfigF64  (0x01 << S_FIRConfigF64)
 
 #define S_FIRImp        8
 #define M_FIRImp        (0xff << S_FIRImp)
@@ -825,33 +873,40 @@
 #define A_K1BASE        0xa0000000
 #define A_K2BASE        0xc0000000
 #define A_K3BASE        0xe0000000
-#define M_KMAPPED       0x40000000                                      /* KnSEG address is mapped      */
-                                                                        /* if bit is one                */
-/*********************************************************************************************************
-  Cache Instruction Operation Codes
-*********************************************************************************************************/
-
-#define K_CachePriI     0                                               /* Primary Icache               */
-#define K_CachePriD     1                                               /* Primary Dcache               */
-#define K_CachePriU     1                                               /* Unified primary              */
-#define K_CacheTerU     2                                               /* Unified Tertiary             */
-#define K_CacheSecU     3                                               /* Unified secondary            */
-
+#define M_KMAPPED       0x40000000                                      /*  KnSEG address is mapped     */
+                                                                        /*  if bit is one               */
 /*********************************************************************************************************
   Cache Operations available on all MIPS processors
 *********************************************************************************************************/
 
-#define INDEX_INVALIDATE_I      0x00
-#define INDEX_WRITEBACK_INV_D   0x01
-#define INDEX_LOAD_TAG_I        0x04
-#define INDEX_LOAD_TAG_D        0x05
-#define INDEX_STORE_TAG_I       0x08
-#define INDEX_STORE_TAG_D       0x09
-#define HIT_INVALIDATE_I        0x10
-#define HIT_INVALIDATE_D        0x11
-#define HIT_WRITEBACK_INV_D     0x15
-#define HIT_WRITEBACK_I         0x18
-#define HIT_WRITEBACK_D         0x19
+#define Index_Invalidate_I               0x0                            /*  0       0                   */
+#define Index_Writeback_Inv_D            0x1                            /*  0       1                   */
+#define Index_Invalidate_SI              0x2                            /*  0       2                   */
+#define Index_Writeback_Inv_SD           0x3                            /*  0       3                   */
+#define Index_Load_Tag_I                 0x4                            /*  1       0                   */
+#define Index_Load_Tag_D                 0x5                            /*  1       1                   */
+#define Index_Load_Tag_SI                0x6                            /*  1       2                   */
+#define Index_Load_Tag_SD                0x7                            /*  1       3                   */
+#define Index_Store_Tag_I                0x8                            /*  2       0                   */
+#define Index_Store_Tag_D                0x9                            /*  2       1                   */
+#define Index_Store_Tag_SI               0xA                            /*  2       2                   */
+#define Index_Store_Tag_SD               0xB                            /*  2       3                   */
+#define Create_Dirty_Exc_D               0xD                            /*  3       1                   */
+#define Create_Dirty_Exc_SD              0xF                            /*  3       3                   */
+#define Hit_Invalidate_I                 0x10                           /*  4       0                   */
+#define Hit_Invalidate_D                 0x11                           /*  4       1                   */
+#define Hit_Invalidate_SI                0x12                           /*  4       2                   */
+#define Hit_Invalidate_SD                0x13                           /*  4       3                   */
+#define Hit_Writeback_Inv_D              0x15                           /*  5       1                   */
+#define Hit_Writeback_Inv_SD             0x17                           /*  5       3                   */
+#define Fill_I                           0x14                           /*  5       0                   */
+#define Hit_Writeback_D                  0x19                           /*  6       1                   */
+#define Hit_Writeback_SD                 0x1B                           /*  6       3                   */
+#define Hit_Writeback_I                  0x18                           /*  6       0                   */
+#define Lock_I                           0x1C                           /*  7       0                   */
+#define Lock_D                           0x1D                           /*  7       1                   */
+#define Hit_Set_Virtual_SI               0x1E                           /*  7       2                   */
+#define Hit_Set_Virtual_SD               0x1F                           /*  7       3                   */
 
 #endif                                                                  /*  __SYLIXOS_KERNEL            */
 #endif                                                                  /*  __ARCH_DEF_H                */

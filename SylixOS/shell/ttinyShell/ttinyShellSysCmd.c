@@ -1897,14 +1897,14 @@ __inval_args:
 #endif                                                                  /*  LW_CFG_MONITOR_EN > 0       */
 /*********************************************************************************************************
 ** 函数名称: __tshellSysCmdLspci
-** 功能描述: 系统命令 "lspci"
+** 功能描述: 系统命令 "pcis"
 ** 输　入  : iArgC         参数个数
 **           ppcArgV       参数表
 ** 输　出  : 0
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-static INT  __tshellSysCmdLspci (INT  iArgC, PCHAR  ppcArgV[])
+static INT  __tshellSysCmdPcis (INT  iArgC, PCHAR  ppcArgV[])
 {
     INT     iFd;
     CHAR    cBuffer[512];
@@ -2300,8 +2300,8 @@ VOID  __tshellSysCmdInit (VOID)
                                     "            >  0 : whose process ID is equal to the value of pid.\n");
 #endif                                                                  /*  LW_CFG_MONITOR_EN > 0       */
                                     
-    API_TShellKeywordAdd("lspci", __tshellSysCmdLspci);
-    API_TShellHelpAdd("lspci", "show PCI Bus message.\n");
+    API_TShellKeywordAdd("pcis", __tshellSysCmdPcis);
+    API_TShellHelpAdd("pcis", "show PCI Bus message.\n");
     
 #if (LW_CFG_SMP_EN > 0) && (LW_CFG_POSIX_EN > 0)
     API_TShellKeywordAdd("affinity", __tshellSysCmdAffinity);

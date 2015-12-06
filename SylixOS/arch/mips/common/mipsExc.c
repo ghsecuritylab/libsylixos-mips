@@ -95,7 +95,7 @@ VOID  archCacheErrorHandle (addr_t  ulRetAddr)
     uiRegVal = mipsCp0ConfigRead();
     mipsCp0ConfigWrite((uiRegVal & ~M_ConfigK0) | MIPS_UNCACHED);
 
-    _PrintFormat("%s\r\n", "Cache error exception:");
+    _PrintFormat("Cache error exception:\r\n");
     _PrintFormat("cp0_errorepc == %lx\r\n", uiFiled, mipsCp0ERRPCRead());
 
     uiRegVal = mipsCp0CacheErrRead();
@@ -104,16 +104,16 @@ VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 
     _PrintFormat("Decoded cp0_cacheerr: %s cache fault in %s reference.\r\n",
                  (uiRegVal & M_CcaheLevel) ? "secondary" : "primary",
-                 (uiRegVal & M_CcaheType) ? "data" : "insn");
+                 (uiRegVal & M_CcaheType)  ? "data"      : "insn");
 
     _PrintFormat("Error bits: %s%s%s%s%s%s%s\r\n",
                  (uiRegVal & M_CcaheData) ? "ED " : "",
-                 (uiRegVal & M_CcaheTag) ? "ET " : "",
-                 (uiRegVal & M_CcaheECC) ? "EE " : "",
+                 (uiRegVal & M_CcaheTag)  ? "ET " : "",
+                 (uiRegVal & M_CcaheECC)  ? "EE " : "",
                  (uiRegVal & M_CcaheBoth) ? "EB " : "",
-                 (uiRegVal & M_CcaheEI) ? "EI " : "",
-                 (uiRegVal & M_CcaheE1) ? "E1 " : "",
-                 (uiRegVal & M_CcaheE0) ? "E0 " : "");
+                 (uiRegVal & M_CcaheEI)   ? "EI " : "",
+                 (uiRegVal & M_CcaheE1)   ? "E1 " : "",
+                 (uiRegVal & M_CcaheE0)   ? "E0 " : "");
 
     _PrintFormat("IDX: 0x%08x\r\n", uiRegVal & (M_CcaheE0 - 1));
 }
@@ -140,32 +140,35 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     LW_TCB_GET_CUR(ptcbCur);
 
     switch (uiExcCode) {
+    case EX_INT:                                                        /*  Interrupt                   */
+        bspIntHandle();
+        break;
 
-    case EX_MOD:                                                        /* TLB modified                 */
+    case EX_MOD:                                                        /*  TLB modified                */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_WRITE, ptcbCur);
         break;
 
-    case EX_TLBL:                                                       /* TLB exception(load or ifetch)*/
-    case EX_TLBS:                                                       /* TLB exception (store)        */
+    case EX_TLBL:                                                       /*  TLB exc(load or ifetch)     */
+    case EX_TLBS:                                                       /*  TLB exception (store)       */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_MAP, ptcbCur);
         break;
 
-    case EX_ADEL:                                                       /* Address error(load or ifetch)*/
-    case EX_ADES:                                                       /* Address error (store)        */
+    case EX_ADEL:                                                       /*  Address err(load or ifetch) */
+    case EX_ADES:                                                       /*  Address error (store)       */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
         break;
 
-    case EX_IBE:                                                        /* Instruction Bus Error        */
-    case EX_DBE:                                                        /* Data Bus Error               */
+    case EX_IBE:                                                        /*  Instruction Bus Error       */
+    case EX_DBE:                                                        /*  Data Bus Error              */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BUS, ptcbCur);
         break;
 
-    case EX_SYS:                                                        /* Syscall                      */
+    case EX_SYS:                                                        /*  Syscall                     */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_SYS, ptcbCur);
         break;
 
-    case EX_BP:                                                         /* Breakpoint                   */
-    case EX_TR:                                                         /* Trap instruction             */
+    case EX_BP:                                                         /*  Breakpoint                  */
+    case EX_TR:                                                         /*  Trap instruction            */
 #if LW_CFG_GDB_EN > 0
         uiBpType = archDbgTrapType(ulAbortAddr, LW_NULL);               /*  断点指令探测                */
         if (uiBpType) {
@@ -177,15 +180,15 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BREAK, ptcbCur);
         break;
 
-    case EX_RI:                                                         /* Reserved instruction         */
+    case EX_RI:                                                         /*  Reserved instruction        */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
         break;
 
-    case EX_FPE:                                                        /* floating point exception     */
+    case EX_FPE:                                                        /*  floating point exception    */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_FPE, ptcbCur);
         break;
 
-    case EX_CPU:                                                        /* CoProcessor Unusable         */
+    case EX_CPU:                                                        /*  CoProcessor Unusable        */
 #if LW_CFG_CPU_FPU_EN > 0
         if (archFpuUndHandle(ptcbCur) == ERROR_NONE) {                  /*  进行 FPU 指令探测           */
             break;
@@ -194,13 +197,13 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
         break;
 
-    case EX_OV:                                                         /* OVerflow                     */
-    case EX_C2E:                                                        /* COP2 exception               */
-    case EX_MDMX:                                                       /* MDMX exception               */
-    case EX_WATCH:                                                      /* Watch exception              */
-    case EX_MCHECK:                                                     /* Machine check exception      */
-    case EX_CacheErr:                                                   /* Cache error caused re-entry  */
-                                                                        /* to Debug Mode                */
+    case EX_OV:                                                         /*  OVerflow                    */
+    case EX_C2E:                                                        /*  COP2 exception              */
+    case EX_MDMX:                                                       /*  MDMX exception              */
+    case EX_WATCH:                                                      /*  Watch exception             */
+    case EX_MCHECK:                                                     /*  Machine check exception     */
+    case EX_CacheErr:                                                   /*  Cache error caused re-entry */
+                                                                        /*  to Debug Mode               */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
         break;
 

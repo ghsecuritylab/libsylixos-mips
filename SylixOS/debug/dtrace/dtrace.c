@@ -24,6 +24,7 @@
 2014.08.10  API_DtraceThreadStepSet() 首先对单步断点地址产生一次页面中断.
 2014.09.02  增加 API_DtraceDelBreakInfo() 接口, 调试器可删除断点信息.
 2015.11.17  修正 SMP 高并发度引起的调试错误.
+2015.12.01  加入浮点运算器上下文获取与设置操作.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -569,6 +570,100 @@ ULONG  API_DtraceSetRegs (PVOID  pvDtrace, LW_OBJECT_HANDLE  ulThread, const ARC
     ptcb = _K_ptcbTCBIdTable[usIndex];
     
     archTaskRegsSet(ptcb->TCB_pstkStackNow, pregctx);
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_DtraceGetFpuRegs
+** 功能描述: 获取指定调试线程浮点寄存器上下文
+** 输　入  : pvDtrace      dtrace 节点
+**           ulThread      线程句柄
+**           pfpuctx       浮点寄存器表
+** 输　出  : ERROR
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+ULONG  API_DtraceGetFpuRegs (PVOID  pvDtrace, LW_OBJECT_HANDLE  ulThread, ARCH_FPU_CTX  *pfpuctx)
+{
+    REGISTER UINT16         usIndex;
+    REGISTER PLW_CLASS_TCB  ptcb;
+    
+    PLW_DTRACE  pdtrace = (PLW_DTRACE)pvDtrace;
+    
+    if (!pdtrace || !pfpuctx) {
+        _ErrorHandle(EINVAL);
+        return  (EINVAL);
+    }
+    
+    usIndex = _ObjectGetIndex(ulThread);
+    
+    if (!_ObjectClassOK(ulThread, _OBJECT_THREAD)) {                    /*  检查 ID 类型有效性          */
+        return  (ERROR_KERNEL_HANDLE_NULL);
+    }
+    
+    if (_Thread_Index_Invalid(usIndex)) {                               /*  检查线程有效性              */
+        return  (ERROR_THREAD_NULL);
+    }
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    if (_Thread_Invalid(usIndex)) {
+        __KERNEL_EXIT();                                                /*  退出内核                    */
+        return  (ERROR_THREAD_NULL);
+    }
+    
+    ptcb = _K_ptcbTCBIdTable[usIndex];
+    
+    *pfpuctx = ptcb->TCB_fpuctxContext.FPUCTX_fpuctxContext;
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_DtraceSetFpuRegs
+** 功能描述: 设置指定调试线程浮点寄存器上下文
+** 输　入  : pvDtrace      dtrace 节点
+**           ulThread      线程句柄
+**           pfpuctx       浮点寄存器表
+** 输　出  : ERROR
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+ULONG  API_DtraceSetFpuRegs (PVOID  pvDtrace, LW_OBJECT_HANDLE  ulThread, const ARCH_FPU_CTX  *pfpuctx)
+{
+    REGISTER UINT16         usIndex;
+    REGISTER PLW_CLASS_TCB  ptcb;
+    
+    PLW_DTRACE  pdtrace = (PLW_DTRACE)pvDtrace;
+    
+    if (!pdtrace || !pfpuctx) {
+        _ErrorHandle(EINVAL);
+        return  (EINVAL);
+    }
+    
+    usIndex = _ObjectGetIndex(ulThread);
+    
+    if (!_ObjectClassOK(ulThread, _OBJECT_THREAD)) {                    /*  检查 ID 类型有效性          */
+        return  (ERROR_KERNEL_HANDLE_NULL);
+    }
+    
+    if (_Thread_Index_Invalid(usIndex)) {                               /*  检查线程有效性              */
+        return  (ERROR_THREAD_NULL);
+    }
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    if (_Thread_Invalid(usIndex)) {
+        __KERNEL_EXIT();                                                /*  退出内核                    */
+        return  (ERROR_THREAD_NULL);
+    }
+    
+    ptcb = _K_ptcbTCBIdTable[usIndex];
+    
+    ptcb->TCB_fpuctxContext.FPUCTX_fpuctxContext = *pfpuctx;
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     return  (ERROR_NONE);

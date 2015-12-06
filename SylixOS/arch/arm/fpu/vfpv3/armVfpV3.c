@@ -57,8 +57,8 @@ static VOID  armVfpV3CtxShow (INT iFd, PVOID pvFpuCtx)
 {
     INT i;
     
-    LW_FPU_CONTEXT          *pfpuCtx    = (LW_FPU_CONTEXT *)pvFpuCtx;
-    ARCH_CPU_FPU_CONTEXT    *pcpufpuCtx = &pfpuCtx->FPUCTX_fpuctxContext;
+    LW_FPU_CONTEXT  *pfpuCtx    = (LW_FPU_CONTEXT *)pvFpuCtx;
+    ARCH_FPU_CTX    *pcpufpuCtx = &pfpuCtx->FPUCTX_fpuctxContext;
     
     fdprintf(iFd, "FPSID   = 0x%08x  ", pcpufpuCtx->FPUCTX_uiFpsid);
     fdprintf(iFd, "FPSCR   = 0x%08x\n", pcpufpuCtx->FPUCTX_uiFpscr);

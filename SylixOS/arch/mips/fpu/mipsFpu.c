@@ -26,6 +26,9 @@
 #if LW_CFG_CPU_FPU_EN > 0
 #include "mipsFpu.h"
 #include "fpu32/mipsVfp32.h"
+#include "fpu64/mipsVfp64.h"
+#include "vfpnone/mipsVfpNone.h"
+#include "arch/mips/common/cp0/mipsCp0.h"
 /*********************************************************************************************************
   全局变量
 *********************************************************************************************************/
@@ -42,15 +45,28 @@ static PMIPS_FPU_OP     _G_pfpuop;
 *********************************************************************************************************/
 VOID  archFpuPrimaryInit (CPCHAR  pcMachineName, CPCHAR  pcFpuName)
 {
+    UINT32  uiConfig1;
+
     _DebugFormat(__LOGMESSAGE_LEVEL, "%s %s FPU pri-core initialization.\r\n",
                  pcMachineName, pcFpuName);
 
-    if (lib_strcmp(pcFpuName, MIPS_FPU_VFP32) == 0) {                   /*  选择 VFP 架构               */
-        _G_pfpuop = mipsVfp32PrimaryInit(pcMachineName, pcFpuName);
+    uiConfig1 = mipsCp0Config1Read();
+    if (uiConfig1 & M_Config1FP) {
+        if (lib_strcmp(pcFpuName, MIPS_FPU_NONE) == 0) {                /*  选择 VFP 架构               */
+            _G_pfpuop = mipsVfpNonePrimaryInit(pcMachineName, pcFpuName);
 
+        } else if (lib_strcmp(pcFpuName, MIPS_FPU_VFP32) == 0) {
+            _G_pfpuop = mipsVfp32PrimaryInit(pcMachineName, pcFpuName);
+
+        } else if (lib_strcmp(pcFpuName, MIPS_FPU_VFP64) == 0) {
+            _G_pfpuop = mipsVfp64PrimaryInit(pcMachineName, pcFpuName);
+
+        } else {
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown fpu name.\r\n");
+            return;
+        }
     } else {
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown fpu name.\r\n");
-        return;
+        _G_pfpuop = mipsVfpNonePrimaryInit(pcMachineName, MIPS_FPU_NONE);
     }
 
     if (_G_pfpuop == LW_NULL) {
@@ -80,18 +96,29 @@ VOID  archFpuPrimaryInit (CPCHAR  pcMachineName, CPCHAR  pcFpuName)
 
 VOID  archFpuSecondaryInit (CPCHAR  pcMachineName, CPCHAR  pcFpuName)
 {
+    UINT32  uiConfig1;
+
     _DebugFormat(__LOGMESSAGE_LEVEL, "%s %s FPU sec-core initialization.\r\n",
                  pcMachineName, pcFpuName);
 
-    if (lib_strcmp(pcFpuName, MIPS_FPU_VFP32) == 0) {                   /*  选择 VFP 架构               */
-        mipsVfp32SecondaryInit(pcMachineName, pcFpuName);
+    uiConfig1 = mipsCp0Config1Read();
+    if (uiConfig1 & M_Config1FP) {
+        if (lib_strcmp(pcFpuName, MIPS_FPU_NONE) == 0) {                /*  选择 VFP 架构               */
+            mipsVfpNoneSecondaryInit(pcMachineName, pcFpuName);
 
+        } else if (lib_strcmp(pcFpuName, MIPS_FPU_VFP32) == 0) {
+            mipsVfp32SecondaryInit(pcMachineName, pcFpuName);
+
+        } else if (lib_strcmp(pcFpuName, MIPS_FPU_VFP64) == 0) {
+            mipsVfp64SecondaryInit(pcMachineName, pcFpuName);
+
+        } else {
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown fpu name.\r\n");
+            return;
+        }
     } else {
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "unknown fpu name.\r\n");
-        return;
+        mipsVfpNoneSecondaryInit(pcMachineName, MIPS_FPU_NONE);
     }
-
-    return;
 }
 
 #endif                                                                  /*  LW_CFG_SMP_EN               */
@@ -182,13 +209,17 @@ INT  archFpuUndHandle (PLW_CLASS_TCB  ptcbCur)
 {
     ARCH_REG_CTX  *pregctx;
     ARCH_REG_T     regSp;
+    UINT32         uiConfig1;
 
     if (MIPS_VFP_ISENABLE(_G_pfpuop)) {                                 /*  如果当前上下文 FPU 使能     */
         return  (PX_ERROR);                                             /*  此未定义指令与 FPU 无关     */
     }
 
-    pregctx = archTaskRegsGet(ptcbCur->TCB_pstkStackNow, &regSp);
-    pregctx->REG_uiCP0Status |= M_StatusCU1;
+    uiConfig1 = mipsCp0Config1Read();
+    if (uiConfig1 & M_Config1FP) {
+        pregctx = archTaskRegsGet(ptcbCur->TCB_pstkStackNow, &regSp);
+        pregctx->REG_uiCP0Status |= M_StatusCU1;
+    }
 
     ptcbCur->TCB_ulOption |= LW_OPTION_THREAD_USED_FP;
     MIPS_VFP_ENABLE(_G_pfpuop);                                         /*  使能 FPU                    */

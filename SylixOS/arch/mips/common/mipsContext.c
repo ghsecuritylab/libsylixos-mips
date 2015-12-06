@@ -46,7 +46,7 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 
     uiCP0Status  = mipsCp0StatusRead();
 
-    uiCP0Status |= M_StatusIM6 |
+    uiCP0Status |= M_StatusIM6 |                                        /*  默认不使能内部定时器中断    */
                    M_StatusIM5 |
                    M_StatusIM4 |
                    M_StatusIM3 |
@@ -65,7 +65,10 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     pfpctx->FP_uiFP = (ARCH_REG_T)LW_NULL;
     pfpctx->FP_uiRA = (ARCH_REG_T)LW_NULL;
 
-    pregctx->REG_uiCP0Status = uiCP0Status;
+    pregctx->REG_uiCP0Status = (ARCH_REG_T)uiCP0Status;
+    pregctx->REG_uiCP0Cause  = (ARCH_REG_T)0x0;
+    pregctx->REG_uiCP0DataLO = (ARCH_REG_T)0x0;
+    pregctx->REG_uiCP0DataHI = (ARCH_REG_T)0x0;
 
     pregctx->REG_uiEPC = (ARCH_REG_T)pfuncTask;
 
@@ -113,7 +116,7 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
 {
     ARCH_REG_CTX      *pregctxDest = (ARCH_REG_CTX *)pstkDest;
     ARCH_REG_CTX      *pregctxSrc  = (ARCH_REG_CTX *)pstkSrc;
-    ARCH_FP_CTX       *pfpctx      = (ARCH_FP_CTX *)((PCHAR)pregctxDest + sizeof(ARCH_REG_CTX));
+    ARCH_FP_CTX       *pfpctx      = (ARCH_FP_CTX  *)((PCHAR)pregctxDest + sizeof(ARCH_REG_CTX));
 
     /*
      *  在 ARCH_FP_CTX 区域内, 模拟了一次
@@ -178,9 +181,11 @@ VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 
     fdprintf(iFd, "\n");
 
+    fdprintf(iFd, "SP  = 0x%08x  ", (ARCH_REG_T)pstkTop);
+    fdprintf(iFd, "FP  = 0x%08x\n", pstkTop[STK_OFFSET_FP / sizeof(ARCH_REG_T)]);
+
     fdprintf(iFd, "RA  = 0x%08x  ", pstkTop[STK_OFFSET_RA / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "FP  = 0x%08x  ", pstkTop[STK_OFFSET_FP / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "GP  = 0x%08x\n", pstkTop[STK_OFFSET_GP / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "EPC = 0x%08x\n", pstkTop[STK_OFFSET_EPC / sizeof(ARCH_REG_T)]);
 
     fdprintf(iFd, "S7  = 0x%08x  ", pstkTop[STK_OFFSET_S7 / sizeof(ARCH_REG_T)]);
     fdprintf(iFd, "S6  = 0x%08x\n", pstkTop[STK_OFFSET_S6 / sizeof(ARCH_REG_T)]);
@@ -219,42 +224,40 @@ VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
     fdprintf(iFd, "V0  = 0x%08x\n", pstkTop[STK_OFFSET_V0 / sizeof(ARCH_REG_T)]);
 
     fdprintf(iFd, "AT  = 0x%08x  ", pstkTop[STK_OFFSET_AT / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "EPC = 0x%08x  ", pstkTop[STK_OFFSET_EPC / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "GP  = 0x%08x\n", pstkTop[STK_OFFSET_GP / sizeof(ARCH_REG_T)]);
 
-    fdprintf(iFd, "SP  = 0x%08x\n", (ARCH_REG_T)pstkTop);
     uiCP0Status = pstkTop[STK_OFFSET_SR / sizeof(ARCH_REG_T)];
-    fdprintf(iFd, "SR  = 0x%08x\n", uiCP0Status);
     fdprintf(iFd, "CP0 Status Register:\n");
-    fdprintf(iFd, "CU3 = %4d  ", (uiCP0Status & M_StatusCU3) >> S_StatusCU3);
-    fdprintf(iFd, "CU2 = %4d\n", (uiCP0Status & M_StatusCU2) >> S_StatusCU2);
-    fdprintf(iFd, "CU1 = %4d  ", (uiCP0Status & M_StatusCU1) >> S_StatusCU1);
-    fdprintf(iFd, "CU0 = %4d\n", (uiCP0Status & M_StatusCU0) >> S_StatusCU0);
-    fdprintf(iFd, "RP  = %4d  ", (uiCP0Status & M_StatusRP)  >> S_StatusRP);
-    fdprintf(iFd, "FR  = %4d\n", (uiCP0Status & M_StatusFR)  >> S_StatusFR);
-    fdprintf(iFd, "RE  = %4d  ", (uiCP0Status & M_StatusRE)  >> S_StatusRE);
-    fdprintf(iFd, "MX  = %4d\n", (uiCP0Status & M_StatusMX)  >> S_StatusMX);
-    fdprintf(iFd, "PX  = %4d  ", (uiCP0Status & M_StatusPX)  >> S_StatusPX);
-    fdprintf(iFd, "BEV = %4d\n", (uiCP0Status & M_StatusBEV) >> S_StatusBEV);
-    fdprintf(iFd, "TS  = %4d  ", (uiCP0Status & M_StatusTS)  >> S_StatusTS);
-    fdprintf(iFd, "SR  = %4d\n", (uiCP0Status & M_StatusSR)  >> S_StatusSR);
-    fdprintf(iFd, "NMI = %4d  ", (uiCP0Status & M_StatusNMI) >> S_StatusNMI);
-    fdprintf(iFd, "IM7 = %4d\n", (uiCP0Status & M_StatusIM7) >> S_StatusIM7);
-    fdprintf(iFd, "IM6 = %4d  ", (uiCP0Status & M_StatusIM6) >> S_StatusIM6);
-    fdprintf(iFd, "IM5 = %4d\n", (uiCP0Status & M_StatusIM5) >> S_StatusIM5);
-    fdprintf(iFd, "IM4 = %4d  ", (uiCP0Status & M_StatusIM4) >> S_StatusIM4);
-    fdprintf(iFd, "IM3 = %4d\n", (uiCP0Status & M_StatusIM3) >> S_StatusIM3);
-    fdprintf(iFd, "IM2 = %4d  ", (uiCP0Status & M_StatusIM2) >> S_StatusIM2);
-    fdprintf(iFd, "IM1 = %4d\n", (uiCP0Status & M_StatusIM1) >> S_StatusIM1);
-    fdprintf(iFd, "IM0 = %4d  ", (uiCP0Status & M_StatusIM0) >> S_StatusIM0);
-    fdprintf(iFd, "KX  = %4d\n", (uiCP0Status & M_StatusKX)  >> S_StatusKX);
-    fdprintf(iFd, "SX  = %4d  ", (uiCP0Status & M_StatusSX)  >> S_StatusSX);
-    fdprintf(iFd, "UX  = %4d\n", (uiCP0Status & M_StatusUX)  >> S_StatusUX);
-    fdprintf(iFd, "KSU = %4d  ", (uiCP0Status & M_StatusKSU) >> S_StatusKSU);
-    fdprintf(iFd, "UM  = %4d\n", (uiCP0Status & M_StatusUM)  >> S_StatusUM);
-    fdprintf(iFd, "SM  = %4d  ", (uiCP0Status & M_StatusSM)  >> S_StatusSM);
-    fdprintf(iFd, "ERL = %4d\n", (uiCP0Status & M_StatusERL) >> S_StatusERL);
-    fdprintf(iFd, "EXL = %4d  ", (uiCP0Status & M_StatusEXL) >> S_StatusEXL);
-    fdprintf(iFd, "IE  = %4d\n", (uiCP0Status & M_StatusIE)  >> S_StatusIE);
+    fdprintf(iFd, "CU3 = %d  ", (uiCP0Status & M_StatusCU3) >> S_StatusCU3);
+    fdprintf(iFd, "CU2 = %d\n", (uiCP0Status & M_StatusCU2) >> S_StatusCU2);
+    fdprintf(iFd, "CU1 = %d  ", (uiCP0Status & M_StatusCU1) >> S_StatusCU1);
+    fdprintf(iFd, "CU0 = %d\n", (uiCP0Status & M_StatusCU0) >> S_StatusCU0);
+    fdprintf(iFd, "RP  = %d  ", (uiCP0Status & M_StatusRP)  >> S_StatusRP);
+    fdprintf(iFd, "FR  = %d\n", (uiCP0Status & M_StatusFR)  >> S_StatusFR);
+    fdprintf(iFd, "RE  = %d  ", (uiCP0Status & M_StatusRE)  >> S_StatusRE);
+    fdprintf(iFd, "MX  = %d\n", (uiCP0Status & M_StatusMX)  >> S_StatusMX);
+    fdprintf(iFd, "PX  = %d  ", (uiCP0Status & M_StatusPX)  >> S_StatusPX);
+    fdprintf(iFd, "BEV = %d\n", (uiCP0Status & M_StatusBEV) >> S_StatusBEV);
+    fdprintf(iFd, "TS  = %d  ", (uiCP0Status & M_StatusTS)  >> S_StatusTS);
+    fdprintf(iFd, "SR  = %d\n", (uiCP0Status & M_StatusSR)  >> S_StatusSR);
+    fdprintf(iFd, "NMI = %d  ", (uiCP0Status & M_StatusNMI) >> S_StatusNMI);
+    fdprintf(iFd, "IM7 = %d\n", (uiCP0Status & M_StatusIM7) >> S_StatusIM7);
+    fdprintf(iFd, "IM6 = %d  ", (uiCP0Status & M_StatusIM6) >> S_StatusIM6);
+    fdprintf(iFd, "IM5 = %d\n", (uiCP0Status & M_StatusIM5) >> S_StatusIM5);
+    fdprintf(iFd, "IM4 = %d  ", (uiCP0Status & M_StatusIM4) >> S_StatusIM4);
+    fdprintf(iFd, "IM3 = %d\n", (uiCP0Status & M_StatusIM3) >> S_StatusIM3);
+    fdprintf(iFd, "IM2 = %d  ", (uiCP0Status & M_StatusIM2) >> S_StatusIM2);
+    fdprintf(iFd, "IM1 = %d\n", (uiCP0Status & M_StatusIM1) >> S_StatusIM1);
+    fdprintf(iFd, "IM0 = %d  ", (uiCP0Status & M_StatusIM0) >> S_StatusIM0);
+    fdprintf(iFd, "KX  = %d\n", (uiCP0Status & M_StatusKX)  >> S_StatusKX);
+    fdprintf(iFd, "SX  = %d  ", (uiCP0Status & M_StatusSX)  >> S_StatusSX);
+    fdprintf(iFd, "UX  = %d\n", (uiCP0Status & M_StatusUX)  >> S_StatusUX);
+    fdprintf(iFd, "KSU = %d  ", (uiCP0Status & M_StatusKSU) >> S_StatusKSU);
+    fdprintf(iFd, "UM  = %d\n", (uiCP0Status & M_StatusUM)  >> S_StatusUM);
+    fdprintf(iFd, "SM  = %d  ", (uiCP0Status & M_StatusSM)  >> S_StatusSM);
+    fdprintf(iFd, "ERL = %d\n", (uiCP0Status & M_StatusERL) >> S_StatusERL);
+    fdprintf(iFd, "EXL = %d  ", (uiCP0Status & M_StatusEXL) >> S_StatusEXL);
+    fdprintf(iFd, "IE  = %d\n", (uiCP0Status & M_StatusIE)  >> S_StatusIE);
 }
 
 #endif                                                                  /*  LW_CFG_DEVICE_EN > 0        */

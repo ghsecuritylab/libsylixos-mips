@@ -157,19 +157,19 @@ name:
 #define ERET            eret
 
 #define MTC0(src, dst)                  \
-    mtc0    src, dst;                   \
+    mtc0    src , dst;                  \
     ehb
 
 #define MFC0(dst, src)                  \
-    mfc0    dst, src;                   \
+    mfc0    dst , src;                  \
     ehb
 
 #define CTC1(src, dst)                  \
-    ctc1    src, dst;                   \
+    ctc1    src , dst;                  \
     ehb
 
 #define CFC1(dst, src)                  \
-    cfc1    dst, src;                   \
+    cfc1    dst , src;                  \
     ehb
 
 #endif                                                                  /*  __ASSEMBLY__                */
@@ -178,4 +178,3 @@ name:
 /*********************************************************************************************************
   END
 *********************************************************************************************************/
-

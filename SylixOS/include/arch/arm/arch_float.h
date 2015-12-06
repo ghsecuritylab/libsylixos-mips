@@ -50,7 +50,7 @@
  	| fpinst    |    + 0x0C
  	| fpexc     |    + 0x08
  	| fpscr     |    + 0x04
- 	| fpsid     | <-- cpu_fpu_context ( = r0 )
+ 	| fpsid     | <-- arch_fpu_ctx ( = r0 )
  	+-----------+
  	
   VFPv3: (dreg is s)
@@ -66,11 +66,11 @@
  	| fpinst    |    + 0x0C
  	| fpexc     |    + 0x08
  	| fpscr     |    + 0x04
- 	| fpsid     | <-- cpu_fpu_context ( = r0 )
+ 	| fpsid     | <-- arch_fpu_ctx ( = r0 )
  	+-----------+
 *********************************************************************************************************/
 
-typedef struct arch_cpu_fpu_context {                                   /* VFPv2/VFPv3 上下文           */
+typedef struct arch_fpu_ctx {                                           /* VFPv2/VFPv3 上下文           */
     UINT32              FPUCTX_uiFpsid;                                 /* system ID register           */
     UINT32              FPUCTX_uiFpscr;                                 /* status and control register  */
     UINT32              FPUCTX_uiFpexc;                                 /* exception register           */
@@ -80,7 +80,7 @@ typedef struct arch_cpu_fpu_context {                                   /* VFPv2
     UINT32              FPUCTX_uiMfvfr1;                                /* media and VFP feature Reg    */
     UINT32              FPUCTX_uiDreg[32 * 2];                          /* general purpose Reg  D0 ~ D32*/
                                                                         /* equ -> S0 ~ S64              */
-} ARCH_CPU_FPU_CONTEXT;
+} ARCH_FPU_CTX;
 
 /*********************************************************************************************************
   float 格式 (使用 union 类型作为中间转换, 避免 GCC 3.x.x strict aliasing warning)

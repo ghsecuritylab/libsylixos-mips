@@ -82,7 +82,7 @@ __attribute__((weak)) char              __sylixos_version[] = __SYLIXOS_VERSTR;
                                         "\n [[[[    [[[[   [[[[[[  [[[[[[  [[  [[   [[[[    [[[[ "    \
                                         "\n           [[                                         "    \
                                         "\n          [[    KERNEL: Long-Wing(C) " __SYLIXOS_VERSTR "" \
-                                        "\n       [[[[   COPYRIGHT ACONINF Co. Ltd. 2006 - 2015\n\n"
+                                        "\n       [[[[   COPYRIGHT ACOINFO Co. Ltd. 2006 - 2015\n\n"
                                         
 /*********************************************************************************************************
   系统配置与裁减头文件

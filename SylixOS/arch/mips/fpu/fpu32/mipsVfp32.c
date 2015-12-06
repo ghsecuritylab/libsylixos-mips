@@ -34,6 +34,7 @@ static INT          _G_iVfp32DNum;
 /*********************************************************************************************************
   ÊµÏÖº¯Êý
 *********************************************************************************************************/
+extern UINT32   mipsVfp32GetFIR(VOID);
 extern VOID     mipsVfp32Enable(VOID);
 extern VOID     mipsVfp32Disable(VOID);
 extern BOOL     mipsVfp32IsEnable(VOID);
@@ -52,10 +53,9 @@ extern VOID     mipsVfp32Restore32(PVOID pvFpuCtx);
 *********************************************************************************************************/
 static VOID  mipsVfp32CtxShow (INT iFd, PVOID pvFpuCtx)
 {
-    INT   i;
-
-    LW_FPU_CONTEXT          *pfpuCtx    = (LW_FPU_CONTEXT *)pvFpuCtx;
-    ARCH_CPU_FPU_CONTEXT    *pcpufpuCtx = &pfpuCtx->FPUCTX_fpuctxContext;
+    LW_FPU_CONTEXT *pfpuCtx    = (LW_FPU_CONTEXT *)pvFpuCtx;
+    ARCH_FPU_CTX   *pcpufpuCtx = &pfpuCtx->FPUCTX_fpuctxContext;
+    INT             i;
 
     fdprintf(iFd, "FPCSR   = 0x%08x\n", pcpufpuCtx->FPUCTX_uiFpcsr);
 
@@ -75,7 +75,7 @@ static VOID  mipsVfp32CtxShow (INT iFd, PVOID pvFpuCtx)
 *********************************************************************************************************/
 PMIPS_FPU_OP  mipsVfp32PrimaryInit (CPCHAR  pcMachineName, CPCHAR  pcFpuName)
 {
-    if (lib_strcmp(pcFpuName, MIPS_FPU_VFP32) == 0) {
+    if (mipsVfp32GetFIR() == 0) {
         _G_iVfp32DNum = 32;
         _G_fpuopVfp32.MFPU_pfuncSave    = mipsVfp32Save16;
         _G_fpuopVfp32.MFPU_pfuncRestore = mipsVfp32Restore16;

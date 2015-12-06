@@ -199,7 +199,6 @@
 #define Lw_Semaphore_Send                       API_SemaphorePost
 
 #define Lw_Semaphore_Flush                      API_SemaphoreFlush
-
 #define Lw_Semaphore_Delete                     API_SemaphoreDelete
 
 #define Lw_Semaphore_PostBPend                  API_SemaphorePostBPend
@@ -350,29 +349,6 @@
 #define Lw_Event_Info                           API_EventSetStatus
 
 #define Lw_Event_GetName                        API_EventSetGetName
-
-/*********************************************************************************************************
-  TIMER
-*********************************************************************************************************/
-
-#define Lw_Timer_Create                         API_TimerCreate
-#define Lw_Timer_Delete                         API_TimerDelete
-
-#define Lw_Timer_Start                          API_TimerStart
-#define Lw_Timer_StartEx                        API_TimerStartEx
-#define Lw_Timer_Cancel                         API_TimerCancel
-
-#define Lw_Timer_Reset                          API_TimerReset
-#define Lw_Timer_Restart                        API_TimerReset
-
-#define Lw_Timer_Status                         API_TimerStatus
-#define Lw_Timer_Info                           API_TimerStatus
-#define Lw_Timer_StatusEx                       API_TimerStatusEx
-#define Lw_Timer_InfoEx                         API_TimerStatusEx
-
-#define Lw_Timer_GetName                        API_TimerGetName
-#define Lw_Timer_HTicks                         API_TimerHTicks
-#define Lw_Timer_HGetFrequency                  API_TimerHGetFrequency
 
 /*********************************************************************************************************
   TIME

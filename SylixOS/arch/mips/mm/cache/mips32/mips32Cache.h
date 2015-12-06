@@ -12,24 +12,24 @@
 **
 ** 文   件   名: mips32Cache.h
 **
-** 创   建   人: Ryan.Xin (信金龙)
+** 创   建   人: Jiao.JinXing (焦进星)
 **
-** 文件创建日期: 2015 年 10 月 12 日
+** 文件创建日期: 2015 年 12 月 01 日
 **
-** 描        述: MIPS32 体系构架 Cache 驱动.
+** 描        述: MIPS32 体系构架 CACHE 驱动.
 *********************************************************************************************************/
 
-#ifndef __MIPS32_CACHE_H
-#define __MIPS32_CACHE_H
+#ifndef __MIPS32CACHE_H
+#define __MIPS32CACHE_H
 
 VOID  mips32CacheInit(LW_CACHE_OP *pcacheop,
                       CACHE_MODE   uiInstruction,
                       CACHE_MODE   uiData,
                       CPCHAR       pcMachineName);
-
+                      
 VOID  mips32CacheReset(CPCHAR  pcMachineName);
 
-#endif                                                                  /*  __MIPS32_CACHE_H            */
+#endif                                                                  /*  __MIPS32CACHE_H             */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

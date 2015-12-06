@@ -382,10 +382,10 @@ typedef LW_THREAD_COND   *PLW_THREAD_COND;
 
 #if LW_CFG_CPU_FPU_EN > 0
 typedef struct {
-    ARCH_CPU_FPU_CONTEXT     FPUCTX_fpuctxContext;                      /*  体系结构相关 FPU 上下文     */
-    ULONG                    FPUCTX_ulReserve[2];                       /*  调试保留                    */
+    ARCH_FPU_CTX          FPUCTX_fpuctxContext;                         /*  体系结构相关 FPU 上下文     */
+    ULONG                 FPUCTX_ulReserve[2];                          /*  调试保留                    */
 } LW_FPU_CONTEXT;
-typedef LW_FPU_CONTEXT      *PLW_FPU_CONTEXT;
+typedef LW_FPU_CONTEXT   *PLW_FPU_CONTEXT;
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
 
 /*********************************************************************************************************
@@ -410,9 +410,7 @@ typedef LW_SHELL_CONTEXT *PLW_SHELL_CONTEXT;
   线程控制块 
   
   注意: 浮点运算器上下文指针是否有效, 由 BSP FPU 相关实现决定, 
-        可以使用 LW_OPTION_THREAD_USED_FP 创建选项, 来强制打开对应任务对 FPU 的支持, 
-        当然, 如果操作系统会在运行中自动判断该任务是否使用浮点运算器, 视情况而打开相应任务的支持.
-        所以建议用户不必使用此创建选项
+        用户禁止使用 LW_OPTION_THREAD_USED_FP / LW_OPTION_THREAD_STK_MAIN 选项.
 *********************************************************************************************************/
 
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_SELECT_EN > 0)                    /*  select() 文件               */
