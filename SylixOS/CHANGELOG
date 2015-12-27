@@ -4,6 +4,10 @@ HISTORY
 
 ++ New features:
 
+    2015-12-16: han.hui
+    加入 VLAN 支持.
+    加入 NAT 内外网映射功能, 支持 NAT 别名设置.
+    
     2015-11-20: han.hui
     加入对 MIPS 体系结构的支持.
 

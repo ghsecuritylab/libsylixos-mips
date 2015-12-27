@@ -62,14 +62,9 @@ INT  API_ThreadSetCancelType (INT  iNewType, INT  *piOldType)
         LW_OBJECT_HANDLE    ulId = ptcbCur->TCB_ulId;
         
 #if LW_CFG_THREAD_DEL_EN > 0
-        API_ThreadForceDelete(&ulId, LW_THREAD_CANCELED);
+        API_ThreadDelete(&ulId, LW_THREAD_CANCELED);
 #endif                                                                  /*  LW_CFG_THREAD_DEL_EN > 0    */
-#if LW_CFG_THREAD_SUSPEND_EN > 0
-        API_ThreadSuspend(ulId);                                        /*  阻塞线程                    */
-#endif
-        for (;;) {
-            API_TimeSleep(__ARCH_ULONG_MAX);
-        }
+        return  (ERROR_NONE);
     }
     
     iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核同时关闭中断        */
@@ -81,6 +76,7 @@ INT  API_ThreadSetCancelType (INT  iNewType, INT  *piOldType)
     
     return  (ERROR_NONE);
 }
+
 #endif                                                                  /*  LW_CFG_THREAD_CANCEL_EN > 0 */
 /*********************************************************************************************************
   END

@@ -111,7 +111,7 @@ VOID  __cppRtDoDtors (VOID)
 #ifdef __GNUC__
     volatile VOIDFUNCPTR    *ppfunc;
     
-    for (ppfunc = __LW_CTOR_LIST__ + 1;  *ppfunc != LW_NULL;  ppfunc++);/*  首先需要运行最后一个        */
+    for (ppfunc = __LW_DTOR_LIST__ + 1;  *ppfunc != LW_NULL;  ppfunc++);/*  首先需要运行最后一个        */
     ppfunc--;
     
     while (ppfunc > __LW_DTOR_LIST__) {

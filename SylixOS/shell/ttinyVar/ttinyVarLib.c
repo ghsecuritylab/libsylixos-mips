@@ -399,6 +399,7 @@ INT   __tshellVarDup (PVOID (*pfuncMalloc)(size_t stSize), PCHAR  ppcEvn[], ULON
             stValueLen = lib_strlen(pskvNode->SV_pcVarValue);
             stLen      = stNameLen + stValueLen + 2;
             
+            LW_SOFUNC_PREPARE(pfuncMalloc);
             pcLine = (PCHAR)pfuncMalloc(stLen);
             if (pcLine == LW_NULL) {
                 break;

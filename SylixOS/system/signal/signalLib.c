@@ -146,74 +146,35 @@ static VOID  __signalCnclHandle (INT  iSigNo, struct siginfo *psiginfo)
 *********************************************************************************************************/
 static VOID  __signalExitHandle (INT  iSigNo, struct siginfo *psiginfo)
 {
+    LW_OBJECT_HANDLE    ulId;
+    PLW_CLASS_TCB       ptcbCur;
 #if LW_CFG_MODULELOADER_EN > 0
-    pid_t   pid = getpid();
-#else
-    pid_t   pid = 0;
+    pid_t               pid = getpid();
 #endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
 
-#if LW_CFG_LOG_LIB_EN > 0
-    PCHAR   pcSigMsg = LW_NULL;
+    LW_TCB_GET_CUR_SAFE(ptcbCur);
+    
+    ulId = ptcbCur->TCB_ulId;
 
-    switch (iSigNo) {
-    
-    case SIGFPE:
-        pcSigMsg = "SIGFPE";
-        break;
-        
-    case SIGILL:
-        pcSigMsg = "SIGILL";
-        break;
-        
-    case SIGBUS:
-        pcSigMsg = "SIGBUS";
-        break;
-    
-    case SIGSEGV:
-        if (psiginfo->si_code == SEGV_MAPERR) {
-            pcSigMsg = "SIGSEGV (map error)";
-        
-        } else {
-            pcSigMsg = "SIGSEGV (access error)";
-        }
-        break;
-        
-    case SIGSYS:
-        pcSigMsg = "SIGSYS";
-        break;
+#if LW_CFG_MODULELOADER_EN > 0
+    if (iSigNo != SIGTERM) {
+        vprocExitModeSet(pid, LW_VPROC_EXIT_FORCE);                     /*  强制进程退出                */
+        vprocSetForceTerm(pid);
     }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
     
-    if (pcSigMsg) {
-        printk(KERN_ERR "thread 0x%lx in pid %d has received %s signal.\n", 
-               API_ThreadIdSelf(), 
-               __PROC_GET_PID_CUR(),
-               pcSigMsg);
-    }
-#endif                                                                  /*  LW_CFG_LOG_LIB_EN > 0       */
-    
-    if ((iSigNo == SIGBUS)  ||
-        (iSigNo == SIGSEGV) || 
-        (iSigNo == SIGILL)) {
-        __LW_FATAL_ERROR_HOOK(pid, API_ThreadIdSelf(), psiginfo);
-    }
-                                                                        /*  强制信号                    */
     if ((iSigNo == SIGBUS)  ||
         (iSigNo == SIGSEGV) || 
         (iSigNo == SIGILL)  ||
-        (iSigNo == SIGABRT) || 
-        (iSigNo == SIGKILL)) {
-#if LW_CFG_MODULELOADER_EN > 0
-        if (pid > 0) {
-            vprocExitModeSet(pid, LW_VPROC_EXIT_FORCE);                 /*  强制进程退出                */
-            vprocSetForceTerm(pid);
-        }
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
-        _exit(EXIT_FAILURE);                                            /*  进程错误退出                */
+        (iSigNo == SIGFPE)  ||
+        (iSigNo == SIGSYS)) {
+        __LW_FATAL_ERROR_HOOK(pid, ulId, psiginfo);                     /*  关键性异常                  */
+        _exit(psiginfo->si_int);
     
-    } else {
-        exit(EXIT_FAILURE);
-    }
-}
+    } else {                                                            /*  非关键性异常                */
+        API_ThreadDelete(&ulId, (PVOID)psiginfo->si_int);               /*  删除自己                    */
+    }                                                                   /*  如果在安全模式, 则退出安全  */
+}                                                                       /*  模式后, 自动被删除          */
 /*********************************************************************************************************
 ** 函数名称: __signalWaitHandle
 ** 功能描述: 回收子进程资源
@@ -1086,7 +1047,7 @@ LW_SEND_VAL  _doKill (PLW_CLASS_TCB  ptcb, INT  iSigNo)
     psiginfo->si_code  = SI_KILL;                                       /*  不可排队                    */
     psiginfo->si_pid   = __tcb_pid(ptcbCur);
     psiginfo->si_uid   = ptcbCur->TCB_uid;
-    psiginfo->si_ptr   = LW_NULL;
+    psiginfo->si_int   = EXIT_FAILURE;                                  /*  默认信号参数                */
 
     sigpend.SIGPEND_iNotify = SIGEV_SIGNAL;
     

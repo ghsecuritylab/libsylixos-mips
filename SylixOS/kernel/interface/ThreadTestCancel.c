@@ -22,6 +22,7 @@
 2012.03.20  减少对 _K_ptcbTCBCur 的引用, 尽量采用局部变量, 减少对当前 CPU ID 获取的次数.
 2013.07.18  使用新的获取 TCB 的方法, 确保 SMP 系统安全.
 2013.09.17  不允许在中断中被调用.
+2015.12.05  使用 API_ThreadDelete() 删除自己.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -55,16 +56,11 @@ VOID  API_ThreadTestCancel (VOID)
         LW_OBJECT_HANDLE    ulId = ptcbCur->TCB_ulId;
         
 #if LW_CFG_THREAD_DEL_EN > 0
-        API_ThreadForceDelete(&ulId, LW_THREAD_CANCELED);
+        API_ThreadDelete(&ulId, LW_THREAD_CANCELED);
 #endif                                                                  /*  LW_CFG_THREAD_DEL_EN > 0    */
-#if LW_CFG_THREAD_SUSPEND_EN > 0
-        API_ThreadSuspend(ulId);                                        /*  阻塞线程                    */
-#endif
-        for (;;) {
-            API_TimeSleep(__ARCH_ULONG_MAX);
-        }
     }
 }
+
 #endif                                                                  /*  LW_CFG_THREAD_CANCEL_EN > 0 */
 /*********************************************************************************************************
   END

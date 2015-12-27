@@ -61,8 +61,8 @@
 
 FUNC_DEF(archIntDisable)
     MFC0(V0, CP0_STATUS)
-    AND     V1 , V0 , ~M_StatusIE
-    MTC0(V1, CP0_STATUS)
+    AND     T0 , V0 , ~M_StatusIE
+    MTC0(T0, CP0_STATUS)
     JR      RA
     NOP
 FUNC_END(archIntDisable)
@@ -71,7 +71,7 @@ FUNC_END(archIntDisable)
 ;  MIPS 打开总中断
 ;*********************************************************************************************************/
 FUNC_DEF(archIntEnable)
-    MTC0(V0, CP0_STATUS)
+    MTC0(A0, CP0_STATUS)
     JR      RA
     NOP
 FUNC_END(archIntEnable)
@@ -81,9 +81,9 @@ FUNC_END(archIntEnable)
 ;*********************************************************************************************************/
 
 FUNC_DEF(archIntEnableForce)
-    MFC0(V0, CP0_STATUS)
-    OR      V1 , V0 , M_StatusIE
-    MTC0(V1, CP0_STATUS)
+    MFC0(T0, CP0_STATUS)
+    OR      T1 , T0 , M_StatusIE
+    MTC0(T1, CP0_STATUS)
     JR      RA
     NOP
 FUNC_END(archIntEnableForce)

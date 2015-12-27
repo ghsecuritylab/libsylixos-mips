@@ -1717,6 +1717,7 @@ VOID  API_INetFtpServerInit (CPCHAR  pcPath)
     _G_ulFtpdSessionLock = API_SemaphoreMCreate("ftpsession_lock", 
                                                 LW_PRIO_T_NETPROTO, 
                                                 LW_OPTION_INHERIT_PRIORITY |
+                                                LW_OPTION_DELETE_SAFE |
                                                 LW_OPTION_OBJECT_GLOBAL,
                                                 LW_NULL);               /*  创建会话链表互斥量          */
     if (_G_ulFtpdSessionLock == LW_OBJECT_HANDLE_INVALID) {

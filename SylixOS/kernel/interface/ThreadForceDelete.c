@@ -134,14 +134,11 @@ ULONG  API_ThreadForceDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
         return  (ERROR_THREAD_NULL);
     }
     
-    if (pvprocDel && (pvprocDel->VP_ulMainThread == ulId)) {            /*  删除主线程                  */
-        if (ptcbCur == ptcbDel) {                                       /*  主线程自己删除自己          */
-            if (pvprocDel->VP_iStatus != __LW_VP_EXIT) {
-                __KERNEL_EXIT();                                        /*  退出内核                    */
-                exit((INT)pvRetVal);                                    /*  进程退出, 此函数不返回      */
-            }
-        } else {                                                        /*  其他线程不允许删除主线程    */
-            __KERNEL_EXIT();
+    if (pvprocDel && (pvprocDel->VP_ulMainThread == ulId)) {
+        if (ptcbCur != ptcbDel) {                                       /*  主线程只能自己删除自己      */
+            __KERNEL_EXIT();                                            /*  退出内核                    */
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "can not delete main thread.\r\n");
+            _ErrorHandle(ERROR_THREAD_NULL);
             return  (ERROR_THREAD_NULL);
         }
     }
@@ -154,6 +151,7 @@ ULONG  API_ThreadForceDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
                 API_TimeSleep(__ARCH_ULONG_MAX);                        /*  等待被删除                  */
             }
             return  (ERROR_NONE);                                       /*  永远运行不到这里            */
+        
         } else {
             __KERNEL_EXIT();                                            /*  退出内核                    */
             _ErrorHandle(ERROR_THREAD_OTHER_DELETE);
@@ -167,6 +165,16 @@ ULONG  API_ThreadForceDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
         bIsInSafeMode = LW_FALSE;
     }
     
+#if LW_CFG_MODULELOADER_EN > 0
+    if (pvprocDel && (pvprocDel->VP_ulMainThread == ulId)) {            /*  主线程自己删除自己          */
+        if (pvprocDel->VP_iStatus != __LW_VP_EXIT) {
+            __KERNEL_EXIT();                                            /*  退出内核                    */
+            vprocExit(pvprocDel, ulId, (INT)pvRetVal);                  /*  进程退出, 此函数不返回      */
+            return  (ERROR_NONE);                                       /*  不会运行到这里              */
+        }
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN      */
+
     ptcbDel->TCB_iDeleteProcStatus = LW_TCB_DELETE_PROC_DEL;            /*  进入删除过程                */
     
     _ObjectCloseId(pulId);                                              /*  关闭 ID                     */

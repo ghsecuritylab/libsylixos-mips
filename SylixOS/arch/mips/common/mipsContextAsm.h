@@ -22,47 +22,49 @@
 #ifndef __MIPSCONTEXTASM_H
 #define __MIPSCONTEXTASM_H
 
+#include "arch/mips/arch_regs.h"
+
 /*********************************************************************************************************
   Operate the general registers: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra
 *********************************************************************************************************/
 
-#define OPERATE_REG(op)                 \
-    op      RA , STK_OFFSET_RA(SP);     \
-    op      FP , STK_OFFSET_FP(SP);     \
-    op      GP , STK_OFFSET_GP(SP);     \
-    op      S7 , STK_OFFSET_S7(SP);     \
-    op      S6 , STK_OFFSET_S6(SP);     \
-    op      S5 , STK_OFFSET_S5(SP);     \
-    op      S4 , STK_OFFSET_S4(SP);     \
-    op      S3 , STK_OFFSET_S3(SP);     \
-    op      S2 , STK_OFFSET_S2(SP);     \
-    op      S1 , STK_OFFSET_S1(SP);     \
-    op      S0 , STK_OFFSET_S0(SP);     \
-    op      T9 , STK_OFFSET_T9(SP);     \
-    op      T8 , STK_OFFSET_T8(SP);     \
-    op      T7 , STK_OFFSET_T7(SP);     \
-    op      T6 , STK_OFFSET_T6(SP);     \
-    op      T5 , STK_OFFSET_T5(SP);     \
-    op      T4 , STK_OFFSET_T4(SP);     \
-    op      T3 , STK_OFFSET_T3(SP);     \
-    op      T2 , STK_OFFSET_T2(SP);     \
-    op      T1 , STK_OFFSET_T1(SP);     \
-    op      T0 , STK_OFFSET_T0(SP);     \
-    op      A3 , STK_OFFSET_A3(SP);     \
-    op      A2 , STK_OFFSET_A2(SP);     \
-    op      A1 , STK_OFFSET_A1(SP);     \
-    op      A0 , STK_OFFSET_A0(SP);     \
-    op      V1 , STK_OFFSET_V1(SP);     \
-    op      V0 , STK_OFFSET_V0(SP);     \
-    op      AT , STK_OFFSET_AT(SP);
+#define OPERATE_REG(op)             \
+    op      $1  , 1  * 4(SP);       \
+    op      $2  , 2  * 4(SP);       \
+    op      $3  , 3  * 4(SP);       \
+    op      $4  , 4  * 4(SP);       \
+    op      $5  , 5  * 4(SP);       \
+    op      $6  , 6  * 4(SP);       \
+    op      $7  , 7  * 4(SP);       \
+    op      $8  , 8  * 4(SP);       \
+    op      $9  , 9  * 4(SP);       \
+    op      $10 , 10 * 4(SP);       \
+    op      $11 , 11 * 4(SP);       \
+    op      $12 , 12 * 4(SP);       \
+    op      $13 , 13 * 4(SP);       \
+    op      $14 , 14 * 4(SP);       \
+    op      $15 , 15 * 4(SP);       \
+    op      $16 , 16 * 4(SP);       \
+    op      $17 , 17 * 4(SP);       \
+    op      $18 , 18 * 4(SP);       \
+    op      $19 , 19 * 4(SP);       \
+    op      $20 , 20 * 4(SP);       \
+    op      $21 , 21 * 4(SP);       \
+    op      $22 , 22 * 4(SP);       \
+    op      $23 , 23 * 4(SP);       \
+    op      $24 , 24 * 4(SP);       \
+    op      $25 , 25 * 4(SP);       \
+    op      $28 , 28 * 4(SP);       \
+    op      $30 , 30 * 4(SP);       \
+    op      $31 , 31 * 4(SP);
 
 /*********************************************************************************************************
   Operate the general registers: t0-t1
 *********************************************************************************************************/
 
-#define LW_T0_T1_REG()                  \
-    LW      T0 , STK_OFFSET_T0(SP);     \
-    LW      T1 , STK_OFFSET_T1(SP);     \
+#define LW_T0_T1_REG()              \
+    LW      T0 , REG_T0 * 4(SP);    \
+    LW      T1 , REG_T1 * 4(SP);    \
 
 /*********************************************************************************************************
   Pop the context: at, v0-v1, a0-a3, t0-t9, s0-s7, gp, fp, ra, pc, sr, lo, hi

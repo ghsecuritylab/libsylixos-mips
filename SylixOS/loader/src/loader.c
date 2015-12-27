@@ -444,8 +444,8 @@ LW_LD_EXEC_MODULE *moduleLoadSub (LW_LD_EXEC_MODULE *pmodule, CPCHAR pcLibName, 
 *********************************************************************************************************/
 static INT initArrayCall (LW_LD_EXEC_MODULE *pmodule)
 {
-    INT             i;
-    VOIDFUNCPTR     pfuncInit    = LW_NULL;
+    INT                i;
+    VOIDFUNCPTR        pfuncInit    = LW_NULL;
     LW_LD_EXEC_MODULE *pmodTemp  = LW_NULL;
     LW_LIST_RING      *pringTemp = _list_ring_get_prev(&pmodule->EMOD_ringModules);
 
@@ -494,8 +494,8 @@ static INT initArrayCall (LW_LD_EXEC_MODULE *pmodule)
 *********************************************************************************************************/
 static INT finiArrayCall (LW_LD_EXEC_MODULE *pmodule, BOOL  bRunFini)
 {
-    INT             i;
-    VOIDFUNCPTR     pfuncFini    = LW_NULL;
+    INT                i;
+    VOIDFUNCPTR        pfuncFini    = LW_NULL;
     LW_LD_EXEC_MODULE *pmodTemp  = pmodule;
     LW_LIST_RING      *pringTemp = &pmodule->EMOD_ringModules;
 

@@ -170,6 +170,7 @@ VOID  API_ThreadCleanupPop (BOOL  bRun)
         _list_mono_next(&ptex->TEX_pmonoCurHeader);
         KN_INT_ENABLE(iregInterLevel);                                  /*  ´ò¿ªÖÐ¶Ï                    */
         if (bRun) {
+            LW_SOFUNC_PREPARE(pcurNode->CUR_pfuncClean);
             pcurNode->CUR_pfuncClean(pcurNode->CUR_pvArg);
         }
         __KHEAP_FREE(pcurNode);

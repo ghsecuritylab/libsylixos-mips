@@ -118,7 +118,11 @@ extern "C" {
 #define IP_SOF_BROADCAST                1                               /*  Use the SOF_BROADCAST       */
 #define IP_SOF_BROADCAST_RECV           1
 
+#if LW_CFG_NET_ADHOC_ROUTER > 0
 #define IP_FORWARD_ALLOW_TX_ON_RX_NETIF 1
+#else
+#define IP_FORWARD_ALLOW_TX_ON_RX_NETIF 0
+#endif                                                                  /*  LW_CFG_NET_ADHOC_ROUTER > 0 */
 
 /*********************************************************************************************************
   IPv6
@@ -573,6 +577,16 @@ extern int link_input_hook(PVOID  pvPBuf, PVOID  pvNetif);
 
 extern int link_output_hook(PVOID  pvPBuf, PVOID  pvNetif);
 #define LWIP_HOOK_LINK_OUTPUT           link_output_hook
+
+/*********************************************************************************************************
+  lwip vlan hook (for AF_PACKET and Net Defender)
+*********************************************************************************************************/
+
+extern int etharp_vlan_set_hook(PVOID pvNetif, PVOID pvEthhdr, PVOID pvVlanhdr);
+#define LWIP_HOOK_VLAN_SET      etharp_vlan_set_hook
+
+extern int etharp_vlan_check_hook(PVOID pvNetif, PVOID pvEthhdr, PVOID pvVlanhdr);
+#define LWIP_HOOK_VLAN_CHECK    etharp_vlan_check_hook
 
 /*********************************************************************************************************
   lwip ppp status hook

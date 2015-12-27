@@ -160,6 +160,8 @@ SylixOS/arch/mips/common/mipsExc.c \
 SylixOS/arch/mips/common/mipsExcAsm.S \
 SylixOS/arch/mips/common/mipsLib.c \
 SylixOS/arch/mips/common/mipsLibAsm.S \
+SylixOS/arch/mips/common/mipsBranch.c \
+SylixOS/arch/mips/common/mipsUnaligned.c \
 SylixOS/arch/mips/dbg/mipsDbg.c \
 SylixOS/arch/mips/dbg/mipsGdb.c \
 SylixOS/arch/mips/elf/mipsElf.c \
@@ -934,6 +936,7 @@ SylixOS/net/lwip/tools/rpc/xdr_mem.c \
 SylixOS/net/lwip/tools/rpc/xdr_rec.c \
 SylixOS/net/lwip/tools/telnet/lwip_telnet.c \
 SylixOS/net/lwip/tools/tftp/lwip_tftp.c \
+SylixOS/net/lwip/tools/vlan/lwip_vlan.c \
 SylixOS/net/lwip/tools/vpn/lwip_vpn.c \
 SylixOS/net/lwip/tools/vpn/lwip_vpnclient.c \
 SylixOS/net/lwip/tools/vpn/lwip_vpnnetif.c \
@@ -1498,7 +1501,7 @@ $(VPMPDM_A_TARGET): $(OBJS_VPMPDM)
 # link libvpmpdm.so object files
 #*********************************************************************************************************
 $(VPMPDM_S_TARGET): $(OBJS_VPMPDM)
-		$(LD) $(CPUFLAGS) -nostdlib -fPIC -mabicalls -shared -o $(VPMPDM_S_TARGET) $(OBJS_VPMPDM) -lgcc
+		$(LD) $(CPUFLAGS) -fPIC -mabicalls -shared -o $(VPMPDM_S_TARGET) $(OBJS_VPMPDM) -lgcc
 
 #*********************************************************************************************************
 # compile -mlong-calls code

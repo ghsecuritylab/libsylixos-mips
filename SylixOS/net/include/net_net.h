@@ -42,6 +42,7 @@
 #include "../lwip/tools/nat/lwip_nat.h"                                 /*  NAT 网络工具                */
 #include "../lwip/tools/vpn/lwip_vpn.h"                                 /*  虚拟以太网 VPN 工具         */
 #include "../lwip/tools/npf/lwip_npf.h"                                 /*  网络数据包过滤器            */
+#include "../lwip/tools/vlan/lwip_vlan.h"                               /*  VLAN 工具                   */
 
 #endif                                                                  /*  __NET_NET_H                 */
 /*********************************************************************************************************

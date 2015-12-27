@@ -264,45 +264,6 @@
 #define MIPS_EXEC_INS(ins)  __asm__ __volatile__ (ins)
 
 /*********************************************************************************************************
-  Define the address offset of the general registers
-*********************************************************************************************************/
-
-#define STK_OFFSET_RA   (0)
-#define STK_OFFSET_FP   (STK_OFFSET_RA  + 4)
-#define STK_OFFSET_GP   (STK_OFFSET_FP  + 4)
-#define STK_OFFSET_T9   (STK_OFFSET_GP  + 4)
-#define STK_OFFSET_T8   (STK_OFFSET_T9  + 4)
-#define STK_OFFSET_S7   (STK_OFFSET_T8  + 4)
-#define STK_OFFSET_S6   (STK_OFFSET_S7  + 4)
-#define STK_OFFSET_S5   (STK_OFFSET_S6  + 4)
-#define STK_OFFSET_S4   (STK_OFFSET_S5  + 4)
-#define STK_OFFSET_S3   (STK_OFFSET_S4  + 4)
-#define STK_OFFSET_S2   (STK_OFFSET_S3  + 4)
-#define STK_OFFSET_S1   (STK_OFFSET_S2  + 4)
-#define STK_OFFSET_S0   (STK_OFFSET_S1  + 4)
-#define STK_OFFSET_T7   (STK_OFFSET_S0  + 4)
-#define STK_OFFSET_T6   (STK_OFFSET_T7  + 4)
-#define STK_OFFSET_T5   (STK_OFFSET_T6  + 4)
-#define STK_OFFSET_T4   (STK_OFFSET_T5  + 4)
-#define STK_OFFSET_T3   (STK_OFFSET_T4  + 4)
-#define STK_OFFSET_T2   (STK_OFFSET_T3  + 4)
-#define STK_OFFSET_T1   (STK_OFFSET_T2  + 4)
-#define STK_OFFSET_T0   (STK_OFFSET_T1  + 4)
-#define STK_OFFSET_A3   (STK_OFFSET_T0  + 4)
-#define STK_OFFSET_A2   (STK_OFFSET_A3  + 4)
-#define STK_OFFSET_A1   (STK_OFFSET_A2  + 4)
-#define STK_OFFSET_A0   (STK_OFFSET_A1  + 4)
-#define STK_OFFSET_V1   (STK_OFFSET_A0  + 4)
-#define STK_OFFSET_V0   (STK_OFFSET_V1  + 4)
-#define STK_OFFSET_AT   (STK_OFFSET_V0  + 4)
-#define STK_OFFSET_LO   (STK_OFFSET_AT  + 4)
-#define STK_OFFSET_HI   (STK_OFFSET_LO  + 4)
-#define STK_OFFSET_CAUSE (STK_OFFSET_HI + 4)
-#define STK_OFFSET_SR   (STK_OFFSET_CAUSE+4)
-#define STK_OFFSET_EPC  (STK_OFFSET_SR  + 4)
-#define STK_CTX_SIZE    (STK_OFFSET_EPC + 4)
-
-/*********************************************************************************************************
   CP0 Status Register
  *
  *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1

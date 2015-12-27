@@ -175,6 +175,7 @@ LW_API INT   API_SdmLibInit (VOID)
     if (_G_ulSdmHostLock == LW_OBJECT_HANDLE_INVALID) {
         _G_ulSdmHostLock =  API_SemaphoreMCreate("sdm_lock", LW_PRIO_DEF_CEILING, 
                                                  LW_OPTION_WAIT_PRIORITY | 
+                                                 LW_OPTION_DELETE_SAFE |
                                                  LW_OPTION_OBJECT_GLOBAL, LW_NULL);
     }
 

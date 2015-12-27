@@ -564,7 +564,7 @@ static VOID  __vmmAbortShell (PLW_VMM_PAGE_FAIL_CTX  pvmpagefailctx)
         pvmpagep = (PLW_VMM_PAGE_PRIVATE)pvmpageVirtual->PAGE_pvAreaCb;
     } else {
         __VMM_UNLOCK();
-        //__vmmAbortAccess(pvmpagefailctx);                               /*  访问异常                    */
+        __vmmAbortAccess(pvmpagefailctx);                               /*  访问异常                    */
         goto    __abort_return;                                         /*  不会运行到这里              */
     }
     

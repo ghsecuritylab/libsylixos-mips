@@ -1119,30 +1119,34 @@ static INT dynPhdrParse (LW_LD_EXEC_MODULE *pmodule,
                     break;
 
                 case DT_INIT:
-                    pdyndir->addrInit      = pdyn->d_un.d_val;
+                    pdyndir->addrInit = (Elf_Addr)LW_LD_V2PADDR(addrMin,
+                                                        pmodule->EMOD_pvBaseAddr,
+                                                        pdyn->d_un.d_val);
                     break;
 
                 case DT_FINI:
-                    pdyndir->addrFini      = pdyn->d_un.d_val;
+                    pdyndir->addrFini = (Elf_Addr)LW_LD_V2PADDR(addrMin,
+                                                        pmodule->EMOD_pvBaseAddr,
+                                                        pdyn->d_un.d_val);
                     break;
 					
 #ifdef  LW_CFG_CPU_ARCH_MIPS
                 case DT_PLTGOT:
-                    pdyndir->ulPLTGOT = (Elf_Addr)LW_LD_V2PADDR(addrMin,
-                                                        pmodule->EMOD_pvBaseAddr,
-                                                        pdyn->d_un.d_ptr);
+                    pdyndir->ulPltGotAddr  = (Elf_Addr *)LW_LD_V2PADDR(addrMin,
+                                                         pmodule->EMOD_pvBaseAddr,
+                                                         pdyn->d_un.d_ptr);
                     break;
                 case DT_MIPS_GOTSYM:
-                    pdyndir->ulMIPSGOTSym = pdyn->d_un.d_val;
+                    pdyndir->ulMIPSGotSymIdx      = pdyn->d_un.d_val;
                     break;
                 case DT_MIPS_LOCAL_GOTNO:
-                    pdyndir->ulMIPSLocalGOTNO = pdyn->d_un.d_val;
+                    pdyndir->ulMIPSLocalGotNumIdx = pdyn->d_un.d_val;
                     break;
                 case DT_MIPS_SYMTABNO:
-                    pdyndir->ulMIPSSymTABNO = pdyn->d_un.d_val;
+                    pdyndir->ulMIPSSymNumIdx      = pdyn->d_un.d_val;
                     break;
                 case DT_MIPS_PLTGOT:
-                    pdyndir->ulMIPSPLTGOT = pdyn->d_un.d_val;
+                    pdyndir->ulMIPSPltGotIdx      = pdyn->d_un.d_val;
                     break;
 #endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
                 }
@@ -1546,6 +1550,10 @@ static INT elfPhdrBuildInitTable (LW_LD_EXEC_MODULE *pmodule,
         }
     }
 
+    if (pdyndir->addrInit != 0) {
+        pmodule->EMOD_pfuncInit = (FUNCPTR)pdyndir->addrInit;
+    }
+
     if ((uiFiniTblSize > 0) && (LW_NULL != pdyndir->paddrFiniArray)) {
 
         pmodule->EMOD_ppfuncFiniArray = 
@@ -1561,6 +1569,10 @@ static INT elfPhdrBuildInitTable (LW_LD_EXEC_MODULE *pmodule,
         for (i = 0; i < uiFiniTblSize; i++) {
             pmodule->EMOD_ppfuncFiniArray[i] = (VOIDFUNCPTR)pdyndir->paddrFiniArray[i];
         }
+    }
+
+    if (pdyndir->addrFini != 0) {
+        pmodule->EMOD_pfuncExit = (FUNCPTR)pdyndir->addrFini;
     }
 
     return  (ERROR_NONE);

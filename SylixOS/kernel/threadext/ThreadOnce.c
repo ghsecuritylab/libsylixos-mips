@@ -49,6 +49,7 @@ INT  API_ThreadOnce (BOOL  *pbOnce, VOIDFUNCPTR  pfuncRoutine)
     __LW_ATOMIC_UNLOCK(iregInterLevel);                                 /*  ½âËø                        */
     
     if (pfuncRoutine && iOk) {
+        LW_SOFUNC_PREPARE(pfuncRoutine);
         pfuncRoutine();                                                 /*  Ö´ÐÐ                        */
     }
     

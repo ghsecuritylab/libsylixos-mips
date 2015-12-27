@@ -23,6 +23,10 @@
 #include "SylixOS.h"
 #include "dtrace.h"
 #include "arch/mips/common/cp0/mipsCp0.h"
+#include "mipsUnaligned.h"
+#if LW_CFG_VMM_EN > 0
+#include "arch/mips/mm/mmu/mipsMmuCommon.h"
+#endif
 /*********************************************************************************************************
   向量使能与禁能锁
 *********************************************************************************************************/
@@ -87,6 +91,8 @@ VOID  archIntHandle (ULONG  ulVector, BOOL  bPreemptive)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
+#if LW_CFG_CACHE_EN > 0
+
 VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 {
     REGISTER UINT32  uiFiled  = 2 * sizeof(UINT32);
@@ -117,6 +123,8 @@ VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 
     _PrintFormat("IDX: 0x%08x\r\n", uiRegVal & (M_CcaheE0 - 1));
 }
+
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 /*********************************************************************************************************
 ** 函数名称: archExceptionHandle
 ** 功能描述: 通用异常处理
@@ -130,12 +138,11 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     REGISTER UINT32  uiCause     = mipsCp0CauseRead();
     REGISTER UINT32  uiExcCode   = ((uiCause & M_CauseExcCode) >> S_CauseExcCode);
     REGISTER addr_t  ulAbortAddr = mipsCp0BadVAddrRead();
-
 #if LW_CFG_GDB_EN > 0
     REGISTER UINT    uiBpType;
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
-
     PLW_CLASS_TCB    ptcbCur;
+    ULONG            ulAbortType;
 
     LW_TCB_GET_CUR(ptcbCur);
 
@@ -144,18 +151,26 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
         bspIntHandle();
         break;
 
+#if LW_CFG_VMM_EN > 0
     case EX_MOD:                                                        /*  TLB modified                */
         API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_WRITE, ptcbCur);
         break;
 
     case EX_TLBL:                                                       /*  TLB exc(load or ifetch)     */
     case EX_TLBS:                                                       /*  TLB exception (store)       */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_MAP, ptcbCur);
+        ulAbortType = mipsMmuTlbLoadStoreExcHandle(ulAbortAddr);
+        if (ulAbortType) {
+            API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+        }
         break;
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 
     case EX_ADEL:                                                       /*  Address err(load or ifetch) */
     case EX_ADES:                                                       /*  Address error (store)       */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+        ulAbortType = mipsUnalignedHandle((ARCH_REG_CTX *)ptcbCur->TCB_pstkStackNow, ulAbortAddr);
+        if (ulAbortType) {
+            API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+        }
         break;
 
     case EX_IBE:                                                        /*  Instruction Bus Error       */
@@ -170,9 +185,9 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     case EX_BP:                                                         /*  Breakpoint                  */
     case EX_TR:                                                         /*  Trap instruction            */
 #if LW_CFG_GDB_EN > 0
-        uiBpType = archDbgTrapType(ulAbortAddr, LW_NULL);               /*  断点指令探测                */
+        uiBpType = archDbgTrapType(ulRetAddr, LW_NULL);                 /*  断点指令探测                */
         if (uiBpType) {
-            if (API_DtraceBreakTrap(ulAbortAddr, uiBpType) == ERROR_NONE) {
+            if (API_DtraceBreakTrap(ulRetAddr, uiBpType) == ERROR_NONE) {
                 break;                                                  /*  进入调试接口断点处理        */
             }
         }

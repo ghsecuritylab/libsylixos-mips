@@ -10,24 +10,34 @@
 **
 **--------------文件信息--------------------------------------------------------------------------------
 **
-** 文   件   名: arm_gdb.h
+** 文   件   名: lwip_vlan.h
 **
-** 创   建   人: Jiang.Taijin (蒋太金)
+** 创   建   人: Han.Hui (韩辉)
 **
-** 文件创建日期: 2014 年 05 月 06 日
+** 文件创建日期: 2009 年 07 月 13 日
 **
-** 描        述: ARM 体系构架 GDB 调试接口.
+** 描        述: lwip vlan 支持.
 *********************************************************************************************************/
 
-#ifndef __ARCH_ARM_GDB_H
-#define __ARCH_ARM_GDB_H
+#ifndef LWIP_VLAN_H
+#define LWIP_VLAN_H
 
 /*********************************************************************************************************
-  最大寄存器数
+  裁剪控制
 *********************************************************************************************************/
-#define GDB_MAX_REG_CNT     64
+#if (LW_CFG_NET_EN > 0) && (LW_CFG_NET_VLAN_EN > 0)
 
-#endif                                                                  /*  __ARCH_ARM_GDB_H            */
+LW_API  INT     API_VlanGet(CPCHAR  pcEthIf, INT  *piVlanId);
+LW_API  INT     API_VlanSet(CPCHAR  pcEthIf, INT  iVlanId);
+LW_API  VOID    API_VlanShow(VOID);
+
+#define inetVlanGet     API_VlanGet
+#define inetVlanSet     API_VlanSet
+#define inetVlanShow    API_VlanShow
+
+#endif                                                                  /*  LW_CFG_NET_EN > 0           */
+                                                                        /*  LW_CFG_NET_VLAN_EN > 0      */
+#endif                                                                  /*  LWIP_VLAN_H                 */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

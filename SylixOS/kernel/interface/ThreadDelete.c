@@ -170,9 +170,15 @@ ULONG  __threadDelete (PLW_CLASS_TCB  ptcbDel, BOOL  bIsInSafe,
     _CoroutineFreeAll(ptcbDel);                                         /*  删除协程内存空间            */
 #endif                                                                  /*  LW_CFG_COROUTINE_EN > 0     */
     
-    _DebugFormat(__LOGMESSAGE_LEVEL, "thread \"%s\" has been delete%s.\r\n",
-                 ptcbDel->TCB_cThreadName,
-                 (bIsInSafe) ? " in safe mode" : "");
+    if (bIsInSafe) {
+        _DebugFormat(__ERRORMESSAGE_LEVEL, 
+                     "thread \"%s\" has been delete in SAFE mode.\r\n",
+                     ptcbDel->TCB_cThreadName);
+    } else {
+        _DebugFormat(__LOGMESSAGE_LEVEL, 
+                     "thread \"%s\" has been delete.\r\n",
+                     ptcbDel->TCB_cThreadName);
+    }
     
     pvVProc = ptcbDel->TCB_pvVProcessContext;                           /*  进程信息                    */
     
@@ -233,7 +239,7 @@ ULONG  API_ThreadDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
     usIndex = _ObjectGetIndex(ulId);
     
     if (LW_CPU_GET_CUR_NESTING()) {                                     /*  不能在中断中调用            */
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "API_ThreadDelete() error : called from ISR.\r\n");
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "called from ISR.\r\n");
         _ErrorHandle(ERROR_KERNEL_IN_ISR);
         return  (ERROR_KERNEL_IN_ISR);
     }
@@ -281,19 +287,16 @@ ULONG  API_ThreadDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
         return  (ERROR_THREAD_NULL);
     }
     
-    if (pvprocDel && (pvprocDel->VP_ulMainThread == ulId)) {            /*  删除主线程                  */
-        if (ptcbCur == ptcbDel) {                                       /*  主线程自己删除自己          */
-            if (pvprocDel->VP_iStatus != __LW_VP_EXIT) {
-                __KERNEL_EXIT();                                        /*  退出内核                    */
-                exit((INT)pvRetVal);                                    /*  进程退出, 此函数不返回      */
-            }
-        } else {                                                        /*  其他线程不允许删除主线程    */
-            __KERNEL_EXIT();
+    if (pvprocDel && (pvprocDel->VP_ulMainThread == ulId)) {
+        if (ptcbCur != ptcbDel) {                                       /*  主线程只能自己删除自己      */
+            __KERNEL_EXIT();                                            /*  退出内核                    */
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "can not delete main thread.\r\n");
+            _ErrorHandle(ERROR_THREAD_NULL);
             return  (ERROR_THREAD_NULL);
         }
     }
 #endif                                                                  /*  LW_CFG_MODULELOADER_EN      */
-    
+
     if (ptcbDel->TCB_iDeleteProcStatus) {                               /*  检查是否在删除过程中        */
         if (ptcbDel == ptcbCur) {
             __KERNEL_EXIT();                                            /*  退出内核                    */
@@ -301,6 +304,7 @@ ULONG  API_ThreadDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
                 API_TimeSleep(__ARCH_ULONG_MAX);                        /*  等待被删除                  */
             }
             return  (ERROR_NONE);                                       /*  永远运行不到这里            */
+        
         } else {
             __KERNEL_EXIT();                                            /*  退出内核                    */
             _ErrorHandle(ERROR_THREAD_OTHER_DELETE);
@@ -329,6 +333,16 @@ ULONG  API_ThreadDelete (LW_OBJECT_HANDLE  *pulId, PVOID  pvRetVal)
         __KERNEL_EXIT_IRQ(iregInterLevel);                              /*  退出内核并打开中断          */
         return  (ERROR_NONE);
     }
+    
+#if LW_CFG_MODULELOADER_EN > 0
+    if (pvprocDel && (pvprocDel->VP_ulMainThread == ulId)) {            /*  主线程自己删除自己          */
+        if (pvprocDel->VP_iStatus != __LW_VP_EXIT) {
+            __KERNEL_EXIT();                                            /*  退出内核                    */
+            vprocExit(pvprocDel, ulId, (INT)pvRetVal);                  /*  进程结束                    */
+            return  (ERROR_NONE);                                       /*  不会运行到这里              */
+        }
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN      */
     
     ptcbDel->TCB_iDeleteProcStatus = LW_TCB_DELETE_PROC_DEL;            /*  进入删除过程                */
     
@@ -400,7 +414,20 @@ void  exit (int  iCode)
     LW_OBJECT_HANDLE    ulId = API_ThreadIdSelf();
     
 #if LW_CFG_MODULELOADER_EN > 0
-    vprocExit(__LW_VP_GET_CUR_PROC(), ulId, iCode);                     /*  进程结束                    */
+    LW_LD_VPROC        *pvprocCur = __LW_VP_GET_CUR_PROC();
+    
+    if (pvprocCur) {
+        if (pvprocCur->VP_ulMainThread == ulId) {
+            vprocExit(__LW_VP_GET_CUR_PROC(), ulId, iCode);             /*  进程结束                    */
+        }
+#if LW_CFG_SIGNAL_EN > 0
+          else {
+            union sigval    sigvalue;
+            sigvalue.sival_int = iCode;
+            sigqueue(pvprocCur->VP_ulMainThread, SIGTERM, sigvalue);    /*  给主线程发信号退出          */
+        }
+#endif                                                                  /*  LW_CFG_SIGNAL_EN > 0        */
+    }
 #endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
 
     API_ThreadForceDelete(&ulId, (PVOID)iCode);
@@ -427,11 +454,20 @@ void  _exit (int  iCode)
     LW_OBJECT_HANDLE    ulId   = API_ThreadIdSelf();
     
 #if LW_CFG_MODULELOADER_EN > 0
-    LW_LD_VPROC        *pvproc = __LW_VP_GET_CUR_PROC();
+    LW_LD_VPROC        *pvprocCur = __LW_VP_GET_CUR_PROC();
     
-    if (pvproc) {
-        pvproc->VP_bRunAtExit = LW_FALSE;                               /*  不执行 atexit 安装函数      */
-        vprocExit(pvproc, ulId, iCode);                                 /*  进程结束                    */
+    if (pvprocCur) {
+        pvprocCur->VP_bRunAtExit = LW_FALSE;                            /*  不执行 atexit 安装函数      */
+        if (pvprocCur->VP_ulMainThread == ulId) {
+            vprocExit(__LW_VP_GET_CUR_PROC(), ulId, iCode);             /*  进程结束                    */
+        }
+#if LW_CFG_SIGNAL_EN > 0
+          else {
+            union sigval    sigvalue;
+            sigvalue.sival_int = iCode;
+            sigqueue(pvprocCur->VP_ulMainThread, SIGTERM, sigvalue);    /*  给主线程发信号退出          */
+        }
+#endif                                                                  /*  LW_CFG_SIGNAL_EN > 0        */
     }
 #endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
 

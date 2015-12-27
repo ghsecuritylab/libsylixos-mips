@@ -46,10 +46,34 @@ typedef struct {
 } __NAT_CB;
 typedef __NAT_CB       *__PNAT_CB;
 /*********************************************************************************************************
+  NAT 外网主动连接映射关系
+*********************************************************************************************************/
+typedef struct {
+    LW_LIST_LINE        NAT_lineManage;
+    
+    u8_t                NAT_ucProto;                                    /*  协议                        */
+    ip_addr_t           NAT_ipaddrLocalIp;                              /*  本地 IP 地址                */
+    u16_t               NAT_usLocalPort;                                /*  本地端口号                  */
+    u16_t               NAT_usAssPort;                                  /*  映射端口号 (唯一的)         */
+} __NAT_MAP;
+typedef __NAT_MAP      *__PNAT_MAP;
+/*********************************************************************************************************
+  NAT 别名表
+*********************************************************************************************************/
+typedef struct {
+    LW_LIST_LINE        NAT_lineManage;
+    
+    ip_addr_t           NAT_ipaddrAliasIp;                              /*  别名地址                    */
+    ip_addr_t           NAT_ipaddrSLocalIp;                             /*  别名对应本地 IP 范围        */
+    ip_addr_t           NAT_ipaddrELocalIp;
+} __NAT_ALIAS;
+typedef __NAT_ALIAS    *__PNAT_ALIAS;
+/*********************************************************************************************************
   NAT 操作锁
 *********************************************************************************************************/
 #define __NAT_OP_LOCK()     API_SemaphoreMPend(_G_ulNatOpLock, LW_OPTION_WAIT_INFINITE)
 #define __NAT_OP_UNLOCK()   API_SemaphoreMPost(_G_ulNatOpLock)
+
 #endif                                                                  /*  LW_CFG_NET_EN > 0           */
                                                                         /*  LW_CFG_NET_NAT_EN > 0       */
 #endif                                                                  /*  __LWIP_NATLIB_H             */

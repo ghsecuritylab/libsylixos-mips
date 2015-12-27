@@ -22,6 +22,7 @@
 2007.11.04  将 0xFFFFFFFF 改为 __ARCH_ULONG_MAX.
 2008.01.16  API_ThreadDelete() -> API_ThreadForceDelete();
 2012.03.20  减少对 _K_ptcbTCBCur 的引用, 尽量采用局部变量, 减少对当前 CPU ID 获取的次数.
+2015.12.05  如果线程创建时已经使能了 FPU 则直接打开 FPU.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -40,6 +41,12 @@ PVOID  _ThreadShell (PVOID  pvThreadStartAddress)
     LW_OBJECT_HANDLE    ulId;
     
     LW_TCB_GET_CUR_SAFE(ptcbCur);                                       /*  当前任务控制块              */
+    
+#if LW_CFG_CPU_FPU_EN > 0
+    if (ptcbCur->TCB_ulOption & LW_OPTION_THREAD_USED_FP) {
+        __ARCH_FPU_ENABLE();                                            /*  使能 FPU                    */
+    }
+#endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
     
     LW_SOFUNC_PREPARE(pvThreadStartAddress);
     pvReturnVal = ((PTHREAD_START_ROUTINE)pvThreadStartAddress)

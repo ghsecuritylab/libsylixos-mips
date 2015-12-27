@@ -920,6 +920,8 @@ ULONG  API_DtraceGetBreakInfo (PVOID  pvDtrace, PLW_DTRACE_MSG  pdtm, LW_OBJECT_
         iError = __dtraceReadMsgEx(pdtrace, pdtm, LW_FALSE, ulThread);
     }
     __KERNEL_EXIT();                                                    /*  退出内核                    */
+
+    archDbgBpAdjust(pvDtrace, pdtm);                                    /*  MIPS 需要调整断点位置       */
     
     if (iError) {
         _ErrorHandle(ENOMSG);

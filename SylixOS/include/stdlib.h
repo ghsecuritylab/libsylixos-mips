@@ -129,7 +129,7 @@ __LW_RETU_FUNC_DECLARE(int, mblen, (const char *s, size_t n))
 __LW_RETU_FUNC_DECLARE(int, mbtowc, (wchar_t *pwc, const char *s, size_t n))
 
 /*********************************************************************************************************
-  一下函数需要 libcextern 支持
+  以下函数需要 libcextern 支持
 *********************************************************************************************************/
 
 char	*cgetcap(char *, const char *, int);

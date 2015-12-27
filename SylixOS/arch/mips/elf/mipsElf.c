@@ -33,7 +33,7 @@
   宏定义
 *********************************************************************************************************/
 #define JMP_TABLE_ITEMLEN       8                                       /*  跳转表条目长度              */
-#define LOW16_VALUE(val)        ((val) & 0x0000ffff)                    /*  Get LOW 16 Bit              */
+#define LOW16_VALUE(val)        ((val) & 0x0000FFFF)                    /*  Get LOW 16 Bit              */
 #define SIGN_LOW16_VALUE(val)   (((LOW16_VALUE(val)^0x8000) - 0x8000))  /*  Get Sign LOW 16 Bit         */
 /*********************************************************************************************************
 ** 函数名称: mipsElfRelocateRela
@@ -77,9 +77,9 @@ static INT mipsElfHI16RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
         return (PX_ERROR);
     }
 
-    pHi16Info->HI16_pAddr  = (Elf_Addr *)pRelocAdrs;
-    pHi16Info->HI16_value  = addrSymVal;
-    pHi16Info->HI16_pNext  = pmodule->EMOD_pMIPSHi16List;               /*  增加 List 一个节点          */
+    pHi16Info->HI16_pAddr    = (Elf_Addr *)pRelocAdrs;
+    pHi16Info->HI16_valAddr  = addrSymVal;
+    pHi16Info->HI16_pNext    = pmodule->EMOD_pMIPSHi16List;             /*  增加 List 一个节点          */
     pmodule->EMOD_pMIPSHi16List = pHi16Info;
 
     return  (ERROR_NONE);
@@ -130,7 +130,7 @@ static INT mipsElfLO16RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
             /*
              * 检查 HI16 和 LO16 的重定位 offset 是否一致
              */
-            if (addrSymVal != pHi16Info->HI16_value) {
+            if (addrSymVal != pHi16Info->HI16_valAddr) {
                 mipsElfFreeHI16Relocatelist(pHi16Info);
                 pmodule->EMOD_pMIPSHi16List = NULL;
                 return (PX_ERROR);
@@ -146,9 +146,9 @@ static INT mipsElfLO16RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
             /*
              * Check Bit15 的符号值(sign extension)
              */
-            addrVal   = ((addrVal >> 16) + ((addrVal & 0x8000) != 0)) & 0xffff;
+            addrVal   = ((addrVal >> 16) + ((addrVal & 0x8000) != 0)) & 0xFFFF;
 
-            addrInsn  = (addrInsn & ~0xffff) | addrVal;
+            addrInsn  = (addrInsn & ~0xFFFF) | addrVal;
             *pHi16Info->HI16_pAddr = addrInsn;
 
             pNext     = pHi16Info->HI16_pNext;
@@ -160,7 +160,7 @@ static INT mipsElfLO16RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
     }
 
     addrVal     = addrSymVal + addrValLO;
-    addrInsnLO  = (addrInsnLO & ~0xffff) | LOW16_VALUE(addrVal);
+    addrInsnLO  = (addrInsnLO & ~0xFFFF) | LOW16_VALUE(addrVal);
     *pRelocAdrs = addrInsnLO;
 
     return  (ERROR_NONE);
@@ -182,14 +182,12 @@ static INT mipsElfREL32RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
     ELF_DYN_DIR *pdyndir = (ELF_DYN_DIR *)(pmodule->EMOD_pvFormatInfo);
 
     if (symIndex) {
-        if(symIndex < pdyndir->ulMIPSGOTSym){
+        if(symIndex < pdyndir->ulMIPSGotSymIdx){
             *pRelocAdrs += (Elf_Addr)pmodule->EMOD_pvBaseAddr +
                             pdyndir->psymTable[symIndex].st_value;
         }else{
-            *pRelocAdrs += pdyndir->ulPLTGOT +
-                           pdyndir->ulMIPSLocalGOTNO +
-                           pdyndir->ulMIPSGOTSym +
-                           symIndex;
+            *pRelocAdrs += pdyndir->ulPltGotAddr[symIndex + pdyndir->ulMIPSLocalGotNumIdx -
+                                                 pdyndir->ulMIPSGotSymIdx];
         }
     } else {
         *pRelocAdrs += (Elf_Addr)pmodule->EMOD_pvBaseAddr;
@@ -235,14 +233,14 @@ INT  archElfRelocateRel (PVOID        pmodule,
         break;
 
     case R_MIPS_26:
-        if (addrSymVal % 4) {
+        if (addrSymVal & 0x03) {
             return (PX_ERROR);
         }
-        if ((addrSymVal & 0xf0000000) != (((Elf_Addr)paddrWhere + 4) & 0xf0000000)) {
+        if ((addrSymVal & 0xF0000000) != (((Elf_Addr)paddrWhere + 4) & 0xF0000000)) {
             return (PX_ERROR);
         }
-        *paddrWhere = (*paddrWhere & ~0x03ffffff) |
-                      ((*paddrWhere + (addrSymVal >> 2)) & 0x03ffffff);
+        *paddrWhere = (*paddrWhere & ~0x03FFFFFF) |
+                      ((*paddrWhere + (addrSymVal >> 2)) & 0x03FFFFFF);
         break;
 
     case R_MIPS_HI16:
@@ -288,22 +286,21 @@ INT archMIPSGlobalGOTTABCreate (PVOID pmodule, PVOID  pdyndir)
     LW_LD_EXEC_MODULE   *pprivmodule = (LW_LD_EXEC_MODULE *)pmodule;
     ELF_DYN_DIR         *pprivdyndir = (ELF_DYN_DIR *)pdyndir;
 
-    pMipsGotEntry = (Elf_Addr *)(pprivdyndir->ulPLTGOT) + iIndex;
-    for (; iIndex < pprivdyndir->ulMIPSLocalGOTNO; iIndex++, pMipsGotEntry++) {
+    pMipsGotEntry = pprivdyndir->ulPltGotAddr + iIndex;
+    for (; iIndex < pprivdyndir->ulMIPSLocalGotNumIdx; iIndex++, pMipsGotEntry++) {
         *pMipsGotEntry += (Elf_Addr)pprivmodule->EMOD_pvBaseAddr;
     }
 
-    pMipsGotEntry = (Elf_Addr *)(pprivdyndir->ulPLTGOT) + pprivdyndir->ulMIPSLocalGOTNO;
-    pMipsSym      = (Elf_Sym *)pprivdyndir->psymTable + pprivdyndir->ulMIPSGOTSym;
+    pMipsGotEntry = pprivdyndir->ulPltGotAddr + pprivdyndir->ulMIPSLocalGotNumIdx;
+    pMipsSym      = (Elf_Sym *)pprivdyndir->psymTable + pprivdyndir->ulMIPSGotSymIdx;
     pchStrTab     = (CHAR *)pprivdyndir->pcStrTable;
-    ulTemp        = pprivdyndir->ulMIPSSymTABNO - pprivdyndir->ulMIPSGOTSym;
+    ulTemp        = pprivdyndir->ulMIPSSymNumIdx - pprivdyndir->ulMIPSGotSymIdx;
 
     while (ulTemp--) {
         if (pMipsSym->st_shndx == SHN_UNDEF || pMipsSym->st_shndx == SHN_COMMON) {
             BOOL    bWeak = (STB_WEAK == ELF_ST_BIND(pMipsSym->st_info));
 
-            if (__moduleSymGetValue(
-                                    pprivmodule,
+            if (__moduleSymGetValue(pprivmodule,
                                     bWeak,
                                     pchStrTab + pMipsSym->st_name,
                                     &addrSymVal,

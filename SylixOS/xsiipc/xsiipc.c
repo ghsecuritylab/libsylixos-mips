@@ -227,6 +227,7 @@ int module_init (void)
 {
     ipc_lock_mutex = API_SemaphoreMCreate("ipc_lock", LW_PRIO_DEF_CEILING,
                                           LW_OPTION_WAIT_PRIORITY | LW_OPTION_INHERIT_PRIORITY |
+                                          LW_OPTION_DELETE_SAFE |
                                           LW_OPTION_OBJECT_GLOBAL,
                                           LW_NULL);
     if (ipc_lock_mutex == LW_HANDLE_INVALID) {

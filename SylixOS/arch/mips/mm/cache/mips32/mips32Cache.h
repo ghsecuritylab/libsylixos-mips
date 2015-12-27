@@ -26,7 +26,6 @@ VOID  mips32CacheInit(LW_CACHE_OP *pcacheop,
                       CACHE_MODE   uiInstruction,
                       CACHE_MODE   uiData,
                       CPCHAR       pcMachineName);
-                      
 VOID  mips32CacheReset(CPCHAR  pcMachineName);
 
 #endif                                                                  /*  __MIPS32CACHE_H             */

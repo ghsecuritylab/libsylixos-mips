@@ -854,7 +854,7 @@ VOID  vprocExit (LW_LD_VPROC *pvproc, LW_OBJECT_HANDLE  ulId, INT  iCode)
     pvproc->VP_iExitCode |= SET_EXITSTATUS(iCode);                      /*  保存结束代码                */
     
     if (pvproc->VP_ulMainThread != ulId) {                              /*  不是主线程                  */
-        API_ThreadForceDelete(&ulId, (PVOID)iCode);
+        API_ThreadDelete(&ulId, (PVOID)iCode);
         return;
     }
     
@@ -1976,9 +1976,9 @@ ssize_t  vprocGetModsInfo (pid_t  pid, PCHAR  pcBuff, size_t stMaxLen)
         pmodTemp = _LIST_ENTRY(pringTemp, LW_LD_EXEC_MODULE, EMOD_ringModules);
 
         stXmlLen = bnprintf(pcBuff, stMaxLen, stXmlLen, 
-                            "<library name=\"%s\"><segment address=\"0x%lx\"/></library>",
+                            "<library name=\"%s\"><segment address=\"0x%llx\"/></library>",
                             pmodTemp->EMOD_pcModulePath,
-                            (ULONG)pmodTemp->EMOD_pvBaseAddr);
+                            (INT64)(LONG)pmodTemp->EMOD_pvBaseAddr);
     }
     LW_VP_UNLOCK(pvproc);
     LW_LD_UNLOCK();

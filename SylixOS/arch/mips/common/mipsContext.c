@@ -39,10 +39,11 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
                               PLW_STACK              pstkTop,
                               ULONG                  ulOpt)
 {
-    ARCH_REG_CTX      *pregctx;
-    ARCH_FP_CTX       *pfpctx;
-    UINT32             uiCP0Status;
-    UINT32             uiGP;
+    ARCH_REG_CTX       *pregctx;
+    ARCH_FP_CTX        *pfpctx;
+    UINT32              uiCP0Status;
+    UINT32              uiGP;
+    INT                 i;
 
     uiCP0Status  = mipsCp0StatusRead();
 
@@ -65,41 +66,20 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
     pfpctx->FP_uiFP = (ARCH_REG_T)LW_NULL;
     pfpctx->FP_uiRA = (ARCH_REG_T)LW_NULL;
 
-    pregctx->REG_uiCP0Status = (ARCH_REG_T)uiCP0Status;
-    pregctx->REG_uiCP0Cause  = (ARCH_REG_T)0x0;
-    pregctx->REG_uiCP0DataLO = (ARCH_REG_T)0x0;
-    pregctx->REG_uiCP0DataHI = (ARCH_REG_T)0x0;
+    for (i = 0; i < 32; i++) {
+        pregctx->REG_uiReg[i] = i;
+    }
 
-    pregctx->REG_uiEPC = (ARCH_REG_T)pfuncTask;
+    pregctx->REG_uiReg[REG_A0] = (ARCH_REG_T)pvArg;
+    pregctx->REG_uiReg[REG_GP] = (ARCH_REG_T)uiGP;
+    pregctx->REG_uiReg[REG_FP] = (ARCH_REG_T)pfpctx->FP_uiFP;
+    pregctx->REG_uiReg[REG_RA] = (ARCH_REG_T)pfuncTask;
 
-    pregctx->REG_uiAT = (ARCH_REG_T)0xAF;
-    pregctx->REG_uiV0 = (ARCH_REG_T)0x0;
-    pregctx->REG_uiV1 = (ARCH_REG_T)0x1;
-    pregctx->REG_uiA0 = (ARCH_REG_T)pvArg;
-    pregctx->REG_uiA1 = (ARCH_REG_T)0xA1;
-    pregctx->REG_uiA2 = (ARCH_REG_T)0xA2;
-    pregctx->REG_uiA3 = (ARCH_REG_T)0xA3;
-    pregctx->REG_uiT0 = (ARCH_REG_T)0xF0;
-    pregctx->REG_uiT1 = (ARCH_REG_T)0xF1;
-    pregctx->REG_uiT2 = (ARCH_REG_T)0xF2;
-    pregctx->REG_uiT3 = (ARCH_REG_T)0xF3;
-    pregctx->REG_uiT4 = (ARCH_REG_T)0xF4;
-    pregctx->REG_uiT5 = (ARCH_REG_T)0xF5;
-    pregctx->REG_uiT6 = (ARCH_REG_T)0xF6;
-    pregctx->REG_uiT7 = (ARCH_REG_T)0xF7;
-    pregctx->REG_uiS0 = (ARCH_REG_T)0x80;
-    pregctx->REG_uiS1 = (ARCH_REG_T)0x81;
-    pregctx->REG_uiS2 = (ARCH_REG_T)0x82;
-    pregctx->REG_uiS3 = (ARCH_REG_T)0x83;
-    pregctx->REG_uiS4 = (ARCH_REG_T)0x84;
-    pregctx->REG_uiS5 = (ARCH_REG_T)0x85;
-    pregctx->REG_uiS6 = (ARCH_REG_T)0x86;
-    pregctx->REG_uiS7 = (ARCH_REG_T)0x87;
-    pregctx->REG_uiT8 = (ARCH_REG_T)0xF8;
-    pregctx->REG_uiT9 = (ARCH_REG_T)0xF9;
-    pregctx->REG_uiGP = (ARCH_REG_T)uiGP;
-    pregctx->REG_uiFP = (ARCH_REG_T)pfpctx->FP_uiFP;
-    pregctx->REG_uiRA = (ARCH_REG_T)pfuncTask;
+    pregctx->REG_uiCP0Status   = (ARCH_REG_T)uiCP0Status;
+    pregctx->REG_uiCP0Cause    = (ARCH_REG_T)0x0;
+    pregctx->REG_uiCP0DataLO   = (ARCH_REG_T)0x0;
+    pregctx->REG_uiCP0DataHI   = (ARCH_REG_T)0x0;
+    pregctx->REG_uiCP0EPC      = (ARCH_REG_T)pfuncTask;
 
     return  ((PLW_STACK)pregctx);
 }
@@ -123,10 +103,10 @@ VOID  archTaskCtxSetFp (PLW_STACK  pstkDest, PLW_STACK  pstkSrc)
      *  push {fp, lr}
      *  add  fp, sp, #4
      */
-    pfpctx->FP_uiFP = pregctxSrc->REG_uiFP;
-    pfpctx->FP_uiRA = pregctxSrc->REG_uiRA;
+    pfpctx->FP_uiFP = pregctxSrc->REG_uiReg[REG_FP];
+    pfpctx->FP_uiRA = pregctxSrc->REG_uiReg[REG_RA];
 
-    pregctxDest->REG_uiFP = (ARCH_REG_T)&pfpctx->FP_uiRA;
+    pregctxDest->REG_uiReg[REG_FP] = (ARCH_REG_T)&pfpctx->FP_uiRA;
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: archTaskRegsGet
@@ -175,58 +155,64 @@ VOID  archTaskRegsSet (PLW_STACK  pstkTop, const ARCH_REG_CTX  *pregctx)
 *********************************************************************************************************/
 #if LW_CFG_DEVICE_EN > 0
 
+static CPCHAR  _G_cpcRegNames[] = {
+        "ZERO",
+        "AT",
+        "V0",
+        "V1",
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "T0",
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "T8",
+        "T9",
+        "K0",
+        "K1",
+        "GP",
+        "SP",
+        "FP",
+        "RA",
+};
+
 VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 {
-    UINT32             uiCP0Status;
+    UINT32              uiCP0Status;
+    ARCH_REG_CTX       *pregctx = (ARCH_REG_CTX *)pstkTop;
+    INT                 i;
 
     fdprintf(iFd, "\n");
 
-    fdprintf(iFd, "SP  = 0x%08x  ", (ARCH_REG_T)pstkTop);
-    fdprintf(iFd, "FP  = 0x%08x\n", pstkTop[STK_OFFSET_FP / sizeof(ARCH_REG_T)]);
+    fdprintf(iFd, "SP      = 0x%08x\n", (ARCH_REG_T)pstkTop);
+    fdprintf(iFd, "EPC     = 0x%08x\n", (ARCH_REG_T)pregctx->REG_uiCP0EPC);
 
-    fdprintf(iFd, "RA  = 0x%08x  ", pstkTop[STK_OFFSET_RA / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "EPC = 0x%08x\n", pstkTop[STK_OFFSET_EPC / sizeof(ARCH_REG_T)]);
+    for (i = 0; i < 32; i++) {
+        if (i == REG_ZERO ||
+            i == REG_SP   ||
+            i == REG_K0   ||
+            i == REG_K1) {
+            continue;
+        }
+        fdprintf(iFd, "R%02d(%s) = 0x%08x\n", i, _G_cpcRegNames[i], pregctx->REG_uiReg[i]);
+    }
 
-    fdprintf(iFd, "S7  = 0x%08x  ", pstkTop[STK_OFFSET_S7 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "S6  = 0x%08x\n", pstkTop[STK_OFFSET_S6 / sizeof(ARCH_REG_T)]);
+    uiCP0Status = pregctx->REG_uiCP0Status;
 
-    fdprintf(iFd, "S5  = 0x%08x  ", pstkTop[STK_OFFSET_S4 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "S4  = 0x%08x\n", pstkTop[STK_OFFSET_S4 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "S3  = 0x%08x  ", pstkTop[STK_OFFSET_S3 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "S2  = 0x%08x\n", pstkTop[STK_OFFSET_S2 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "S1  = 0x%08x  ", pstkTop[STK_OFFSET_S1 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "S0  = 0x%08x\n", pstkTop[STK_OFFSET_S0 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "T9  = 0x%08x  ", pstkTop[STK_OFFSET_T9 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "T8  = 0x%08x\n", pstkTop[STK_OFFSET_T8 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "T7  = 0x%08x  ", pstkTop[STK_OFFSET_T7 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "T6  = 0x%08x\n", pstkTop[STK_OFFSET_T6 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "T5  = 0x%08x  ", pstkTop[STK_OFFSET_T5 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "T4  = 0x%08x\n", pstkTop[STK_OFFSET_T4 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "T3  = 0x%08x  ", pstkTop[STK_OFFSET_T3 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "T2  = 0x%08x\n", pstkTop[STK_OFFSET_T2 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "T1  = 0x%08x  ", pstkTop[STK_OFFSET_T1 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "T0  = 0x%08x\n", pstkTop[STK_OFFSET_T0 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "A3  = 0x%08x  ", pstkTop[STK_OFFSET_A3 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "A2  = 0x%08x\n", pstkTop[STK_OFFSET_A2 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "A1  = 0x%08x  ", pstkTop[STK_OFFSET_A1 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "A0  = 0x%08x\n", pstkTop[STK_OFFSET_A0 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "V1  = 0x%08x  ", pstkTop[STK_OFFSET_V1 / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "V0  = 0x%08x\n", pstkTop[STK_OFFSET_V0 / sizeof(ARCH_REG_T)]);
-
-    fdprintf(iFd, "AT  = 0x%08x  ", pstkTop[STK_OFFSET_AT / sizeof(ARCH_REG_T)]);
-    fdprintf(iFd, "GP  = 0x%08x\n", pstkTop[STK_OFFSET_GP / sizeof(ARCH_REG_T)]);
-
-    uiCP0Status = pstkTop[STK_OFFSET_SR / sizeof(ARCH_REG_T)];
     fdprintf(iFd, "CP0 Status Register:\n");
     fdprintf(iFd, "CU3 = %d  ", (uiCP0Status & M_StatusCU3) >> S_StatusCU3);
     fdprintf(iFd, "CU2 = %d\n", (uiCP0Status & M_StatusCU2) >> S_StatusCU2);

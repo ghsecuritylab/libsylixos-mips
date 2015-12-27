@@ -87,7 +87,7 @@ typedef struct __MIPS_HI16_RELOC_INFO  MIPS_HI16_RELOC_INFO, *PMIPS_HI16_RELOC_I
 
 struct __MIPS_HI16_RELOC_INFO {
     Elf_Addr 			   *HI16_pAddr;
-    Elf_Addr                HI16_value;
+    Elf_Addr                HI16_valAddr;
     PMIPS_HI16_RELOC_INFO   HI16_pNext;
 };
 #endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
@@ -179,11 +179,11 @@ typedef struct {
     Elf_Word     wdNeededArr[__LW_MAX_NEEDED_LIB];
     ULONG        ulNeededCnt;
 #ifdef  LW_CFG_CPU_ARCH_MIPS
-    Elf_Addr     ulPLTGOT;                                              /*  全局GOT的地址               */
-    ULONG        ulMIPSGOTSym;                                          /*  Dynsym 第一个GOT入口        */
-    ULONG        ulMIPSLocalGOTNO;                                      /*  MIPS Local GOT GOT入口数量  */
-    ULONG        ulMIPSSymTABNO;                                        /*  MIPS Dynsym 入口数量        */
-    ULONG        ulMIPSPLTGOT;                                          /*  MIPS .got.plt 地址          */
+    Elf_Addr    *ulPltGotAddr;                                          /*  全局GOT的地址               */
+    ULONG        ulMIPSGotSymIdx;                                       /*  Dynsym 第一个GOT入口        */
+    ULONG        ulMIPSLocalGotNumIdx;                                  /*  MIPS Local GOT 入口数量     */
+    ULONG        ulMIPSSymNumIdx;                                       /*  MIPS Dynsym 入口数量        */
+    ULONG        ulMIPSPltGotIdx;                                       /*  MIPS .got.plt 地址          */
 #endif                                                                  /*  LW_CFG_CPU_ARCH_MIPS        */
 } ELF_DYN_DIR;
 

@@ -67,6 +67,12 @@ VOID  __inetHostTableInit(VOID);
 INT   _netEventInit(VOID);
 INT   _netEventDevCreate(VOID);
 /*********************************************************************************************************
+  VLAN 支持
+*********************************************************************************************************/
+#if LW_CFG_NET_VLAN_EN > 0
+VOID  __netVlanInit(VOID);
+#endif                                                                  /*  LW_CFG_NET_VLAN_EN > 0      */
+/*********************************************************************************************************
   拨号网络函数声明
 *********************************************************************************************************/
 #if LW_CFG_LWIP_PPP > 0 || LW_CFG_LWIP_PPPOE > 0
@@ -143,7 +149,7 @@ static VOID  __netSnmpInit (VOID)
     static u8_t     ucDesrLen = 7;
     static u8_t     ucNameLen = 23;
     
-    snmp_set_syscontact((u8_t *)"sylixos@gmail.com", &ucContactLen);
+    snmp_set_syscontact((u8_t *)"acoinfo@acoinfo.com", &ucContactLen);
     snmp_set_syslocation((u8_t *)"@china", &ucLocationLen);             /*  at CHINA ^_^                */
     
     snmp_set_sysdescr((u8_t *)"sylixos", &ucDesrLen);
@@ -170,6 +176,10 @@ VOID  API_NetInit (VOID)
     } else {
         bIsInit = LW_TRUE;
     }
+    
+#if LW_CFG_NET_VLAN_EN > 0
+    __netVlanInit();                                                    /*  初始化 vlan                 */
+#endif                                                                  /*  LW_CFG_NET_VLAN_EN > 0      */
     
     _netJobqueueInit();                                                 /*  创建网络驱动作业处理队列    */
     _netEventInit();                                                    /*  初始化网络事件              */

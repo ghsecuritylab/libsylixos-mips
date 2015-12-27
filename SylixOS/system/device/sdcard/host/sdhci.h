@@ -29,6 +29,7 @@
             今天是六一儿童节,回想起咱的童年,哎,一去不复返.祝福天下的小朋友们茁壮成长,健康快乐.
 2014.11.14  为支持 SDIO 和加入 SDM 模块管理, 修改了相关数据结构. 同时删除了一些 API, 改为内部使用
 2015.11.20  增加对特殊总线位宽的支持.
+2015.12.17  增加对 MMC/eMMC 总线位宽的兼容性处理.
 *********************************************************************************************************/
 
 #ifndef __SDHCI_H
@@ -509,6 +510,7 @@ typedef struct lw_sdhci_host_attr {
 #define SDHCI_QUIRK_FLG_CAN_DATA_8BIT                         (1 << 10) /*  支持8位数据传输             */
 #define SDHCI_QUIRK_FLG_CAN_DATA_4BIT_DDR                     (1 << 11) /*  支持4位ddr数据传输          */
 #define SDHCI_QUIRK_FLG_CAN_DATA_8BIT_DDR                     (1 << 12) /*  支持8位ddr数据传输          */
+#define SDHCI_QUIRK_FLG_MMC_FORCE_1BIT                        (1 << 13) /*  MMC 卡强制使用1位总线       */
 
     VOID            *SDHCIHOST_pvUsrSpec;                               /*  用户驱动特殊数据            */
 } LW_SDHCI_HOST_ATTR, *PLW_SDHCI_HOST_ATTR;

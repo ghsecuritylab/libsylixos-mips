@@ -955,6 +955,7 @@ SylixOS/net/lwip/tools/rpc/xdr_mem.c \
 SylixOS/net/lwip/tools/rpc/xdr_rec.c \
 SylixOS/net/lwip/tools/telnet/lwip_telnet.c \
 SylixOS/net/lwip/tools/tftp/lwip_tftp.c \
+SylixOS/net/lwip/tools/vlan/lwip_vlan.c \
 SylixOS/net/lwip/tools/vpn/lwip_vpn.c \
 SylixOS/net/lwip/tools/vpn/lwip_vpnclient.c \
 SylixOS/net/lwip/tools/vpn/lwip_vpnnetif.c \

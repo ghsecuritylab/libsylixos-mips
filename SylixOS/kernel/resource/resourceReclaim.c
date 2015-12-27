@@ -97,7 +97,7 @@ VOID  __resReclaimInit (VOID)
     API_ThreadAttrBuild(&threadattr,
                         LW_CFG_THREAD_RECLAIM_STK_SIZE,
                         LW_PRIO_T_RECLAIM,
-                        LW_CFG_RECLAIM_OPTION | LW_OPTION_OBJECT_GLOBAL,
+                        LW_CFG_RECLAIM_OPTION | LW_OPTION_THREAD_SAFE | LW_OPTION_OBJECT_GLOBAL,
                         LW_NULL);
     
     API_ThreadCreate("t_reclaim", __resReclaimThread, &threadattr, LW_NULL);

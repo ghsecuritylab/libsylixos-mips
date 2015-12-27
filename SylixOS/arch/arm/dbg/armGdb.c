@@ -28,9 +28,9 @@
 *********************************************************************************************************/
 #if LW_CFG_GDB_EN > 0
 #include "dtrace.h"
-#include "../arm_gdb.h"
+#include "../../arch_gdb.h"
 /*********************************************************************************************************
-  Xfer:features:read:arm-core.xml 回应包
+  Xfer:features:read:arch-core.xml 回应包
 *********************************************************************************************************/
 static const CHAR   cArmCore[] = \
         "l<?xml version=\"1.0\"?>"
@@ -68,7 +68,7 @@ static const CHAR   cTargetSystem[] = \
         "l<?xml version=\"1.0\"?>"
         "<!DOCTYPE target SYSTEM \"gdb-target.dtd\">"
         "<target>"
-            "<xi:include href=\"arm-core.xml\"/>"
+            "<xi:include href=\"arch-core.xml\"/>"
         "</target>";
 /*********************************************************************************************************
   PC 寄存器在 GDB_REG_SET 结构中的索引
@@ -240,6 +240,18 @@ INT  archGdbRegSetPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, ULONG ulPc)
     API_DtraceSetRegs(pvDtrace, ulThread, &regctx);
 
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: archGdbRegGetPc
+** 功能描述: 获取 pc 寄存器值
+** 输　入  : pRegs       寄存器数组
+** 输　出  : PC寄存器值
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+ULONG archGdbRegGetPc (GDB_REG_SET *pRegs)
+{
+    return  (pRegs->regArr[ARM_REG_INDEX_PC].GDBRA_ulValue);
 }
 /*********************************************************************************************************
 ** 函数名称: armShiftedRegVal
@@ -695,7 +707,7 @@ static ULONG   thumbGetNextPc (GDB_REG_SET *pRegs)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-ULONG  archGdbGetNextPc (GDB_REG_SET *pRegs)
+ULONG  archGdbGetNextPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pRegs)
 {
     ULONG   ulNextPc;
     

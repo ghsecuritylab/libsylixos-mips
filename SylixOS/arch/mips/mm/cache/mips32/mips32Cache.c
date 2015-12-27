@@ -75,7 +75,7 @@ typedef struct {
     UINT32      CACHE_uiLineSize;                                       /*  Cache 行大小                */
     UINT32      CACHE_uiSetNr;                                          /*  组数                        */
     UINT32      CACHE_uiWayNr;                                          /*  路数                        */
-    UINT32      CACHE_uiWayStep;                                        /*  组步进                      */
+    UINT32      CACHE_uiWayStep;                                        /*  路步进                      */
 } MIPS_CACHE;
 
 static MIPS_CACHE   _G_ICache, _G_DCache;                               /*  I-Cache 和 D-Cache 信息     */
@@ -94,7 +94,7 @@ static MIPS_CACHE   _G_ICache, _G_DCache;                               /*  I-Ca
 /*********************************************************************************************************
   CACHE 回写管线
 *********************************************************************************************************/
-#define MIPS_PIPE_FLUSH()               MIPS_EXEC_INS ("sync")
+#define MIPS_PIPE_FLUSH()               MIPS_EXEC_INS("sync")
 /*********************************************************************************************************
   内部函数
 *********************************************************************************************************/
@@ -849,7 +849,7 @@ VOID  mips32CacheReset (CPCHAR  pcMachineName)
     mips32BranchPredictorInvalidate();
 }
 
-#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

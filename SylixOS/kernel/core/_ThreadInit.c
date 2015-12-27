@@ -342,9 +342,6 @@ VOID  _TCBBuild (UINT8                    ucPriority,
     }
 
 #if LW_CFG_CPU_FPU_EN > 0
-    /*
-     *  1.0.0 以后不再使用 pvStackFP 参数, 而采用 TCB_fpuctxContext 作为 FPU 上下文.
-     */
     ptcb->TCB_pvStackFP = &ptcb->TCB_fpuctxContext;
     __ARCH_FPU_CTX_INIT(ptcb->TCB_pvStackFP);                           /*  初始化当前任务 FPU 上下文   */
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */

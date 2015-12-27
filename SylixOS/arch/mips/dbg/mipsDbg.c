@@ -136,6 +136,29 @@ UINT  archDbgTrapType (addr_t  ulAddr, PVOID   pvArch)
         return  (LW_TRAP_INVAL);
     }
 }
+/*********************************************************************************************************
+** 函数名称: archDbgBpAdjust
+** 功能描述: 根据体系结构调整断点地址.
+** 输　入  : pvDtrace       dtrace 节点
+**           pdtm           获取的信息
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+VOID  archDbgBpAdjust (PVOID  pvDtrace, PVOID  pvtm)
+{
+    ARCH_REG_CTX    regctx;
+    ARCH_REG_T      regPs;
+    PLW_DTRACE_MSG  pdtm = (PLW_DTRACE_MSG)pvtm;
+
+    API_DtraceGetRegs(pvDtrace, pdtm->DTM_ulThread, &regctx, &regPs);
+    /*
+     * 如果 cause 寄存器 BD 位置为 1，则说明引发中断的为 "branch delay slot" 指令，PC 寄存器值需调整
+     */
+    if (regctx.REG_uiCP0Cause & M_CauseBD) {
+        pdtm->DTM_ulAddr += sizeof(ULONG);
+    }
+}
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
 /*********************************************************************************************************
   END

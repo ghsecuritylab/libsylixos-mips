@@ -95,7 +95,7 @@ static CHAR             _G_cTyXoffThreshold  = 10;                      /*  使用
 static CHAR             _G_cTyXonThreshold   = 30;                      /*  使用 OPT_TANDEM 模式时, 当  */
                                                                         /*  输入缓冲区空闲字节数超过这  */
                                                                         /*  个值时发送 XON 流控制帧     */
-static CHAR             _G_cTyWrtThreshold   = 20;                      /*  当输出缓冲区空闲字节数大于  */
+static CHAR             _G_cTyWrtThreshold   = 64;                      /*  当输出缓冲区空闲字节数大于  */
                                                                         /*  这个值, 激活等待写的线程    */
 /*********************************************************************************************************
   全局变量(函数指针)
@@ -810,6 +810,8 @@ INT  _TyIoctl (TY_DEV_ID  ptyDev,
 ** 输　出  : 实际写入的字节数, 小于 1 表示错误
 ** 全局变量: 
 ** 调用模块: 
+** 注  意  : 当任务在获取写同步信号量后获取互斥信号量前被删除, 则 tty 会丢失写同步, 所以这里提前进入安全
+             模式.
 *********************************************************************************************************/
 ssize_t  _TyWrite (TY_DEV_ID  ptyDev, 
                    PCHAR      pcBuffer, 
@@ -825,9 +827,11 @@ ssize_t  _TyWrite (TY_DEV_ID  ptyDev,
     ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bCanceled = LW_FALSE;
     ptyDev->TYDEV_iAbortFlag &= ~OPT_WABORT;                            /*  清除 abort                  */
     
+    API_ThreadSafe();                                                   /*  任务提前进入安全状态        */
     while (stNBytes > 0) {
         ulError = API_SemaphoreBPend(ptyDev->TYDEV_hWrtSyncSemB, ptyDev->TYDEV_ulWTimeout);
         if (ulError) {
+            API_ThreadUnsafe();
             _ErrorHandle(ERROR_IO_DEVICE_TIMEOUT);                      /*   超时                       */
             return  (sstNbStart - stNBytes);
         }
@@ -836,12 +840,14 @@ ssize_t  _TyWrite (TY_DEV_ID  ptyDev,
         
         if (ptyDev->TYDEV_iAbortFlag & OPT_WABORT) {                    /*  is abort?                   */
             TYDEV_UNLOCK(ptyDev);                                       /*  释放设备使用权              */
+            API_ThreadUnsafe();
             _ErrorHandle(ERROR_IO_ABORT);                               /*  abort                       */
             return  (sstNbStart - stNBytes);
         }
         
         if (ptyDev->TYDEV_tydevwrstat.TYDEVWRSTAT_bCanceled) {          /*  检查是否被禁止输出了        */
             TYDEV_UNLOCK(ptyDev);                                       /*  释放设备使用权              */
+            API_ThreadUnsafe();
             _ErrorHandle(ERROR_IO_CANCELLED);
             return  (sstNbStart - stNBytes);
         }
@@ -868,6 +874,7 @@ ssize_t  _TyWrite (TY_DEV_ID  ptyDev,
         
         TYDEV_UNLOCK(ptyDev);                                           /*  释放设备使用权              */
     }
+    API_ThreadUnsafe();                                                 /*  退出安全模式                */
     
     return  (sstNbStart);
 }
@@ -881,6 +888,7 @@ ssize_t  _TyWrite (TY_DEV_ID  ptyDev,
 ** 输　出  : 实际接收的字节数, 小于 1 表示错误
 ** 全局变量: 
 ** 调用模块: 
+** 注  意  : 当任务在获取读同步信号量后获取互斥信号量前被删除, 则 tty 会丢失读同步!
 *********************************************************************************************************/
 ssize_t  _TyReadVtime (TY_DEV_ID  ptyDev, 
                        PCHAR      pcBuffer, 
@@ -1008,6 +1016,7 @@ __re_read:
 ** 输　出  : 实际接收的字节数, 小于 1 表示错误
 ** 全局变量: 
 ** 调用模块: 
+** 注  意  : 当任务在获取读同步信号量后获取互斥信号量前被删除, 则 tty 会丢失读同步!
 *********************************************************************************************************/
 ssize_t  _TyRead (TY_DEV_ID  ptyDev, 
                   PCHAR      pcBuffer, 

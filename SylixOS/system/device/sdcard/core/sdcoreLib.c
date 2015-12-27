@@ -176,7 +176,7 @@ INT  API_SdCoreDevSendExtCSD (PLW_SDCORE_DEVICE psdcoredevice, UINT8 *pucExtCsd)
     INT             iError;
 
     sdcmd.SDCMD_uiOpcode = MMC_CMD_SEND_EXT_CSD;
-    sdcmd.SDCMD_uiFlag   = SD_RSP_R1;
+    sdcmd.SDCMD_uiFlag   = SD_RSP_R1 | SD_CMD_ADTC;
     sdcmd.SDCMD_uiArg    = 0;
     sdcmd.SDCMD_uiRetry  = 0;
 
@@ -218,7 +218,9 @@ INT  API_SdCoreDevSwitch (PLW_SDCORE_DEVICE     psdcoredevice,
     sdcmd.SDCMD_uiFlag   = SD_RSP_R1B;
     sdcmd.SDCMD_uiArg    = (SD_SWITCH_WRITE_BYTE << 24)
                          | (ucIndex << 16)
-                         | (ucValue << 8);
+                         | (ucValue << 8)
+                         | ucCmdSet;
+
     sdcmd.SDCMD_uiRetry  = 0;
     iRet = API_SdCoreDevCmd(psdcoredevice, &sdcmd, 0);
 
@@ -251,19 +253,6 @@ INT API_SdCoreDecodeExtCSD (PLW_SDCORE_DEVICE  psdcoredevice,
 
     if (psdcsd->DEVCSD_ucStructure < (MMC_VERSION_4 | MMC_VERSION_MMC)) {
         return  (ERROR_NONE);
-    }
-
-
-    iError = API_SdCoreDevSwitch(psdcoredevice, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_HS_TIMING, 0);
-    if (iError != ERROR_NONE) {
-        return  (PX_ERROR);
-    }
-
-    iError = API_SdCoreDevSwitch(psdcoredevice, EXT_CSD_CMD_SET_NORMAL,
-                EXT_CSD_BUS_WIDTH,
-                EXT_CSD_BUS_WIDTH_1);
-    if (iError) {
-        return  (PX_ERROR);
     }
 
     iError = API_SdCoreDevSendExtCSD(psdcoredevice, pucExtCsd);

@@ -1544,6 +1544,10 @@ static __SDHCI_SDM_HOST *__sdhciSdmHostNew (__PSDHCI_HOST   psdhcihost)
                         SDHCI_QUIRK_FLG_CAN_DATA_8BIT_DDR)) {
         iCapablity |= SDHOST_CAP_DATA_8BIT_DDR;
     }
+    if (SDHCI_QUIRK_FLG(&psdhcihost->SDHCIHS_sdhcihostattr,
+                        SDHCI_QUIRK_FLG_MMC_FORCE_1BIT)) {
+        iCapablity |= SDHOST_CAP_MMC_FORCE_1BIT;
+    }
     if (psdhcihost->SDHCIHS_sdhcicap.SDHCICAP_bCanHighSpeed) {
         iCapablity |= SDHOST_CAP_HIGHSPEED;
     }

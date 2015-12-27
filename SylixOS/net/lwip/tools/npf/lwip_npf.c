@@ -481,7 +481,6 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
     struct udp_hdr      udphdrChk;                                      /*  udp 头                      */
     struct tcp_hdr      tcphdrChk;                                      /*  tcp 头                      */
 
-
     __NPF_LOCK();                                                       /*  锁定 NPF 表                 */
     pnpfni = __npfNetifFind(inp->name, inp->num);                       /*  过滤器网络接口              */
     if (pnpfni == LW_NULL) {                                            /*  没有找到对应的控制结构      */
@@ -501,6 +500,7 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
 
         if (__npfMacRuleCheck(pnpfni, &ethhdrChk)) {                    /*  开始检查相应的 MAC 过滤规则 */
             iOffset += sizeof(struct eth_hdr);                          /*  允许通过                    */
+        
         } else {
             __NPF_PACKET_DROP_INC();
             __NPF_UNLOCK();                                             /*  解锁 NPF 表                 */
@@ -512,7 +512,20 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
      *  ip 过滤处理
      */
     if (iOffset == sizeof(struct eth_hdr)) {                            /*  前面有 eth hdr 字段         */
-        if (ethhdrChk.type != PP_HTONS(ETHTYPE_IP)) {
+        if (ethhdrChk.type == PP_HTONS(ETHTYPE_VLAN)) {
+            struct eth_vlan_hdr vlanhdrChk;
+            
+            if (pbuf_copy_partial(p, (void *)&vlanhdrChk,
+                                  sizeof(struct eth_vlan_hdr), (u16_t)iOffset) != 
+                                  sizeof(struct eth_vlan_hdr)) {        /*  VLAN 包头                   */
+                goto    __allow_input;
+            }
+            if (vlanhdrChk.tpid != PP_HTONS(ETHTYPE_IP)) {
+                goto    __allow_input;
+            }
+            iOffset += sizeof(struct eth_vlan_hdr);
+        
+        } else if (ethhdrChk.type != PP_HTONS(ETHTYPE_IP)) {
             goto    __allow_input;                                      /*  不是 ip 数据包, 放行        */
         }
     }

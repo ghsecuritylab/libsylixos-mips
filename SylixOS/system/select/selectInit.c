@@ -135,41 +135,28 @@ static VOID    __selTaskDeleteHook (LW_OBJECT_HANDLE  ulId, PVOID  pvReturnVal, 
     }
     
     if (pselctxDelete->SELCTX_bPendedOnSelect) {                        /*  被 select() 阻塞            */
-    
-        /*
-         *  释放所有节点
-         */
-        selwunNode.SELWUN_hThreadId  = ulId;
-        
-        /*
-         *  读
-         */
+        selwunNode.SELWUN_hThreadId = ulId;                             /*  释放所有节点                */
+
         selwunNode.SELWUN_seltypType = SELREAD;
         __selDoIoctls(&pselctxDelete->SELCTX_fdsetOrigReadFds,
-                       pselctxDelete->SELCTX_iWidth,
-                       FIOUNSELECT,
+                      pselctxDelete->SELCTX_iWidth,
+                      FIOUNSELECT,
                       &selwunNode,
-                       LW_FALSE);                                       /*  释放所有等待读使能的节点    */
-        /*
-         *  写
-         */
+                      LW_FALSE);                                        /*  释放所有等待读使能的节点    */
+        
         selwunNode.SELWUN_seltypType = SELWRITE;
         __selDoIoctls(&pselctxDelete->SELCTX_fdsetOrigWriteFds,
-                       pselctxDelete->SELCTX_iWidth,
-                       FIOUNSELECT,
+                      pselctxDelete->SELCTX_iWidth,
+                      FIOUNSELECT,
                       &selwunNode,
-                       LW_FALSE);                                       /*  释放所有等待写使能的节点    */
-                      
-        /*
-         *  异常
-         */
+                      LW_FALSE);                                        /*  释放所有等待写使能的节点    */
+        
         selwunNode.SELWUN_seltypType = SELEXCEPT;
         __selDoIoctls(&pselctxDelete->SELCTX_fdsetOrigExceptFds,
                        pselctxDelete->SELCTX_iWidth,
                        FIOUNSELECT,
                       &selwunNode,
                        LW_FALSE);                                       /*  释放所有等待异常使能的节点  */
-    
     }
     
     API_SemaphoreBDelete(&pselctxDelete->SELCTX_hSembWakeup);           /*  删除信号量                  */

@@ -279,6 +279,7 @@ __re_check:
                     
                     __PX_UNLOCK();                                      /*  解锁 posix 库               */
                     if (pkeyn->PKEYN_pfuncDestructor && bCall) {        /*  调用删除函数                */
+                        LW_SOFUNC_PREPARE(pkeyn->PKEYN_pfuncDestructor);
                         pkeyn->PKEYN_pfuncDestructor(pvPrevValue);
                     }
                     goto    __re_check;                                 /*  重新检查                    */
