@@ -31,6 +31,8 @@
             同时记录 oemDisk 所有 mount 的设备头, 这样确保卸载的安全.
 2013.10.02  加入 API_OemDiskGetPath 获取 mount 后的设备路径.
 2013.10.03  加入 API_OemDiskHotplugEventMessage 发送热插拔信息.
+2015.12.25  加入 tpsFs 支持.
+2016.01.12  oemDisk 支持彻底脱离具体的文件系统调用.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -41,7 +43,7 @@
 /*********************************************************************************************************
   裁剪宏
 *********************************************************************************************************/
-#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_DISKCACHE_EN > 0) && (LW_CFG_FATFS_EN > 0)
+#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_DISKCACHE_EN > 0)
 #include "oemBlkIo.h"
 /*********************************************************************************************************
   blk io 前缀
@@ -117,7 +119,7 @@ static VOID __oemDiskForceDeleteDis (CPCHAR  pcVolName)
 **           pvDiskCacheMem     磁盘 CACHE 缓冲区的内存起始地址  (为零表示动态分配磁盘缓冲)
 **           stMemSize          磁盘 CACHE 缓冲区大小            (为零表示不需要 DISK CACHE)
 **           iMaxBurstSector    磁盘猝发读写的最大扇区数
-**           pcFsName           文件系统类型, 例如: "vfat" "iso9660" "ntfs" ...
+**           pcFsName           文件系统类型, 例如: "vfat" "tpsfs" "iso9660" "ntfs" ...
 **           bForceFsType       是否强制使用指定的文件系统类型
 ** 输　出  : OEM 磁盘控制块
 ** 全局变量: 
@@ -149,12 +151,7 @@ PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
              DISKPART_TABLE dptPart;                                    /*  分区表                      */
              PLW_OEMDISK_CB poemd;
              
-             FUNCPTR        pfuncFsCreate = __fsCreateFuncGet(pcFsName);/*  文件系统创建函数            */
-    
-    if (pfuncFsCreate == LW_NULL) {
-        _ErrorHandle(ERROR_IO_NO_DRIVER);                               /*  没有文件系统驱动            */
-        return  (LW_NULL);
-    }
+             FUNCPTR        pfuncFsCreate;
     
     /*
      *  挂载节点名检查
@@ -266,6 +263,12 @@ PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
         
 __refined_seq:
         sprintf(cFullVolName, "%s%d", pcVolName, iVolSeq);              /*  获得完整卷名                */
+        if (API_IosDevMatchFull(cFullVolName)) {                        /*  设备名重名预判              */
+            iVolSeq++;
+            goto    __refined_seq;                                      /*  重新确定卷序号              */
+        }
+        
+        pfuncFsCreate = LW_NULL;
         
         switch (dptPart.DPT_dpoLogic[i].DPO_dpnEntry.DPN_ucPartType) {  /*  判断文件系统分区类型        */
             
@@ -275,36 +278,29 @@ __refined_seq:
         case LW_DISK_PART_TYPE_WIN95_FAT32:
         case LW_DISK_PART_TYPE_WIN95_FAT32LBA:
         case LW_DISK_PART_TYPE_WIN95_FAT16LBA:
-            if (API_IosDevMatchFull(cFullVolName)) {                    /*  设备名重名预判              */
-                iVolSeq++;
-                goto    __refined_seq;                                  /*  重新确定卷序号              */
-            }
             if (bForceFsType) {                                         /*  是否强制指定文件系统类型    */
-                if (pfuncFsCreate(cFullVolName, 
-                                  poemd->OEMDISK_pblkdPart[i]) < 0) {   /*  挂载文件系统                */
-                    if (API_GetLastError() == ERROR_IOS_DUPLICATE_DEVICE_NAME) {
-                        iVolSeq++;
-                        goto    __refined_seq;                          /*  重新确定卷序号              */
-                    } else {
-                        goto    __mount_over;                           /*  挂载失败                    */
-                    }
-                }
+                pfuncFsCreate = __fsCreateFuncGet(pcFsName);
             } else {
-                if (API_FatFsDevCreate(cFullVolName,                    /*  挂载 FAT 文件系统           */
-                                       poemd->OEMDISK_pblkdPart[i]) < 0) {
-                    if (API_GetLastError() == ERROR_IOS_DUPLICATE_DEVICE_NAME) {
-                        iVolSeq++;
-                        goto    __refined_seq;                          /*  重新确定卷序号              */
-                    } else {
-                        goto    __mount_over;                           /*  挂载失败                    */
-                    }
-                }
+                pfuncFsCreate = __fsCreateFuncGet("vfat");
             }
-            poemd->OEMDISK_pdevhdr[i] = API_IosDevMatchFull(cFullVolName);
-            poemd->OEMDISK_iVolSeq[i] = iVolSeq;                        /*  记录卷序号                  */
+            break;
+            
+        case LW_DISK_PART_TYPE_TPS:
+            if (bForceFsType) {                                         /*  是否强制指定文件系统类型    */
+                pfuncFsCreate = __fsCreateFuncGet(pcFsName);
+            } else {
+                pfuncFsCreate = __fsCreateFuncGet("tpsfs");
+            }
             break;
         
         default:                                                        /*  默认使用指定文件系统类型    */
+            if (bForceFsType) {                                         /*  是否强制指定文件系统类型    */
+                pfuncFsCreate = __fsCreateFuncGet(pcFsName);
+            }
+            break;
+        }
+        
+        if (pfuncFsCreate) {                                            /*  存在支持的文件系统          */
             if (pfuncFsCreate(cFullVolName, 
                               poemd->OEMDISK_pblkdPart[i]) < 0) {       /*  挂载文件系统                */
                 if (API_GetLastError() == ERROR_IOS_DUPLICATE_DEVICE_NAME) {
@@ -314,8 +310,8 @@ __refined_seq:
                     goto    __mount_over;                               /*  挂载失败                    */
                 }
             }
+            poemd->OEMDISK_pdevhdr[i] = API_IosDevMatchFull(cFullVolName);
             poemd->OEMDISK_iVolSeq[i] = iVolSeq;                        /*  记录卷序号                  */
-            break;
         }
         
         if (poemd->OEMDISK_iVolSeq[i] >= 0) {
@@ -385,6 +381,8 @@ PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
              DISKPART_TABLE dptPart;                                    /*  分区表                      */
              PLW_OEMDISK_CB poemd;
     
+             FUNCPTR        pfuncFsCreate;
+             
     /*
      *  挂载节点名检查
      */
@@ -495,6 +493,12 @@ PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
         
 __refined_seq:
         sprintf(cFullVolName, "%s%d", pcVolName, iVolSeq);              /*  获得完整卷名                */
+        if (API_IosDevMatchFull(cFullVolName)) {                        /*  设备名重名预判              */
+            iVolSeq++;
+            goto    __refined_seq;                                      /*  重新确定卷序号              */
+        }
+        
+        pfuncFsCreate = LW_NULL;
         
         switch (dptPart.DPT_dpoLogic[i].DPO_dpnEntry.DPN_ucPartType) {  /*  判断文件系统分区类型        */
         
@@ -504,12 +508,20 @@ __refined_seq:
         case LW_DISK_PART_TYPE_WIN95_FAT32:
         case LW_DISK_PART_TYPE_WIN95_FAT32LBA:
         case LW_DISK_PART_TYPE_WIN95_FAT16LBA:
-            if (API_IosDevMatchFull(cFullVolName)) {                    /*  设备名重名预判              */
-                iVolSeq++;
-                goto    __refined_seq;                                  /*  重新确定卷序号              */
-            }
-            if (API_FatFsDevCreate(cFullVolName, 
-                                   poemd->OEMDISK_pblkdPart[i]) < 0) {  /*  挂载 FAT 文件系统           */
+            pfuncFsCreate = __fsCreateFuncGet("vfat");                  /*  查询 VFAT 文件系统装载函数  */
+            break;
+        
+        case LW_DISK_PART_TYPE_TPS:                                     /*  TPS 文件系统类型            */
+            pfuncFsCreate = __fsCreateFuncGet("tpsfs");                 /*  查询 TPSFS 文件系统装载函数 */
+            break;
+        
+        default:
+            break;
+        }
+        
+        if (pfuncFsCreate) {                                            /*  存在支持的文件系统          */
+            if (pfuncFsCreate(cFullVolName, 
+                              poemd->OEMDISK_pblkdPart[i]) < 0) {       /*  挂载文件系统                */
                 if (API_GetLastError() == ERROR_IOS_DUPLICATE_DEVICE_NAME) {
                     iVolSeq++;
                     goto    __refined_seq;                              /*  重新确定卷序号              */
@@ -519,10 +531,6 @@ __refined_seq:
             }
             poemd->OEMDISK_pdevhdr[i] = API_IosDevMatchFull(cFullVolName);
             poemd->OEMDISK_iVolSeq[i] = iVolSeq;                        /*  记录卷序号                  */
-            break;
-        
-        default:
-            break;
         }
         
         if (poemd->OEMDISK_iVolSeq[i] >= 0) {
@@ -733,7 +741,6 @@ INT  API_OemDiskHotplugEventMessage (PLW_OEMDISK_CB  poemd,
 #endif                                                                  /*  LW_CFG_HOTPLUG_EN > 0       */
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
                                                                         /*  (LW_CFG_DISKCACHE_EN > 0)   */
-                                                                        /*  (LW_CFG_FATFS_EN > 0)       */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

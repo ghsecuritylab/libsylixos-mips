@@ -256,6 +256,12 @@ PVOID  API_VmmMallocAlign (size_t  stSize, size_t  stAlign, ULONG  ulFlag)
         stAlign = LW_CFG_VMM_PAGE_SIZE;
     }
     
+#if LW_CFG_CACHE_EN > 0
+    if (API_CacheAliasProb() && (stAlign < API_CacheWaySize())) {       /*  有限修正 cache alias        */
+        stAlign = API_CacheWaySize();
+    }
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
+    
     if (stExcess) {
         ulPageNum++;                                                    /*  确定分页数量                */
     }
@@ -418,6 +424,12 @@ PVOID  API_VmmMallocAreaAlign (size_t  stSize, size_t  stAlign,
         stAlign = LW_CFG_VMM_PAGE_SIZE;
     }
     
+#if LW_CFG_CACHE_EN > 0
+    if (API_CacheAliasProb() && (stAlign < API_CacheWaySize())) {       /*  有限修正 cache alias        */
+        stAlign = API_CacheWaySize();
+    }
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
+
     if (stExcess) {
         ulPageNum++;                                                    /*  确定分页数量                */
     }

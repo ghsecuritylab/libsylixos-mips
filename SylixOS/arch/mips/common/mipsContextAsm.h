@@ -79,9 +79,11 @@
                                         \
     LW      T0 , STK_OFFSET_LO(SP);     \
     MTLO    T0;                         \
+    EHB;                                \
                                         \
     LW      T0 , STK_OFFSET_HI(SP);     \
     MTHI    T0;                         \
+    EHB;                                \
                                         \
     LW      T0 , STK_OFFSET_EPC(SP);    \
     LW      T1 , STK_OFFSET_SR(SP);     \
@@ -123,9 +125,11 @@
     SW      T1 , STK_OFFSET_CAUSE(SP);  \
                                         \
     MFLO    T1;                         \
+    EHB;                                \
     SW      T1 , STK_OFFSET_LO(SP);     \
                                         \
     MFHI    T1;                         \
+    EHB;                                \
     SW      T1 , STK_OFFSET_HI(SP);     \
                                         \
     .set    pop

@@ -153,7 +153,7 @@ VOID  archDbgBpAdjust (PVOID  pvDtrace, PVOID  pvtm)
 
     API_DtraceGetRegs(pvDtrace, pdtm->DTM_ulThread, &regctx, &regPs);
     /*
-     * 如果 cause 寄存器 BD 位置为 1，则说明引发中断的为 "branch delay slot" 指令，PC 寄存器值需调整
+     * 如果 Cause 寄存器 BD 位置为 1，则说明引发中断的为分支延时槽指令，PC 寄存器值需调整
      */
     if (regctx.REG_uiCP0Cause & M_CauseBD) {
         pdtm->DTM_ulAddr += sizeof(ULONG);

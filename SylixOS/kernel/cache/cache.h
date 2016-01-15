@@ -77,6 +77,7 @@ typedef struct {
 #define CACHE_LOCATION_VIPT         2                                   /*  虚拟 INDEX 物理 TAG         */
 
     INT             CACHEOP_iCacheLine;                                 /*  cache line 字节数           */
+    INT             CACHEOP_iCacheWaySize;                              /*  dcache 每一路 字节数        */
     
     FUNCPTR         CACHEOP_pfuncEnable;                                /*  启动 CACHE                  */
     FUNCPTR         CACHEOP_pfuncDisable;                               /*  停止 CACHE                  */
@@ -118,6 +119,8 @@ LW_API ULONG        API_CacheLibSecondaryInit(CPCHAR  pcMachineName);
 LW_API LW_CACHE_OP *API_CacheGetLibBlock(VOID);
 LW_API INT          API_CacheLocation(LW_CACHE_TYPE  cachetype);
 LW_API INT          API_CacheLine(VOID);
+LW_API size_t       API_CacheWaySize(VOID);
+LW_API BOOL         API_CacheAliasProb(VOID);
 
 LW_API INT          API_CacheEnable(LW_CACHE_TYPE  cachetype);
 LW_API INT          API_CacheDisable(LW_CACHE_TYPE cachetype);
@@ -156,6 +159,8 @@ LW_API VOID         API_CacheFuncsSet(VOID);
 #define cacheGetLibBlock            API_CacheGetLibBlock
 #define cacheLocation               API_CacheLocation
 #define cacheLine                   API_CacheLine
+#define cacheWaySize                API_CacheWaySize
+#define cacheAliasProb              API_CacheAliasProb
 
 #define cacheEnable                 API_CacheEnable
 #define cacheDisable                API_CacheDisable

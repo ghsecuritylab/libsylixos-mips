@@ -462,6 +462,14 @@ VOID  armCacheV7Init (LW_CACHE_OP *pcacheop,
 #define ARMv7_CCSIDR_LINESIZE(x)        ((x) & ARMv7_CCSIDR_LINESIZE_MASK)
 #define ARMv7_CACHE_LINESIZE(x)         (16 << ARMv7_CCSIDR_LINESIZE(x))
 
+#define ARMv7_CCSIDR_NUMSET_MASK        0xFFFE000
+#define ARMv7_CCSIDR_NUMSET(x)          ((x) & ARMv7_CCSIDR_NUMSET_MASK)
+#define ARMv7_CACHE_NUMSET(x)           ((ARMv7_CCSIDR_NUMSET(x) >> 13) + 1)
+
+#define ARMv7_CCSIDR_WAYNUM_MSK         0x1FF8
+#define ARMv7_CCSIDR_WAYNUM(x)          ((x) & ARMv7_CCSIDR_WAYNUM_MSK)
+#define ARMv7_CACHE_WAYNUM(x)           ((ARMv7_CCSIDR_NUMSET(x) >> 3) + 1)
+
 #if LW_CFG_ARM_CACHE_L2 > 0
     armL2Init(uiInstruction, uiData, pcMachineName);
 #endif                                                                  /*  LW_CFG_ARM_CACHE_L2 > 0     */
@@ -475,6 +483,9 @@ VOID  armCacheV7Init (LW_CACHE_OP *pcacheop,
     uiCCSIDR                     = armCacheV7CCSIDR();
     pcacheop->CACHEOP_iCacheLine = ARMv7_CACHE_LINESIZE(uiCCSIDR);
     uiArmV7CacheLineSize         = (UINT32)pcacheop->CACHEOP_iCacheLine;
+    
+    pcacheop->CACHEOP_iCacheWaySize = uiArmV7CacheLineSize
+                                    * ARMv7_CACHE_NUMSET(uiCCSIDR);     /*  DCACHE WaySize              */
 
     _DebugFormat(__LOGMESSAGE_LEVEL, "ARMv7 Cache line size = %d byte.\r\n",
                  pcacheop->CACHEOP_iCacheLine);

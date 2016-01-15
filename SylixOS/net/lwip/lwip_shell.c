@@ -820,7 +820,7 @@ VOID  __tshellNetInit (VOID)
                                      "set interface like following:\n"
                                      "ifconfig en1 inet    192.168.0.3\n"
                                      "ifconfig en1 netmask 255.255.255.0\n"
-                                     "ifconfig en1 gatemay 192.168.0.1\n"
+                                     "ifconfig en1 gateway 192.168.0.1\n"
                                      "ifconfig dns 0       192.168.0.2\n");
 
     API_TShellKeywordAdd("ifup", __tshellIfUp);

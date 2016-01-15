@@ -70,8 +70,15 @@ FUNC_END(archIntDisable)
 ;/*********************************************************************************************************
 ;  MIPS 打开总中断
 ;*********************************************************************************************************/
+
 FUNC_DEF(archIntEnable)
-    MTC0(A0, CP0_STATUS)
+    AND     A0 , A0 , M_StatusIE
+    BEQ     A0 , 0 , 1f
+	NOP
+	MFC0(T0, CP0_STATUS)
+    OR      T1 , T0 , M_StatusIE
+    MTC0(T1, CP0_STATUS)
+1:
     JR      RA
     NOP
 FUNC_END(archIntEnable)
@@ -156,9 +163,8 @@ FUNC_DEF(sigsetjmp)
     SW      FP , 40(A0)
     SW      RA , 44(A0)
 
-    MOV     V0 , ZERO                                                   ;/*  Return zero.                */
     JR      RA
-    NOP
+    MOV     V0 , ZERO                                                   ;/*  Return zero.                */
 FUNC_END(sigsetjmp)
 
 ;/*********************************************************************************************************
@@ -188,9 +194,8 @@ FUNC_DEF(setjmp)
     SW      FP , 40(A0)
     SW      RA , 44(A0)
 
-    MOV     V0 , ZERO                                                   ;/*  Return zero.                */
     JR      RA
-    NOP
+    MOV     V0 , ZERO                                                   ;/*  Return zero.                */
 FUNC_END(setjmp)
 
 ;/*********************************************************************************************************
@@ -223,11 +228,11 @@ FUNC_DEF(siglongjmp)
     LW      RA , 44(A0)
 
     MOV     V0 , A1                                                     ;/*  Return the result argument, */
-    BNE     V0 , 1, 2f                                                  ;/*  or 1 if it is zero.         */
+    BNE     V0 , 0, 1f                                                  ;/*  or 1 if it is zero.         */
     NOP
     LI      V0 , 1
 
-2:
+1:
     JR      RA
     NOP
 FUNC_END(siglongjmp)
@@ -262,11 +267,11 @@ FUNC_DEF(longjmp)
     LW      RA , 44(A0)
 
     MOV     V0 , A1                                                     ;/*  Return the result argument, */
-    BNE     V0 , 1, 2f                                                  ;/*  or 1 if it is zero.         */
+    BNE     V0 , 0, 1f                                                  ;/*  or 1 if it is zero.         */
     NOP
     LI      V0 , 1
 
-2:
+1:
     JR      RA
     NOP
 FUNC_END(longjmp)

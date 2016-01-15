@@ -77,9 +77,9 @@ static INT mipsElfHI16RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
         return (PX_ERROR);
     }
 
-    pHi16Info->HI16_pAddr    = (Elf_Addr *)pRelocAdrs;
-    pHi16Info->HI16_valAddr  = addrSymVal;
-    pHi16Info->HI16_pNext    = pmodule->EMOD_pMIPSHi16List;             /*  增加 List 一个节点          */
+    pHi16Info->HI16_pAddr    	= (Elf_Addr *)pRelocAdrs;
+    pHi16Info->HI16_valAddr  	= addrSymVal;
+    pHi16Info->HI16_pNext    	= pmodule->EMOD_pMIPSHi16List;        	/*  增加 List 一个节点          */
     pmodule->EMOD_pMIPSHi16List = pHi16Info;
 
     return  (ERROR_NONE);
@@ -182,10 +182,10 @@ static INT mipsElfREL32RelocateRel (LW_LD_EXEC_MODULE  *pmodule,
     ELF_DYN_DIR *pdyndir = (ELF_DYN_DIR *)(pmodule->EMOD_pvFormatInfo);
 
     if (symIndex) {
-        if(symIndex < pdyndir->ulMIPSGotSymIdx){
+        if (symIndex < pdyndir->ulMIPSGotSymIdx) {
             *pRelocAdrs += (Elf_Addr)pmodule->EMOD_pvBaseAddr +
                             pdyndir->psymTable[symIndex].st_value;
-        }else{
+        } else {
             *pRelocAdrs += pdyndir->ulPltGotAddr[symIndex + pdyndir->ulMIPSLocalGotNumIdx -
                                                  pdyndir->ulMIPSGotSymIdx];
         }

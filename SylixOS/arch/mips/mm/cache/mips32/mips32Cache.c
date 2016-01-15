@@ -82,7 +82,7 @@ static MIPS_CACHE   _G_ICache, _G_DCache;                               /*  I-Ca
 /*********************************************************************************************************
   CACHE 循环操作时允许的最大大小, 大于该大小时将使用 All 操作
 *********************************************************************************************************/
-#define MIPS_CACHE_LOOP_OP_MAX_SIZE     (16 * LW_CFG_KB_SIZE)
+#define MIPS_CACHE_LOOP_OP_MAX_SIZE     (8 * LW_CFG_KB_SIZE)
 /*********************************************************************************************************
   CACHE 获得 pvAdrs 与 pvEnd 位置
 *********************************************************************************************************/
@@ -609,14 +609,16 @@ static INT	mips32CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
         mips32ICacheInvalidateAll();                                    /*  ICACHE 全部无效             */
         
     } else {
+    	PVOID   pvAdrsBak = pvAdrs;
+
         MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, _G_DCache.CACHE_uiLineSize);
 
         mips32DCacheFlush(pvAdrs, (PVOID)ulEnd,
                           _G_DCache.CACHE_uiLineSize);                  /*  部分回写                    */
 
-        MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, _G_ICache.CACHE_uiLineSize);
+        MIPS_CACHE_GET_END(pvAdrsBak, stBytes, ulEnd, _G_ICache.CACHE_uiLineSize);
 
-        mips32ICacheInvalidate(pvAdrs, (PVOID)ulEnd, _G_ICache.CACHE_uiLineSize);
+        mips32ICacheInvalidate(pvAdrsBak, (PVOID)ulEnd, _G_ICache.CACHE_uiLineSize);
     }
     
     return  (ERROR_NONE);
@@ -811,6 +813,7 @@ VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
 
     pcacheop->CACHEOP_iILoc                 = CACHE_LOCATION_VIPT;
     pcacheop->CACHEOP_iDLoc                 = CACHE_LOCATION_VIPT;
+    pcacheop->CACHEOP_iCacheWaySize 		= _G_DCache.CACHE_uiWayStep;
 
     pcacheop->CACHEOP_pfuncEnable           = mips32CacheEnable;
     pcacheop->CACHEOP_pfuncDisable          = mips32CacheDisable;

@@ -47,7 +47,8 @@ PLW_STACK  archTaskCtxCreate (PTHREAD_START_ROUTINE  pfuncTask,
 
     uiCP0Status  = mipsCp0StatusRead();
 
-    uiCP0Status |= M_StatusIM6 |                                        /*  默认不使能内部定时器中断    */
+    uiCP0Status |= M_StatusIM7 |
+    			   M_StatusIM6 |
                    M_StatusIM5 |
                    M_StatusIM4 |
                    M_StatusIM3 |
@@ -155,61 +156,44 @@ VOID  archTaskRegsSet (PLW_STACK  pstkTop, const ARCH_REG_CTX  *pregctx)
 *********************************************************************************************************/
 #if LW_CFG_DEVICE_EN > 0
 
-static CPCHAR  _G_cpcRegNames[] = {
-        "ZERO",
-        "AT",
-        "V0",
-        "V1",
-        "A0",
-        "A1",
-        "A2",
-        "A3",
-        "T0",
-        "T1",
-        "T2",
-        "T3",
-        "T4",
-        "T5",
-        "T6",
-        "T7",
-        "S0",
-        "S1",
-        "S2",
-        "S3",
-        "S4",
-        "S5",
-        "S6",
-        "S7",
-        "T8",
-        "T9",
-        "K0",
-        "K1",
-        "GP",
-        "SP",
-        "FP",
-        "RA",
-};
-
 VOID  archTaskCtxShow (INT  iFd, PLW_STACK  pstkTop)
 {
     UINT32              uiCP0Status;
     ARCH_REG_CTX       *pregctx = (ARCH_REG_CTX *)pstkTop;
-    INT                 i;
 
     fdprintf(iFd, "\n");
 
     fdprintf(iFd, "SP      = 0x%08x\n", (ARCH_REG_T)pstkTop);
     fdprintf(iFd, "EPC     = 0x%08x\n", (ARCH_REG_T)pregctx->REG_uiCP0EPC);
 
-    for (i = 0; i < 32; i++) {
-        if (i == REG_ZERO ||
-            i == REG_SP   ||
-            i == REG_K0   ||
-            i == REG_K1) {
-            continue;
-        }
-        fdprintf(iFd, "R%02d(%s) = 0x%08x\n", i, _G_cpcRegNames[i], pregctx->REG_uiReg[i]);
-    }
+    fdprintf(iFd, "R01(AT) = 0x%08x\n", pregctx->REG_uiReg[REG_AT]);
+    fdprintf(iFd, "R02(V0) = 0x%08x\n", pregctx->REG_uiReg[REG_V0]);
+    fdprintf(iFd, "R03(V1) = 0x%08x\n", pregctx->REG_uiReg[REG_V1]);
+    fdprintf(iFd, "R04(A0) = 0x%08x\n", pregctx->REG_uiReg[REG_A0]);
+    fdprintf(iFd, "R05(A1) = 0x%08x\n", pregctx->REG_uiReg[REG_A1]);
+    fdprintf(iFd, "R06(A2) = 0x%08x\n", pregctx->REG_uiReg[REG_A2]);
+    fdprintf(iFd, "R07(A3) = 0x%08x\n", pregctx->REG_uiReg[REG_A3]);
+    fdprintf(iFd, "R08(T0) = 0x%08x\n", pregctx->REG_uiReg[REG_T0]);
+    fdprintf(iFd, "R09(T1) = 0x%08x\n", pregctx->REG_uiReg[REG_T1]);
+    fdprintf(iFd, "R10(T2) = 0x%08x\n", pregctx->REG_uiReg[REG_T2]);
+    fdprintf(iFd, "R11(T3) = 0x%08x\n", pregctx->REG_uiReg[REG_T3]);
+    fdprintf(iFd, "R12(T4) = 0x%08x\n", pregctx->REG_uiReg[REG_T4]);
+    fdprintf(iFd, "R13(T5) = 0x%08x\n", pregctx->REG_uiReg[REG_T5]);
+    fdprintf(iFd, "R14(T6) = 0x%08x\n", pregctx->REG_uiReg[REG_T6]);
+    fdprintf(iFd, "R15(T7) = 0x%08x\n", pregctx->REG_uiReg[REG_T7]);
+    fdprintf(iFd, "R16(S0) = 0x%08x\n", pregctx->REG_uiReg[REG_S0]);
+    fdprintf(iFd, "R17(S1) = 0x%08x\n", pregctx->REG_uiReg[REG_S1]);
+    fdprintf(iFd, "R18(S2) = 0x%08x\n", pregctx->REG_uiReg[REG_S2]);
+    fdprintf(iFd, "R19(S3) = 0x%08x\n", pregctx->REG_uiReg[REG_S3]);
+    fdprintf(iFd, "R20(S4) = 0x%08x\n", pregctx->REG_uiReg[REG_S4]);
+    fdprintf(iFd, "R21(S5) = 0x%08x\n", pregctx->REG_uiReg[REG_S5]);
+    fdprintf(iFd, "R22(S6) = 0x%08x\n", pregctx->REG_uiReg[REG_S6]);
+    fdprintf(iFd, "R23(S7) = 0x%08x\n", pregctx->REG_uiReg[REG_S7]);
+    fdprintf(iFd, "R24(T8) = 0x%08x\n", pregctx->REG_uiReg[REG_T8]);
+    fdprintf(iFd, "R25(T9) = 0x%08x\n", pregctx->REG_uiReg[REG_T9]);
+    fdprintf(iFd, "R28(GP) = 0x%08x\n", pregctx->REG_uiReg[REG_GP]);
+    fdprintf(iFd, "R30(FP) = 0x%08x\n", pregctx->REG_uiReg[REG_FP]);
+    fdprintf(iFd, "R31(RA) = 0x%08x\n", pregctx->REG_uiReg[REG_RA]);
 
     uiCP0Status = pregctx->REG_uiCP0Status;
 

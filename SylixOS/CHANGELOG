@@ -56,6 +56,10 @@ HISTORY
     
 ++ Bugfixes:
 
+    2016-01-12: han.hui
+    修正 blockIo 支持所有文件系统操作.
+    oemDiskMount 彻底脱离具体的文件系统实现.
+
     2015-11-20: han.hui
     修正 xinput & xsiipc 内核模块初始化函数返回值.
 

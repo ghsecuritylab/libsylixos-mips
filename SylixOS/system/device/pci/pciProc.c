@@ -27,6 +27,7 @@
   裁剪宏
 *********************************************************************************************************/
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_PCI_EN > 0) && (LW_CFG_PROCFS_EN > 0)
+#include "pciDev.h"
 #include "pciDb.h"
 /*********************************************************************************************************
   PCI 主控器
@@ -82,10 +83,10 @@ static VOID  __procFsPciPrintDev (INT iBus, INT iSlot, INT iFunc,
 {
     CHAR    cDevBasicInfo[128];
 
-    __pciDbGetClassStr(p_pcidhdr->PCID_ucClassCode,
-                       p_pcidhdr->PCID_ucSubClass,
-                       p_pcidhdr->PCID_ucProgIf,
-                       cDevBasicInfo, sizeof(cDevBasicInfo));
+    API_PciDbGetClassStr(p_pcidhdr->PCID_ucClassCode,
+                         p_pcidhdr->PCID_ucSubClass,
+                         p_pcidhdr->PCID_ucProgIf,
+                         cDevBasicInfo, sizeof(cDevBasicInfo));
     
     *p_pciparg->PPA_pstOft = bnprintf(p_pciparg->PPA_pcFileBuffer, 
                                       p_pciparg->PPA_stTotalSize, 
@@ -111,6 +112,7 @@ static VOID  __procFsPciPrintDev (INT iBus, INT iSlot, INT iFunc,
                                       p_pcidhdr->PCID_uiRomBase,
                                       p_pcidhdr->PCID_usSubVendorId,
                                       p_pcidhdr->PCID_usSubSystemId);
+
 }
 /*********************************************************************************************************
 ** 函数名称: __procFsPciPrintBridge
@@ -131,10 +133,10 @@ static VOID  __procFsPciPrintBridge (INT iBus, INT iSlot, INT iFunc,
 
     CHAR    cBrgBasicInfo[128];
     
-    __pciDbGetClassStr(p_pcibhdr->PCIB_ucClassCode,
-                       p_pcibhdr->PCIB_ucSubClass,
-                       p_pcibhdr->PCIB_ucProgIf,
-                       cBrgBasicInfo, sizeof(cBrgBasicInfo));
+    API_PciDbGetClassStr(p_pcibhdr->PCIB_ucClassCode,
+                         p_pcibhdr->PCIB_ucSubClass,
+                         p_pcibhdr->PCIB_ucProgIf,
+                         cBrgBasicInfo, sizeof(cBrgBasicInfo));
     
     *p_pciparg->PPA_pstOft = bnprintf(p_pciparg->PPA_pcFileBuffer, 
                                       p_pciparg->PPA_stTotalSize, 
@@ -178,10 +180,10 @@ static VOID  __procFsPciPrintCardbus (INT iBus, INT iSlot, INT iFunc,
 {
     CHAR    cBrgBasicInfo[128];
     
-    __pciDbGetClassStr(p_pcicbhdr->PCICB_ucClassCode,
-                       p_pcicbhdr->PCICB_ucSubClass,
-                       p_pcicbhdr->PCICB_ucProgIf,
-                       cBrgBasicInfo, sizeof(cBrgBasicInfo));
+    API_PciDbGetClassStr(p_pcicbhdr->PCICB_ucClassCode,
+                         p_pcicbhdr->PCICB_ucSubClass,
+                         p_pcicbhdr->PCICB_ucProgIf,
+                         cBrgBasicInfo, sizeof(cBrgBasicInfo));
     
     *p_pciparg->PPA_pstOft = bnprintf(p_pciparg->PPA_pcFileBuffer, 
                                       p_pciparg->PPA_stTotalSize, 
@@ -344,7 +346,7 @@ static ssize_t  __procFsPciRead (PLW_PROCFS_NODE  p_pfsn,
         return  (0);
     }
     
-    stCopeBytes  = __MIN(stMaxBytes, (size_t)(stRealSize - oft));       /*  计算实际拷贝的字节数        */
+    stCopeBytes = __MIN(stMaxBytes, (size_t)(stRealSize - oft));        /*  计算实际拷贝的字节数        */
     lib_memcpy(pcBuffer, (CPVOID)(pcFileBuffer + oft), (UINT)stCopeBytes);
     
     return  ((ssize_t)stCopeBytes);
@@ -359,10 +361,11 @@ static ssize_t  __procFsPciRead (PLW_PROCFS_NODE  p_pfsn,
 *********************************************************************************************************/
 VOID  __procFsPciInit (VOID)
 {
-    __pciDbInit();
+    API_PciDbInit();
     
     API_ProcFsMakeNode(&_G_pfsnPci[0],  "/");
 }
+
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */
                                                                         /*  (LW_CFG_PCI_EN > 0)         */
                                                                         /*  (LW_CFG_PROCFS_EN > 0)      */

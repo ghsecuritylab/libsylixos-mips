@@ -18,12 +18,13 @@
 **
 ** 描        述: MIPS 体系构架 MMU 通用接口.
 *********************************************************************************************************/
-#ifndef MIPSMMUCOMMON_H_
-#define MIPSMMUCOMMON_H_
+
+#ifndef __MIPSMMUCOMMON_H
+#define __MIPSMMUCOMMON_H
 
 ULONG  mipsMmuTlbLoadStoreExcHandle(addr_t  ulAbortAddr);
 
-#endif                                                                  /*  MIPSMMUCOMMON_H_            */
+#endif                                                                  /*  __MIPSMMUCOMMON_H           */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

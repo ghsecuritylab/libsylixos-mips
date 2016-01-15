@@ -374,9 +374,10 @@ VOID  armCacheV6Init (LW_CACHE_OP *pcacheop,
     pcacheop->CACHEOP_ulOption = 0ul;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    pcacheop->CACHEOP_iILoc      = CACHE_LOCATION_VIPT;
-    pcacheop->CACHEOP_iDLoc      = CACHE_LOCATION_VIPT;
-    pcacheop->CACHEOP_iCacheLine = ARMv6_CACHE_LINE_SIZE;
+    pcacheop->CACHEOP_iILoc         = CACHE_LOCATION_VIPT;
+    pcacheop->CACHEOP_iDLoc         = CACHE_LOCATION_VIPT;
+    pcacheop->CACHEOP_iCacheLine    = ARMv6_CACHE_LINE_SIZE;
+    pcacheop->CACHEOP_iCacheWaySize = (4 * LW_CFG_KB_SIZE);
     
     pcacheop->CACHEOP_pfuncEnable  = armCacheV6Enable;
     pcacheop->CACHEOP_pfuncDisable = armCacheV6Disable;

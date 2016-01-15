@@ -23,8 +23,15 @@
 #define __PCI_DEV_H
 
 #include "pciBus.h"
-#include "pciVendor.h"
+#include "pciIds.h"
+#include "pciDrv.h"
+#include "pciPm.h"
+#include "pciMsi.h"
+#include "pciCap.h"
+#include "pciError.h"
+#include "pciCapExt.h"
 #include "pciExpress.h"
+#include "pciAutoCfg.h"
 
 /*********************************************************************************************************
   裁剪宏
@@ -261,6 +268,8 @@ typedef struct {
 typedef struct pci_drv_funcs0 {
     INT     (*cfgRead)(INT iBus, INT iSlot, INT iFunc, INT iOft, INT iLen, PVOID pvRet);
     INT     (*cfgWrite)(INT iBus, INT iSlot, INT iFunc, INT iOft, INT iLen, UINT32 uiData);
+    INT     (*vpdRead)(INT iBus, INT iSlot, INT iFunc, INT iPos, UINT8 *pucBuf, INT iLen);
+    INT     (*irqGet)(INT iBus, INT iSlot, INT iFunc, INT iMsiEn, INT iLine, INT iPin, ULONG *pulVector);
     INT     (*cfgSpcl)(INT iBus, UINT32 uiMsg);
 } PCI_DRV_FUNCS0;                                                       /*  PCI_MECHANISM_0             */
 
@@ -282,13 +291,13 @@ typedef struct pci_drv_funcs12 {
 *********************************************************************************************************/
 
 #define PCI_SLOTFN(slot, func)  ((((slot) & 0x1f) << 3) | ((func) & 0x07))
+#define PCI_DEVFN(slot, func)   PCI_SLOTFN(slot, func)
 #define PCI_SLOT(slotfn)        (((slotfn) >> 3) & 0x1f)
 #define PCI_FUNC(slotfn)        ((slotfn) & 0x07)
 
 /*********************************************************************************************************
   pack parameters for the PCI Configuration Address Register
 *********************************************************************************************************/
-
 #define PCI_PACKET(bus, slot, func) ((((bus) << 16) & 0x00ff0000) | \
                                     (((slot) << 11) & 0x0000f800) | \
                                     (((func) << 8)  & 0x00000700))
@@ -318,6 +327,57 @@ typedef struct pci_drv_funcs12 {
 #define PCI_CONFIG_BASE         0xc000                                  /* base register                */
 
 /*********************************************************************************************************
+  配置参数
+*********************************************************************************************************/
+#define PCI_DEBUG_EN            0                                       /* 是否使能调试信息             */
+
+#define PCI_BARS_MAX            6                                       /* BAR 最大数量                 */
+#define PCI_CONFIG_LEN_MAX      256                                     /* 配置空间大小                 */
+
+#define PCI_DEV_NAME_MAX        (32 + 1)                                /* 设备名称最大值               */
+#define PCI_DEV_IRQ_NAME_MAX    (32 + 1)                                /* 设备中断名称最大值           */
+
+/*********************************************************************************************************
+  ID 配置
+*********************************************************************************************************/
+#define PCI_ANY_ID              (~0)                                    /* 任何 ID                      */
+
+#define PCI_DEVICE(vend,dev)                            (vend),                 \
+                                                        (dev),                  \
+                                                        PCI_ANY_ID,             \
+                                                        PCI_ANY_ID
+
+#define PCI_DEVICE_SUB(vend, dev, subvend, subdev)      (vend),                 \
+                                                        (dev),                  \
+                                                        (subvend),              \
+                                                        (subdev)
+
+#define PCI_DEVICE_CLASS(dev_class,dev_class_mask)      PCI_ANY_ID,             \
+                                                        PCI_ANY_ID,             \
+                                                        PCI_ANY_ID,             \
+                                                        PCI_ANY_ID,             \
+                                                        (dev_class),            \
+                                                        (dev_class_mask)        \
+
+#define PCI_VDEVICE(vend, dev)                          PCI_VENDOR_ID_##vend,   \
+                                                        (dev),                  \
+                                                        PCI_ANY_ID,             \
+                                                        PCI_ANY_ID,             \
+                                                        0,                      \
+                                                        0
+
+/*********************************************************************************************************
+  调试模式配置
+*********************************************************************************************************/
+#if PCI_DEBUG_EN > 0                                                    /* 是否使能 PCI 调试模式        */
+#define PCI_DEBUG_MSG                       _DebugHandle
+#define PCI_DEBUG_MSG_FMT                   _DebugFormat
+#else                                                                   /* PCI_DEBUG_EN                 */
+#define PCI_DEBUG_MSG(level, msg)
+#define PCI_DEBUG_MSG_FMT(level, fmt, ...)
+#endif                                                                  /* PCI_DEBUG_EN                 */
+
+/*********************************************************************************************************
   PCI access config
 *********************************************************************************************************/
 
@@ -342,56 +402,225 @@ typedef struct {
     addr_t                      PCIC_ulConfigBase;                      /* only for PCI_MECHANISM_2     */
     
     LW_OBJECT_HANDLE            PCIC_ulLock;
+
+    INT                         PCIC_iIndex;
+    INT                         PCIC_iBusMax;
 } PCI_CONFIG;
+
+/*********************************************************************************************************
+  PCI 设备控制块 (只管理 PCI_HEADER_TYPE_NORMAL 类型设备)
+*********************************************************************************************************/
+typedef struct {
+    LW_LIST_LINE        PDT_lineDevNode;                                /* 设备管理节点                 */
+
+    UINT32              PDT_uiDevVersion;                               /* 设备版本                     */
+    UINT32              PDT_uiUnitNumber;                               /* 设备编号                     */
+    CHAR                PDT_cDevName[PCI_DEV_NAME_MAX];                 /* 设备名称                     */
+    INT                 PDT_iDevBus;                                    /* 总线号                       */
+    INT                 PDT_iDevDevice;                                 /* 设备号                       */
+    INT                 PDT_iDevFunction;                               /* 功能号                       */
+    PCI_HDR             PDT_phDevHdr;                                   /* 设备头                       */
+
+    PVOID               PDT_pvDevBarBase[PCI_BARS_MAX];                 /* 各 BAR 基地址                */
+    PVOID               PDT_pvDevBarBasePhys[PCI_BARS_MAX];             /* 各 BAR 物理地址              */
+    size_t              PDT_stDevBarBaseSize[PCI_BARS_MAX];             /* 各 BAR 大小                  */
+    UINT32              PDT_uiDevBarBaseFlags[PCI_BARS_MAX];            /* 各 BAR 类型                  */
+
+    PVOID               PDT_pvDevDriver;                                /* 驱动句柄                     */
+
+    INT                 PDT_iDevIrqMsiEn;                               /* 是否使能 MSI                 */
+    ULONG               PDT_ulDevIrqVector;                             /* 中断向量                     */
+    CHAR                PDT_cDevIrqName[PCI_DEV_IRQ_NAME_MAX];          /* 中断名称                     */
+    PINT_SVR_ROUTINE    PDT_pfuncDevIrqHandle;                          /* 中断服务句柄                 */
+    PVOID               PDT_pvDevIrqArg;                                /* 中断服务参数                 */
+
+    LW_OBJECT_HANDLE    PDT_hDevLock;                                   /* 设备自身操作锁               */
+} PCI_DEV_TCB;
+typedef PCI_DEV_TCB    *PCI_DEV_HANDLE;
+
+/*********************************************************************************************************
+  驱动支持设备列表控制块
+*********************************************************************************************************/
+typedef struct {
+    UINT32      PDIT_uiVendor;                                          /* 厂商 ID                      */
+    UINT32      PDIT_uiDevice;                                          /* 设备 ID                      */
+
+    UINT32      PDIT_uiSubVendor;                                       /* 子厂商 ID                    */
+    UINT32      PDIT_uiSubDevice;                                       /* 子设备 ID                    */
+
+    UINT32      PDIT_uiClass;                                           /* 设备类                       */
+    UINT32      PDIT_uiClassMask;                                       /* 设备子类                     */
+
+    ULONG       PDIT_ulData;                                            /* 设备私有数据                 */
+} PCI_DEVICE_ID_TCB;
+typedef PCI_DEVICE_ID_TCB      *PCI_DEVICE_ID_HANDLE;
+
+/*********************************************************************************************************
+  驱动注册控制块
+*********************************************************************************************************/
+typedef struct {
+    CPCHAR                  PDRT_pcName;                                /* 驱动名称                     */
+    PCI_DEVICE_ID_HANDLE    PDRT_hIdTable;                              /* 设备支持列表                 */
+    UINT32                  PDRT_uiIdTableSize;                         /* 设备支持列表大小             */
+
+    /*
+     *  驱动常用函数, PDRT_pfuncProbe 与 PDRT_pfuncRemove 不能为 LW_NULL, 其它可选
+     */
+    INT   (*PDRT_pfuncProbe) (PCI_DEV_HANDLE hHandle, const PCI_DEVICE_ID_HANDLE hIdTable);
+    VOID  (*PDRT_pfuncRemove)(PCI_DEV_HANDLE hHandle);
+    INT   (*PDRT_pfuncSuspend)(PCI_DEV_HANDLE hHandle, PCI_PM_MESSAGE_HANDLE hPmMsg);
+    INT   (*PDRT_pfuncSuspendLate)(PCI_DEV_HANDLE hHandle, PCI_PM_MESSAGE_HANDLE hPmMsg);
+    INT   (*PDRT_pfuncResumeEarly)(PCI_DEV_HANDLE hHandle);
+    INT   (*PDRT_pfuncResume)(PCI_DEV_HANDLE hHandle);
+    VOID  (*PDRT_pfuncShutdown)(PCI_DEV_HANDLE hHandle);
+
+    PCI_ERROR_HANDLE        PDRT_hErrorHandler;                         /* 错误处理句柄                 */
+
+} PCI_DRV_REGISTER_TCB;
+typedef PCI_DRV_REGISTER_TCB       *PCI_DRV_REGISTER_HANDLE;
+
+/*********************************************************************************************************
+  驱动管理设备控制块
+*********************************************************************************************************/
+typedef struct {
+    LW_LIST_LINE            PDDT_lineDrvDevNode;                        /* 设备节点管理                 */
+
+    PCI_DEV_HANDLE          PDDT_hDrvDevHandle;                         /* 设备句柄                     */
+} PCI_DRV_DEV_TCB;
+typedef PCI_DRV_DEV_TCB     *PCI_DRV_DEV_HANDLE;
+
+/*********************************************************************************************************
+  驱动控制块
+*********************************************************************************************************/
+typedef struct {
+    LW_LIST_LINE            PDT_lineDrvNode;                            /* 驱动节点管理                 */
+    CHAR                    PDT_cDrvName[PCI_DRV_NAME_MAX];             /* 驱动名称                     */
+    PCI_DEVICE_ID_HANDLE    PDT_hDrvIdTable;                            /* 设备支持列表                 */
+    UINT32                  PDT_uiDrvIdTableSize;                       /* 设备支持列表大小             */
+
+    /*
+     *  驱动常用函数, PDRT_pfuncProbe 与 PDRT_pfuncRemove 不能为 LW_NULL, 其它可选
+     */
+    INT   (*PDT_pfuncDrvProbe) (PCI_DEV_HANDLE hHandle, const PCI_DEVICE_ID_HANDLE hIdTable);
+    VOID  (*PDT_pfuncDrvRemove)(PCI_DEV_HANDLE hHandle);
+    INT   (*PDT_pfuncDrvSuspend)(PCI_DEV_HANDLE hHandle, PCI_PM_MESSAGE_HANDLE hPmMsg);
+    INT   (*PDT_pfuncDrvSuspendLate)(PCI_DEV_HANDLE hHandle, PCI_PM_MESSAGE_HANDLE hPmMsg);
+    INT   (*PDT_pfuncDrvResumeEarly)(PCI_DEV_HANDLE hHandle);
+    INT   (*PDT_pfuncDrvResume)(PCI_DEV_HANDLE hHandle);
+    VOID  (*PDT_pfuncDrvShutdown)(PCI_DEV_HANDLE hHandle);
+
+    PCI_ERROR_HANDLE        PDT_hDrvErrHandler;                         /* 错误处理句柄                 */
+
+    INT                     PDT_iDrvFlag;                               /* 驱动标志                     */
+    UINT32                  PDT_uiDrvDevNum;                            /* 关联设备数                   */
+    LW_LIST_LINE_HEADER     PDT_plineDrvDevHeader;                      /* 设备管理链表头               */
+} PCI_DRV_TCB;
+typedef PCI_DRV_TCB    *PCI_DRV_HANDLE;
 
 /*********************************************************************************************************
   API
   API_PciConfigInit() 必须在 BSP 初始化总线系统时被调用, 而且必须保证是第一个被正确调用的 PCI 系统函数.
 *********************************************************************************************************/
 
-LW_API INT      API_PciConfigInit(PCI_CONFIG *p_pcicfg);
-LW_API VOID     API_PciConfigReset(INT  iRebootType);
+LW_API INT          API_PciConfigInit(PCI_CONFIG *p_pcicfg);
+LW_API VOID         API_PciConfigReset(INT  iRebootType);
 
-LW_API INT      API_PciLock(VOID);
-LW_API INT      API_PciUnlock(VOID);
+LW_API INT          API_PciLock(VOID);
+LW_API INT          API_PciUnlock(VOID);
 
-LW_API INT      API_PciConfigInByte(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 *pucValue);
-LW_API INT      API_PciConfigInWord(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 *pusValue);
-LW_API INT      API_PciConfigInDword(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 *puiValue);
+LW_API INT          API_PciConfigInByte(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 *pucValue);
+LW_API INT          API_PciConfigInWord(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 *pusValue);
+LW_API INT          API_PciConfigInDword(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 *puiValue);
 
-LW_API INT      API_PciConfigOutByte(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 ucValue);
-LW_API INT      API_PciConfigOutWord(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 usValue);
-LW_API INT      API_PciConfigOutDword(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 uiValue);
+LW_API INT          API_PciConfigOutByte(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT8 ucValue);
+LW_API INT          API_PciConfigOutWord(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT16 usValue);
+LW_API INT          API_PciConfigOutDword(INT iBus, INT iSlot, INT iFunc, INT iOft, UINT32 uiValue);
 
-LW_API INT      API_PciConfigModifyByte(INT iBus, INT iSlot, INT iFunc, INT iOft, 
-                                        UINT8 ucMask, UINT8 ucValue);
-LW_API INT      API_PciConfigModifyWord(INT iBus, INT iSlot, INT iFunc, INT iOft, 
-                                        UINT16 usMask, UINT16 usValue);
-LW_API INT      API_PciConfigModifyDword(INT iBus, INT iSlot, INT iFunc, INT iOft, 
-                                         UINT32 uiMask, UINT32 uiValue);
+LW_API INT          API_PciConfigModifyByte(INT iBus, INT iSlot, INT iFunc, INT iOft,
+                                            UINT8 ucMask, UINT8 ucValue);
+LW_API INT          API_PciConfigModifyWord(INT iBus, INT iSlot, INT iFunc, INT iOft,
+                                            UINT16 usMask, UINT16 usValue);
+LW_API INT          API_PciConfigModifyDword(INT iBus, INT iSlot, INT iFunc, INT iOft,
+                                             UINT32 uiMask, UINT32 uiValue);
                                          
-LW_API INT      API_PciSpecialCycle(INT iBus, UINT32 uiMsg);
+LW_API INT          API_PciSpecialCycle(INT iBus, UINT32 uiMsg);
 
-LW_API INT      API_PciFindDev(UINT16 usVendorId, UINT16 usDeviceId, INT  iInstance,
-                               INT *piBus, INT *piSlot, INT *piFunc);
-LW_API INT      API_PciFindClass(UINT16  usClassCode, INT  iInstance,
-                                 INT *piBus, INT *piSlot, INT *piFunc);
+LW_API INT          API_PciFindDev(UINT16 usVendorId, UINT16 usDeviceId, INT  iInstance,
+                                   INT *piBus, INT *piSlot, INT *piFunc);
+LW_API INT          API_PciFindClass(UINT16  usClassCode, INT  iInstance,
+                                     INT *piBus, INT *piSlot, INT *piFunc);
                                  
-LW_API INT      API_PciTraversal(INT (*pfuncCall)(), PVOID pvArg, INT iMaxBusNum);
-LW_API INT      API_PciTraversalDev(INT iBusStart, BOOL bSubBus, INT (*pfuncCall)(), PVOID pvArg);
+LW_API INT          API_PciTraversal(INT (*pfuncCall)(), PVOID pvArg, INT iMaxBusNum);
+LW_API INT          API_PciTraversalDev(INT iBusStart, BOOL bSubBus, INT (*pfuncCall)(), PVOID pvArg);
                                  
-LW_API INT      API_PciConfigDev(INT iBus, INT iSlot, INT iFunc, 
-                                 ULONG ulIoBase, pci_addr_t ulMemBase, 
-                                 UINT8 ucLatency, UINT32 uiCommand);
-LW_API INT      API_PciFuncDisable(INT iBus, INT iSlot, INT iFunc);
-                                 
-LW_API INT      API_PciInterConnect(ULONG ulVector, PINT_SVR_ROUTINE pfuncIsr, 
-                                    PVOID pvArg, CPCHAR pcName);
-LW_API INT      API_PciInterDisconnect(ULONG ulVector, PINT_SVR_ROUTINE pfuncIsr, 
-                                       PVOID pvArg);
-                                       
-LW_API INT      API_PciGetHeader(INT iBus, INT iSlot, INT iFunc, PCI_HDR *p_pcihdr);
-                                       
+LW_API INT          API_PciConfigDev(INT iBus, INT iSlot, INT iFunc,
+                                     ULONG ulIoBase, pci_addr_t ulMemBase,
+                                     UINT8 ucLatency, UINT32 uiCommand);
+
+LW_API INT          API_PciFuncDisable(INT iBus, INT iSlot, INT iFunc);
+
+LW_API INT          API_PciInterConnect(ULONG ulVector, PINT_SVR_ROUTINE pfuncIsr,
+                                        PVOID pvArg, CPCHAR pcName);
+LW_API INT          API_PciInterDisconnect(ULONG ulVector, PINT_SVR_ROUTINE pfuncIsr,
+                                           PVOID pvArg);
+
+LW_API INT          API_PciGetHeader(INT iBus, INT iSlot, INT iFunc, PCI_HDR *p_pcihdr);
+LW_API INT          API_PciHeaderTypeGet(INT iBus, INT iSlot, INT iFunc, UINT8 *ucType);
+
+LW_API INT          API_PciVpdRead(INT iBus, INT iSlot, INT iFunc, INT iPos, UINT8 *pucBuf, INT iLen);
+LW_API INT          API_PciIrqGet(INT iBus, INT iSlot, INT iFunc,
+                                  INT iMsiEn, INT iLine, INT iPin, ULONG *pulVector);
+
+LW_API INT          API_PciConfigFetch(INT iBus, INT iSlot, INT iFunc, UINT uiPos, UINT uiLen);
+
+LW_API PCI_CONFIG  *API_PciConfigHandleGet(INT iIndex);
+LW_API INT          API_PciConfigIndexGet(PCI_CONFIG *ppcHandle);
+LW_API INT          API_PciConfigBusMaxSet(INT iIndex, UINT32 uiBusMax);
+LW_API INT          API_PciConfigBusMaxGet(INT iIndex);
+
+LW_API INT          API_PciIntxEnableSet(INT iBus, INT iSlot, INT iFunc, INT iEnable);
+LW_API INT          API_PciIntxMaskSupported(INT iBus, INT iSlot, INT iFunc, INT *piSupported);
+
+LW_API INT                  API_PciDrvLoad(PCI_DRV_HANDLE hDrvHandle, PCI_DEV_HANDLE hDevHandle);
+LW_API PCI_DRV_DEV_HANDLE   API_PciDrvDevFind(PCI_DRV_HANDLE hDrvHandle, PCI_DEV_HANDLE hDevHandle);
+LW_API INT                  API_PciDrvDevDel(PCI_DRV_HANDLE hDrvHandle, PCI_DEV_HANDLE hDevHandle);
+LW_API INT                  API_PciDrvDevAdd(PCI_DRV_HANDLE hDrvHandle, PCI_DEV_HANDLE hDevHandle);
+LW_API PCI_DRV_HANDLE       API_PciDrvHandleGet(CPCHAR pcName);
+LW_API INT                  API_PciDrvDelete(PCI_DRV_HANDLE  hDrvHandle);
+LW_API INT                  API_PciDrvRegister(PCI_DRV_REGISTER_HANDLE hHandle);
+LW_API INT                  API_PciDrvInit(VOID);
+
+LW_API INT                  API_PciDevInterDisable(PCI_DEV_HANDLE   hHandle,
+                                                   ULONG            ulVector,
+                                                   PINT_SVR_ROUTINE pfuncIsr,
+                                                   PVOID            pvArg);
+LW_API INT                  API_PciDevInterEnable(PCI_DEV_HANDLE   hHandle,
+                                                  ULONG            ulVector,
+                                                  PINT_SVR_ROUTINE pfuncIsr,
+                                                  PVOID            pvArg);
+LW_API INT                  API_PciDevInterDisonnect(PCI_DEV_HANDLE   hHandle,
+                                                     ULONG            ulVector,
+                                                     PINT_SVR_ROUTINE pfuncIsr,
+                                                     PVOID            pvArg);
+LW_API INT                  API_PciDevInterConnect(PCI_DEV_HANDLE   hHandle,
+                                                   ULONG            ulVector,
+                                                   PINT_SVR_ROUTINE pfuncIsr,
+                                                   PVOID            pvArg,
+                                                   CPCHAR           pcName);
+LW_API INT                  API_PciDevInterVectorGet(PCI_DEV_HANDLE  hHandle, ULONG *pulVector);
+
+LW_API INT                  API_PciDevConfigRead(PCI_DEV_HANDLE hHandle,
+                                                 INT iPos, UINT8 *pucBuf, INT iLen);
+LW_API INT                  API_PciDevConfigWrite(PCI_DEV_HANDLE hHandle,
+                                                  INT iPos, UINT8 *pucBuf, INT iLen);
+LW_API PCI_DEV_HANDLE       API_PciDevHandleGet(INT iBus, INT iDevice, INT iFunction);
+LW_API PCI_DEV_HANDLE       API_PciDevAdd(INT iBus, INT iDevice, INT iFunction);
+LW_API INT                  API_PciDevDelete(PCI_DEV_HANDLE hHandle);
+LW_API INT                  API_PciDevDrvDel(PCI_DEV_HANDLE  hDevHandle, PCI_DRV_HANDLE  hDrvHandle);
+LW_API INT                  API_PciDevDrvUpdate(PCI_DEV_HANDLE  hDevHandle, PCI_DRV_HANDLE  hDrvHandle);
+LW_API INT                  API_PciDevListCreate(VOID);
+LW_API INT                  API_PciDevInit(VOID);
+
 #define pciConfigInit           API_PciConfigInit
 #define pciConfigReset          API_PciConfigReset
 
@@ -421,10 +650,50 @@ LW_API INT      API_PciGetHeader(INT iBus, INT iSlot, INT iFunc, PCI_HDR *p_pcih
 #define pciConfigDev            API_PciConfigDev
 #define pciFuncDisable          API_PciFuncDisable
 
+#define pciInterDisable         API_PciInterDisable
+#define pciInterEnable          API_PciInterEnable
 #define pciInterConnect         API_PciInterConnect
 #define pciInterDisconnect      API_PciInterDisconnect
 
 #define pciGetHeader            API_PciGetHeader
+#define pciHeaderTypeGet        API_PciHeaderTypeGet
+
+#define pciVpdRead              API_PciVpdRead
+#define pciIrqGet               API_PciIrqGet
+
+#define pciConfigFetch          API_PciConfigFetch
+
+#define pciConfigHandleGet      API_PciConfigHandleGet
+#define pciConfigIndexGet       API_PciConfigIndexGet
+#define pciConfigBusMaxSet      API_PciConfigBusMaxSet
+#define pciConfigBusMaxGet      API_PciConfigBusMaxGet
+
+#define pciIntxEnableSet        API_PciIntxEnableSet
+#define pciIntxMaskSupported    API_PciIntxMaskSupported
+
+#define pciDrvLoad              API_PciDrvLoad
+#define pciDrvDevFind           API_PciDrvDevFind
+#define pciDrvDevDel            API_PciDrvDevDel
+#define pciDrvDevAdd            API_PciDrvDevAdd
+#define pciDrvHandleGet         API_PciDrvHandleGet
+#define pciDrvDelete            API_PciDrvDelete
+#define pciDrvRegister          API_PciDrvRegister
+#define pciDrvInit              API_PciDrvInit
+
+#define pciDevInterDisable      API_PciDevInterDisable
+#define pciDevInterEnable       API_PciDevInterEnable
+#define pciDevInterDisonnect    API_PciDevInterDisonnect
+#define pciDevInterConnect      API_PciDevInterConnect
+#define pciDevInterVectorGet    API_PciDevInterVectorGet
+#define pciDevConfigRead        API_PciDevConfigRead
+#define pciDevConfigWrite       API_PciDevConfigWrite
+#define pciHandleGet            API_PciDevHandleGet
+#define pciDevAdd               API_PciDevAdd
+#define pciDevDelete            API_PciDevDelete
+#define pciDevDrvDel            API_PciDevDrvDel
+#define pciDevDrvUpdate         API_PciDevDrvUpdate
+#define pciDevListCreate        API_PciDevListCreate
+#define pciDevInit              API_PciDevInit
 
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */
                                                                         /*  (LW_CFG_PCI_EN > 0)         */

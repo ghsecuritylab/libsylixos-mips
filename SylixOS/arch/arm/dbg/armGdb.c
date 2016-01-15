@@ -28,13 +28,13 @@
 *********************************************************************************************************/
 #if LW_CFG_GDB_EN > 0
 #include "dtrace.h"
-#include "../../arch_gdb.h"
+#include "../arm_gdb.h"
 /*********************************************************************************************************
   Xfer:features:read:arch-core.xml 回应包
 *********************************************************************************************************/
 static const CHAR   cArmCore[] = \
         "l<?xml version=\"1.0\"?>"
-        "<!-- Copyright (C) 2007-2014 SylixOS Group."
+        "<!-- Copyright (C) 2006-2016 SylixOS Group."
              "Copying and distribution of this file, with or without modification,"
              "are permitted in any medium without royalty provided the copyright"
              "notice and this notice are preserved.  -->"
@@ -144,9 +144,8 @@ CPCHAR  archGdbCoreXml (VOID)
 /*********************************************************************************************************
 ** 函数名称: archGdbRegsGet
 ** 功能描述: 获取寄存器值
-** 输　入  : pvDtrace       侦听 ip
-**           ulThread       侦听端口
-**
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
 ** 输　出  : pregset        gdb 寄存器结构
 **           返回值         成功-- ERROR_NONE，失败-- PX_ERROR.
 ** 全局变量:
@@ -186,8 +185,8 @@ INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 /*********************************************************************************************************
 ** 函数名称: archGdbRegsSet
 ** 功能描述: 设置寄存器值
-** 输　入  : pvDtrace       侦听 ip
-**           ulThread       侦听端口
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
 **           pregset        gdb 寄存器结构
 ** 输　出  : 成功-- ERROR_NONE，失败-- PX_ERROR.
 ** 全局变量:
@@ -221,8 +220,8 @@ INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 /*********************************************************************************************************
 ** 函数名称: archGdbRegSetPc
 ** 功能描述: 设置 pc 寄存器值
-** 输　入  : pvDtrace       侦听ip
-**           ulThread       侦听端口
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
 **           ulPC           pc 寄存器值
 ** 输　出  : 成功-- ERROR_NONE，失败-- PX_ERROR.
 ** 全局变量:
@@ -702,7 +701,9 @@ static ULONG   thumbGetNextPc (GDB_REG_SET *pRegs)
 /*********************************************************************************************************
 ** 函数名称: archGdbGetNextPc
 ** 功能描述: 获取下一条指令地址，含分支预测
-** 输　入  : pRegs       寄存器数组
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
+**           pRegs          寄存器数组
 ** 输　出  : 下一条指令地址
 ** 全局变量:
 ** 调用模块:

@@ -1039,10 +1039,20 @@ SylixOS/system/device/hwrtc/hwrtc.c \
 SylixOS/system/device/i2c/i2cLib.c \
 SylixOS/system/device/mem/memDev.c \
 SylixOS/system/device/mii/miiDev.c \
+SylixOS/system/device/pci/pciAutoCfg.c \
+SylixOS/system/device/pci/pciCap.c \
+SylixOS/system/device/pci/pciCapExt.c \
 SylixOS/system/device/pci/pciDb.c \
+SylixOS/system/device/pci/pciDev.c \
+SylixOS/system/device/pci/pciDrv.c \
+SylixOS/system/device/pci/pciError.c \
 SylixOS/system/device/pci/pciLib.c \
+SylixOS/system/device/pci/pciMsi.c \
+SylixOS/system/device/pci/pciPm.c \
 SylixOS/system/device/pci/pciProc.c \
 SylixOS/system/device/pci/pciScan.c \
+SylixOS/system/device/pci/pciShow.c \
+SylixOS/system/device/pci/pciVpd.c \
 SylixOS/system/device/pipe/pipe.c \
 SylixOS/system/device/pipe/pipeLib.c \
 SylixOS/system/device/pty/pty.c \
@@ -1406,11 +1416,11 @@ $(OBJPATH)/%.o: %.cpp
 $(OBJPATH)/SylixOS/arch/mips/fpu/fpu32/mipsVfp32Asm.o: ./SylixOS/arch/mips/fpu/fpu32/mipsVfp32Asm.S
 		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
 		$(COMPILE_VFP.S) $< -o $@
-		
+
 $(OBJPATH)/SylixOS/arch/mips/fpu/fpu64/mipsVfp64Asm.o: ./SylixOS/arch/mips/fpu/fpu64/mipsVfp64Asm.S		
 		@if [ ! -d "$(dir $@)" ]; then mkdir -p "$(dir $@)"; fi
 		$(COMPILE_VFP.S) $< -o $@
-                                
+
 #*********************************************************************************************************
 # link libsylixos.a object files
 #*********************************************************************************************************

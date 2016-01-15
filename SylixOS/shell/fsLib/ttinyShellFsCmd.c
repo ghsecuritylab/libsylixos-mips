@@ -2055,6 +2055,7 @@ VOID  __tshellFsCmdInit (VOID)
     API_TShellHelpAdd("mount",  "mount a volume.\n"
                                 "eg. mount /dev/blk/sata0 /mnt/hdd0\n"
                                 "    mount -t vfat /dev/blk/sata0 /mnt/hdd0\n"
+                                "    mount -t tpsfs /dev/blk/sata0 /mnt/hdd0\n"
                                 "    mount -t romfs /dev/blk/rom0 /mnt/rom0\n"
                                 "    mount -t romfs /root/romfile /mnt/rom1\n"
                                 "    mount -t ramfs 100000 /mnt/ram\n"

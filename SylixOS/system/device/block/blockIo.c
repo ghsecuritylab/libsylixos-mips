@@ -16,7 +16,7 @@
 **
 ** 文件创建日期: 2008 年 09 月 26 日
 **
-** 描        述: 系统块设备底层接口, 仅供 FATFS 使用, 由于数据长度转换问题, 其他模块禁止使用.
+** 描        述: 系统块设备底层接口.
 
 ** BUG:
 2009.03.21  逻辑设备没有物理复位, FIOUNMOUNT & 电源控制 & 弹出操作将被忽略.
@@ -294,9 +294,6 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
     REGISTER PLW_BLK_DEV  pblkd = _G_pblkdBLockIoTbl[iIndex];
              PLW_BLK_DEV  pblkdPhy;                                     /*  物理设备                    */
              
-             ULONG        ulTemp = 0;
-             INT          iError = ERROR_NONE;
-             
     switch (iCmd) {
     
     case FIOUNMOUNT:                                                    /*  卸载磁盘                    */
@@ -334,21 +331,21 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
     
     case LW_BLKD_GET_SECNUM:
         if (pblkd->BLKD_ulNSector > 0) {
-            *(UINT32 *)lArg = (UINT32)pblkd->BLKD_ulNSector;            /*  32 bit dword 类型           */
+            *(ULONG *)lArg = pblkd->BLKD_ulNSector;                     /*  ULONG 类型                  */
             return  (ERROR_NONE);
         }
         break;
         
     case LW_BLKD_GET_SECSIZE:
         if (pblkd->BLKD_ulBytesPerSector > 0) {
-            *(UINT16 *)lArg = (UINT16)pblkd->BLKD_ulBytesPerSector;     /*  16 bit word 类型            */
+            *(ULONG *)lArg = pblkd->BLKD_ulBytesPerSector;              /*  ULONG 类型                  */
             return  (ERROR_NONE);
         }
         break;
         
     case LW_BLKD_GET_BLKSIZE:
         if (pblkd->BLKD_ulBytesPerBlock > 0) {
-            *(UINT32 *)lArg = (UINT32)pblkd->BLKD_ulBytesPerBlock;      /*  32 bit dword 类型           */
+            *(ULONG *)lArg = pblkd->BLKD_ulBytesPerBlock;               /*  ULONG 类型                  */
             return  (ERROR_NONE);
         }
         break;
@@ -401,29 +398,7 @@ INT  __blockIoDevIoctl (INT  iIndex, INT  iCmd, LONG  lArg)
         return  (ERROR_NONE);                                           /*  不需此操作                  */
     }
     
-    /*
-     *  驱动程序认为以下命令的参数都是 ULONG 型, 所以需要做类型转换
-     */
-    switch (iCmd) {                                                     /*  需要做数据类型              */
-    
-    case LW_BLKD_GET_SECNUM:
-        iError = pblkd->BLKD_pfuncBlkIoctl(pblkd, iCmd, &ulTemp);
-        *(UINT32 *)lArg = (UINT32)ulTemp;                               /*  这里是 32bit                */
-        return  (iError);
-        
-    case LW_BLKD_GET_SECSIZE:
-        iError = pblkd->BLKD_pfuncBlkIoctl(pblkd, iCmd, &ulTemp);
-        *(UINT16 *)lArg = (UINT16)ulTemp;                               /*  这里是 16bit                */
-        return  (iError);
-    
-    case LW_BLKD_GET_BLKSIZE:
-        iError = pblkd->BLKD_pfuncBlkIoctl(pblkd, iCmd, &ulTemp);
-        *(UINT32 *)lArg = (UINT32)ulTemp;                               /*  这里是 32bit                */
-        return  (iError);
-        
-    default:
-        return  (pblkd->BLKD_pfuncBlkIoctl(pblkd, iCmd, lArg));
-    }
+    return  (pblkd->BLKD_pfuncBlkIoctl(pblkd, iCmd, lArg));
 }
 /*********************************************************************************************************
 ** 函数名称: __blockIoDevReset

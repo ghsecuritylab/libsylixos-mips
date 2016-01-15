@@ -28,6 +28,7 @@
   裁剪宏
 *********************************************************************************************************/
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_PCI_EN > 0)
+#include "pciDev.h"
 #include "pciProc.h"
 /*********************************************************************************************************
   PCI 主控器
@@ -36,13 +37,17 @@ PCI_CONFIG      *_G_p_pciConfig;
 /*********************************************************************************************************
   PCI 主控器配置 IO 操作 PCI_MECHANISM_0
 *********************************************************************************************************/
-#define PCI_CFG_READ(iBus, iSlot, iFunc, iOft, iLen, pvRet)     \
+#define PCI_CFG_READ(iBus, iSlot, iFunc, iOft, iLen, pvRet)                                             \
         _G_p_pciConfig->PCIC_pDrvFuncs0->cfgRead(iBus, iSlot, iFunc, iOft, iLen, pvRet)
-#define PCI_CFG_WRITE(iBus, iSlot, iFunc, iOft, iLen, uiData)   \
+#define PCI_CFG_WRITE(iBus, iSlot, iFunc, iOft, iLen, uiData)                                           \
         _G_p_pciConfig->PCIC_pDrvFuncs0->cfgWrite(iBus, iSlot, iFunc, iOft, iLen, uiData)
-#define PCI_CFG_SPCL(iBus, uiMsg)                               \
+#define PCI_VPD_READ(iBus, iSlot, iFunc, iPos, pucBuf, iLen)                                            \
+        _G_p_pciConfig->PCIC_pDrvFuncs0->vpdRead(iBus, iSlot, iFunc, iPos, pucBuf, iLen)
+#define PCI_IRQ_GET(iBus, iSlot, iFunc, iMsiEn, iLine, iPin, pulVector)                                 \
+        _G_p_pciConfig->PCIC_pDrvFuncs0->irqGet(iBus, iSlot, iFunc, iMsiEn, iLine, iPin, pulVector)
+#define PCI_CFG_SPCL(iBus, uiMsg)                                                                       \
         _G_p_pciConfig->PCIC_pDrvFuncs0->cfgSpcl(iBus, uiMsg)
-#define PCI_CFG_SPCL_IS_EN()                                    \
+#define PCI_CFG_SPCL_IS_EN()                                                                            \
         _G_p_pciConfig->PCIC_pDrvFuncs0->cfgSpcl
 /*********************************************************************************************************
   PCI 主控器配置地址 PCI_MECHANISM_1 2
@@ -82,15 +87,19 @@ INT  API_PciConfigInit (PCI_CONFIG *p_pcicfg)
 #if LW_CFG_PROCFS_EN > 0
         __procFsPciInit();
 #endif                                                                  /*  LW_CFG_PROCFS_EN > 0        */
+
+        API_PciDevInit();
+        API_PciDevListCreate();
+        API_PciDrvInit();
     }
     
     if (_G_p_pciConfig->PCIC_ulLock == LW_OBJECT_HANDLE_INVALID) {
-        _G_p_pciConfig->PCIC_ulLock =  API_SemaphoreMCreate("pci_lock", LW_PRIO_DEF_CEILING, 
-                                                            LW_OPTION_WAIT_PRIORITY |
-                                                            LW_OPTION_DELETE_SAFE |
-                                                            LW_OPTION_INHERIT_PRIORITY |
-                                                            LW_OPTION_OBJECT_GLOBAL,
-                                                            LW_NULL);
+        _G_p_pciConfig->PCIC_ulLock = API_SemaphoreMCreate("pci_lock", LW_PRIO_DEF_CEILING,
+                                                           LW_OPTION_WAIT_PRIORITY |
+                                                           LW_OPTION_DELETE_SAFE |
+                                                           LW_OPTION_INHERIT_PRIORITY |
+                                                           LW_OPTION_OBJECT_GLOBAL,
+                                                           LW_NULL);
     }
     
     return  (_G_p_pciConfig) ? (ERROR_NONE) : (PX_ERROR);
@@ -1248,7 +1257,7 @@ INT  API_PciGetHeader (INT iBus, INT iSlot, INT iFunc, PCI_HDR *p_pcihdr)
         API_PciConfigInByte( iBus, iSlot, iFunc, PCI_HEADER_TYPE,     &PCI_CB.PCICB_ucHeaderType);
         API_PciConfigInByte( iBus, iSlot, iFunc, PCI_BIST,            &PCI_CB.PCICB_ucBist);
         API_PciConfigInDword(iBus, iSlot, iFunc, PCI_BASE_ADDRESS_0,  &PCI_CB.PCICB_uiBase0);
-        API_PciConfigInByte( iBus, iSlot, iFunc, PCI_CB_CAP_PTR,      &PCI_CB.PCICB_ucCapPtr);
+        API_PciConfigInByte( iBus, iSlot, iFunc, PCI_CAPABILITY_LIST,      &PCI_CB.PCICB_ucCapPtr);
         API_PciConfigInWord( iBus, iSlot, iFunc, PCI_CB_SEC_STATUS,   &PCI_CB.PCICB_usSecStatus);
         API_PciConfigInByte( iBus, iSlot, iFunc, PCI_CB_PRIMARY_BUS,  &PCI_CB.PCICB_ucPriBus);
         API_PciConfigInByte( iBus, iSlot, iFunc, PCI_CB_CARD_BUS,     &PCI_CB.PCICB_ucSecBus);
@@ -1275,6 +1284,353 @@ INT  API_PciGetHeader (INT iBus, INT iSlot, INT iFunc, PCI_HDR *p_pcihdr)
 
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: API_PciHeaderTypeGet
+** 功能描述: 获取设备头类型.
+** 输　入  : iBus        总线号
+**           iSlot       插槽
+**           iFunc       功能
+**           ucType      设备类型(PCI_HEADER_TYPE_NORMAL, PCI_HEADER_TYPE_BRIDGE, PCI_HEADER_TYPE_CARDBUS)
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciHeaderTypeGet (INT iBus, INT iSlot, INT iFunc, UINT8 *ucType)
+{
+    UINT8       ucHeaderType = 0xFF;
+
+    API_PciConfigInByte(iBus, iSlot, iFunc, PCI_HEADER_TYPE, (UINT8 *)&ucHeaderType);
+    if ((ucHeaderType & PCI_HEADER_TYPE_MASK) == PCI_HEADER_TYPE_BRIDGE) {
+        ucHeaderType = PCI_HEADER_TYPE_BRIDGE;
+    } else if ((ucHeaderType & PCI_HEADER_TYPE_MASK) == PCI_HEADER_TYPE_CARDBUS) {
+        ucHeaderType = PCI_HEADER_TYPE_CARDBUS;
+    } else if ((ucHeaderType & PCI_HEADER_TYPE_MASK) == PCI_HEADER_TYPE_NORMAL) {
+        ucHeaderType = PCI_HEADER_TYPE_NORMAL;
+    } else {
+        return  (PX_ERROR);
+    }
+
+    if (ucType) {
+        *ucType = ucHeaderType;
+    }
+
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciVpdRead
+** 功能描述: 读取 VPD (Vital Product Data) 数据
+** 输　入  : iBus      总线号
+**           iSlot     插槽
+**           iFunc     功能
+**           iPos      数据地址
+**           pucBuf    结果缓冲区
+**           iLen      结果缓冲区大小
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciVpdRead (INT iBus, INT iSlot, INT iFunc, INT iPos, UINT8 *pucBuf, INT iLen)
+{
+    INTREG  iregInterLevel;
+    INT     iRetVal = PX_ERROR;
+
+    iregInterLevel = KN_INT_DISABLE();
+
+    switch (_G_p_pciConfig->PCIC_ucMechanism) {
+
+    case PCI_MECHANISM_0:
+        iRetVal = PCI_VPD_READ(iBus, iSlot, iFunc, iPos, pucBuf, iLen);
+        break;
+
+    case PCI_MECHANISM_1:
+        iRetVal = PX_ERROR;
+        break;
+
+    case PCI_MECHANISM_2:
+        iRetVal = PX_ERROR;
+        break;
+
+    default:
+        break;
+    }
+
+    KN_INT_ENABLE(iregInterLevel);
+
+    return  (iRetVal);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciIrqGet
+** 功能描述: 获取总的向量
+** 输　入  : iBus           总线号
+**           iSlot          插槽
+**           iFunc          功能
+**           iMsiEn         是否使能 MSI
+**           iLine          中断线
+**           iPin           中断引脚
+**           pulVector      中断向量
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciIrqGet (INT iBus, INT iSlot, INT iFunc, INT iMsiEn, INT iLine, INT iPin, ULONG *pulVector)
+{
+    INTREG  iregInterLevel;
+    INT     iRetVal = PX_ERROR;
+
+    iregInterLevel = KN_INT_DISABLE();
+
+    switch (_G_p_pciConfig->PCIC_ucMechanism) {
+
+    case PCI_MECHANISM_0:
+        iRetVal = PCI_IRQ_GET(iBus, iSlot, iFunc, iMsiEn, iLine, iPin, pulVector);
+        break;
+
+    case PCI_MECHANISM_1:
+        iRetVal = PX_ERROR;
+        break;
+
+    case PCI_MECHANISM_2:
+        iRetVal = PX_ERROR;
+        break;
+
+    default:
+        break;
+    }
+
+    KN_INT_ENABLE(iregInterLevel);
+
+    return  (iRetVal);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciConfigFetch
+** 功能描述: 读取 VPD (Vital Product Data) 数据
+** 输　入  : iBus      总线号
+**           iSlot     插槽
+**           iFunc     功能
+**           iPos      数据地址
+**           pucBuf    结果缓冲区
+**           iLen      结果缓冲区大小
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciConfigFetch (INT iBus, INT iSlot, INT iFunc, UINT uiPos, UINT uiLen)
+{
+    /*
+     *  TODO
+     */
+
+    return  (1);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciConfigHandleGet
+** 功能描述: 获取指定 PCI 配置句柄
+** 输　入  : iIndex    PCI 配置 (PCI_CONFIG) 索引
+** 输　出  : LW_NULL or 句柄
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+PCI_CONFIG  *API_PciConfigHandleGet (INT iIndex)
+{
+    if (_G_p_pciConfig == LW_NULL) {
+        return  (LW_NULL);
+    }
+
+    if (_G_p_pciConfig->PCIC_iIndex == iIndex) {
+        return (_G_p_pciConfig);
+    }
+
+    return  (LW_NULL);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciConfigIndexGet
+** 功能描述: 通过 PCI 配置句柄获取索引
+** 输　入  : ppcHandle      PCI 配置 (PCI_CONFIG) 句柄
+** 输　出  : ERROR or 索引
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciConfigIndexGet (PCI_CONFIG *ppcHandle)
+{
+    if (!ppcHandle) {
+        return  (PX_ERROR);
+    }
+
+    return  (ppcHandle->PCIC_iIndex);
+}
+/*********************************************************************************************************
+** 函数名称: __procFsPciGetCnt
+** 功能描述: 获得 PCI 设备总数
+** 输　入  : iBus          总线号
+**           iSlot         插槽
+**           iFunc         功能号
+**           pstBufferSize 缓冲区大小
+** 输　出  : ERROR_NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static INT  __pciBusCntGet (INT iBus, INT iSlot, INT iFunc, UINT *puiCount)
+{
+    (VOID)iBus;
+    (VOID)iSlot;
+    (VOID)iFunc;
+
+    if (puiCount) {
+        *puiCount += 1;
+    }
+
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciConfigBusMaxSet
+** 功能描述: 设置指定 PCI 最大总线数
+** 输　入  : iIndex    PCI 配置 (PCI_CONFIG) 索引
+** 输　出  : ERROR or 最大总线数
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciConfigBusMaxSet (INT  iIndex, UINT32  uiBusMax)
+{
+    if (_G_p_pciConfig == LW_NULL) {
+        return  (PX_ERROR);
+    }
+
+    if (_G_p_pciConfig->PCIC_iIndex == iIndex) {
+        _G_p_pciConfig->PCIC_iBusMax = uiBusMax;
+        return (PX_ERROR);
+    }
+
+    return  (PX_ERROR);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciConfigBusMaxGet
+** 功能描述: 获取指定 PCI 最大总线数
+** 输　入  : iIndex    PCI 配置 (PCI_CONFIG) 索引
+** 输　出  : ERROR or 最大总线数
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciConfigBusMaxGet (INT iIndex)
+{
+    UINT        uiBusNumber = 0;
+
+    if (_G_p_pciConfig == LW_NULL) {
+        return  (PX_ERROR);
+    }
+
+    if (_G_p_pciConfig->PCIC_iIndex == iIndex) {
+        API_PciLock();
+        API_PciTraversal(__pciBusCntGet, &uiBusNumber, PCI_MAX_BUS - 1);
+        API_PciUnlock();
+
+        _G_p_pciConfig->PCIC_iBusMax = uiBusNumber;
+        return (_G_p_pciConfig->PCIC_iBusMax);
+    }
+
+    return  (PX_ERROR);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciIntxEnableSet
+** 功能描述: 设置 INTx 使能与禁能
+** 输　入  : iBus      总线号
+**           iSlot     插槽
+**           iFunc     功能
+**           iEnable   使能标志
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciIntxEnableSet (INT iBus, INT iSlot, INT iFunc, INT iEnable)
+{
+    INT         iRet = PX_ERROR;
+    UINT16      usCommand, usNew;
+
+    iRet = API_PciConfigInWord(iBus, iSlot, iFunc, PCI_COMMAND, &usCommand);
+    if (iRet != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+    if (iEnable) {
+        usNew = usCommand & ~PCI_COMMAND_INTX_DISABLE;
+    } else {
+        usNew = usCommand | PCI_COMMAND_INTX_DISABLE;
+    }
+
+    if (usNew != usCommand) {
+        iRet = API_PciConfigOutWord(iBus, iSlot, iFunc, PCI_COMMAND, usNew);
+    } else {
+        iRet = ERROR_NONE;
+    }
+
+    return  (iRet);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciIntxMaskSupported
+** 功能描述: 探测 INTx 是否支持掩码
+** 输　入  : iBus               总线号
+**           iSlot              插槽
+**           iFunc              功能
+**           piSupported        是否支持
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciIntxMaskSupported (INT iBus, INT iSlot, INT iFunc, INT *piSupported)
+{
+    INT         iMaskSupported = LW_FALSE;
+    INT         iRet           = PX_ERROR;
+    UINT16      usOrig         = 0;
+    UINT16      usNew          = 0;
+
+    iRet = API_PciConfigInWord(iBus, iSlot, iFunc, PCI_COMMAND, &usOrig);
+    if (iRet != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+    iRet = API_PciConfigOutWord(iBus, iSlot, iFunc, PCI_COMMAND, usOrig ^ PCI_COMMAND_INTX_DISABLE);
+    if (iRet != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+    iRet = API_PciConfigInWord(iBus, iSlot, iFunc, PCI_COMMAND, &usNew);
+    if (iRet != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+
+    if ((usNew ^ usOrig) & ~PCI_COMMAND_INTX_DISABLE) {
+        return  (PX_ERROR);
+    } else if ((usNew ^ usOrig) & PCI_COMMAND_INTX_DISABLE) {
+        iMaskSupported = LW_TRUE;
+        iRet = API_PciConfigOutWord(iBus, iSlot, iFunc, PCI_COMMAND, usOrig);
+        if (iRet != ERROR_NONE) {
+            return  (PX_ERROR);
+        }
+    }
+
+    if (piSupported) {
+        *piSupported = iMaskSupported;
+    }
+
+    return  (ERROR_NONE);
+}
+
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */
                                                                         /*  (LW_CFG_PCI_EN > 0)         */
 /*********************************************************************************************************

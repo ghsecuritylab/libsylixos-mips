@@ -89,6 +89,7 @@ LW_CACHE_OP     _G_cacheopLib = {                                       /*  the 
     0,
     CACHE_LOCATION_VIVT,
     CACHE_LOCATION_VIVT,
+    LW_CFG_VMM_PAGE_SIZE,                                               /*  def: No Cache Alias problem */
     32,
     LW_NULL,                                                            /*  cacheEnable()               */
     LW_NULL,                                                            /*  cacheDisable()              */
@@ -216,6 +217,40 @@ LW_API
 INT  API_CacheLine (VOID)
 {
     return  (_G_cacheopLib.CACHEOP_iCacheLine);
+}
+/*********************************************************************************************************
+** 函数名称: API_CacheWaySize
+** 功能描述: 获取一路 DCACHE 大小
+** 输　入  : NONE
+** 输　出  : 一路 DCACHE 大小
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+size_t  API_CacheWaySize (VOID)
+{
+    return  (_G_cacheopLib.CACHEOP_iCacheWaySize);
+}
+/*********************************************************************************************************
+** 函数名称: API_CacheAliasProb
+** 功能描述: VIPT CACHE 是否具有 alias 风险.
+** 输　入  : NONE
+** 输　出  : LW_TRUE  有 alias 风险
+**           LW_FALSE 无 alias 风险
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+BOOL  API_CacheAliasProb (VOID)
+{
+    if ((_G_cacheopLib.CACHEOP_iDLoc == CACHE_LOCATION_VIPT) &&
+        (_G_cacheopLib.CACHEOP_iCacheWaySize > LW_CFG_VMM_PAGE_SIZE)) {
+        return  (LW_TRUE);
+    }
+    
+    return  (LW_FALSE);
 }
 /*********************************************************************************************************
 ** 函数名称: API_CacheEnable

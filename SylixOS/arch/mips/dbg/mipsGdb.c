@@ -26,13 +26,13 @@
 *********************************************************************************************************/
 #if LW_CFG_GDB_EN > 0
 #include "dtrace.h"
-#include "../../arch_gdb.h"
+#include "../mips_gdb.h"
 /*********************************************************************************************************
   Xfer:features:read:arch-core.xml 回应包
 *********************************************************************************************************/
 static const CHAR   cMipsCore[] = \
         "l<?xml version=\"1.0\"?>"
-        "<!-- Copyright (C) 2007-2014 SylixOS Group."
+        "<!-- Copyright (C) 2006-2016 SylixOS Group."
              "Copying and distribution of this file, with or without modification,"
              "are permitted in any medium without royalty provided the copyright"
              "notice and this notice are preserved.  -->"
@@ -121,9 +121,8 @@ CPCHAR  archGdbCoreXml (VOID)
 /*********************************************************************************************************
 ** 函数名称: archGdbRegsGet
 ** 功能描述: 获取寄存器值
-** 输　入  : pvDtrace       侦听 ip
-**           ulThread       侦听端口
-**
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
 ** 输　出  : pregset        gdb 寄存器结构
 **           返回值         成功-- ERROR_NONE，失败-- PX_ERROR.
 ** 全局变量:
@@ -180,7 +179,7 @@ INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
     iIndex += 34;
 
     /*
-     * 如果 cause 寄存器 BD 位置为 1，则说明引发中断的为 "branch delay slot" 指令，PC 寄存器值需调整
+     * 如果 Cause 寄存器 BD 位置为 1，则说明引发中断的为分支延时槽指令，PC 寄存器值需调整
      */
     if (regctx.REG_uiCP0Cause & M_CauseBD) {
         pregset->regArr[MIPS_REG_INDEX_PC].GDBRA_ulValue += sizeof(ULONG);
@@ -193,8 +192,8 @@ INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 /*********************************************************************************************************
 ** 函数名称: archGdbRegsSet
 ** 功能描述: 设置寄存器值
-** 输　入  : pvDtrace       侦听 ip
-**           ulThread       侦听端口
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
 **           pregset        gdb 寄存器结构
 ** 输　出  : 成功-- ERROR_NONE，失败-- PX_ERROR.
 ** 全局变量:
@@ -251,8 +250,8 @@ INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 /*********************************************************************************************************
 ** 函数名称: archGdbRegSetPc
 ** 功能描述: 设置 pc 寄存器值
-** 输　入  : pvDtrace       侦听ip
-**           ulThread       侦听端口
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
 **           ulPC           pc 寄存器值
 ** 输　出  : 成功-- ERROR_NONE，失败-- PX_ERROR.
 ** 全局变量:
@@ -286,7 +285,9 @@ ULONG archGdbRegGetPc (GDB_REG_SET *pRegs)
 /*********************************************************************************************************
 ** 函数名称: archGdbGetNextPc
 ** 功能描述: 获取下一条指令地址，含分支预测
-** 输　入  : pRegs       寄存器数组
+** 输　入  : pvDtrace       dtrace 句柄
+**           ulThread       被调试线程
+**           pRegs          寄存器数组
 ** 输　出  : 下一条指令地址
 ** 全局变量:
 ** 调用模块:
@@ -309,7 +310,7 @@ ULONG  archGdbGetNextPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET 
 
     pc = (ULONG) pRegs->regArr[MIPS_REG_INDEX_PC].GDBRA_ulValue;        /*  当前 PC 指针                */
     /*
-     * 如果 PC 为 "branch delay slot" 指令则需调整为 branch 指令
+     * 如果 PC 为分支延时槽指令，则需调整为 branch 指令
      */
     API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
     if (regctx.REG_uiCP0Cause & M_CauseBD) {
@@ -321,7 +322,7 @@ ULONG  archGdbGetNextPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET 
 
     /*
      * 当前指令为跳转指令时，会出现两种情况，如果跳转条件成立，则下一条指令为目标地址值
-     * 否则下一条指令为 pc+8，因为跳转指令和紧随其后的 "branch delay slot" 为一个整体，
+     * 否则下一条指令为 pc+8，因为跳转指令和紧随其后的分支延时槽为一个整体，
      * 将其视为一条指令处理
      */
     rsVal = pRegs->regArr[(machInstr >> 21) & 0x1f].GDBRA_ulValue;

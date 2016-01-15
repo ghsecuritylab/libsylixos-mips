@@ -27,8 +27,12 @@
 *********************************************************************************************************/
 #if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_PCI_EN > 0)
 
-VOID  __pciDbInit(VOID);
-VOID  __pciDbGetClassStr(UINT8 ucClass, UINT8 ucSubClass, UINT8 ucProgIf, PCHAR pcBuffer, size_t  stSize);
+LW_API VOID  API_PciDbInit(VOID);
+LW_API VOID  API_PciDbGetClassStr(UINT8   ucClass, UINT8   ucSubClass, UINT8   ucProgIf,
+                                  PCHAR   pcBuffer, size_t  stSize);
+LW_API VOID  API_PciDbGetIdStr(UINT16  usVendor,  UINT16  ucDevice,
+                               UINT16  ucSubVendor, UINT16  ucSubSystem,
+                               PCHAR   pcBuffer, size_t  stSize);
 
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */
                                                                         /*  (LW_CFG_PCI_EN > 0)         */

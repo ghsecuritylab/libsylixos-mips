@@ -51,7 +51,7 @@ static UINT32               _G_uiEntryLoPFNMask = 0;                    /*  ENTR
 
 #define MIPS32_PTE_EXEC_SHIFT           (0)
 /*********************************************************************************************************
-  CACHE 回写管线
+  TLB 操作
 *********************************************************************************************************/
 #define MIPS_MMU_TLB_WRITE()            MIPS_EXEC_INS("TLBWI"); MIPS_EXEC_INS ("EHB")
 #define MIPS_MMU_TLB_READ()             MIPS_EXEC_INS("TLBR");  MIPS_EXEC_INS ("EHB")
@@ -554,7 +554,9 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
             ULONG    ulFlag = 0;
             UINT32   uiCache;
 
-            ulFlag |= LW_VMM_FLAG_VALID;                                /*  映射有效                    */
+            if (uiDescriptor & MIPS32_ENTRYLO_V_BIT) {                  /*  有效                        */
+            	ulFlag |= LW_VMM_FLAG_VALID;                         	/*  映射有效                    */
+            }
 
             ulFlag |= LW_VMM_FLAG_ACCESS;                               /*  可以访问                    */
 
@@ -695,7 +697,8 @@ ULONG  mipsMmuTlbLoadStoreExcHandle (addr_t  ulAbortAddr)
 
         if (uiEntryLo & MIPS32_ENTRYLO_V_BIT) {
             /*
-             * TLB 中有映射条目, 并且映射有效, 理论上不应该出现这种情况, 但在龙芯 1B 处理器上偶尔会出现,
+             * TLB 中有映射条目, 并且映射有效, 理论上不应该出现这种情况,
+             * 但在龙芯 1B 处理器上偶尔会出现(QEMU 并不出现),
              * 可能这是龙芯 1B 处理器的 BUG, 但不响应程序继续运行
              */
             ulAbortType = 0;
@@ -707,12 +710,22 @@ ULONG  mipsMmuTlbLoadStoreExcHandle (addr_t  ulAbortAddr)
         }
     } else {
         /*
-         * 需要 TLB 重填, 但设计的 TLB 重填机制并不会由通用异常入口来处理,
-         * 所以认为这里是一个比较严重的错误
+         * 需要 TLB 重填, 但设计的 TLB 重填机制并不会由通用异常入口来处理
          */
-        _DebugHandle(__ERRORMESSAGE_LEVEL, "TLB refill error.\r\n");
-
-        ulAbortType = LW_VMM_ABORT_TYPE_TERMINAL;
+        ULONG  ulNesting = LW_CPU_GET_CUR_NESTING();
+        if (ulNesting > 1) {
+        	/*
+        	 * 如果 TLB 重填异常发生在异常里, 直接终止
+        	 */
+            _DebugHandle(__ERRORMESSAGE_LEVEL, "TLB refill error.\r\n");
+            ulAbortType = LW_VMM_ABORT_TYPE_TERMINAL;
+        } else {
+        	/*
+        	 * 如果 TLB 重填异常不是发生异常里, 忽略之, 也不进行 TLB 重填
+             * QEMU 运行 Qt 时会出现, 龙芯 1B 处理器并不出现
+        	 */
+            ulAbortType = 0;
+        }
     }
 
     mipsCp0EntryHiWrite(uiEntryHiBak);

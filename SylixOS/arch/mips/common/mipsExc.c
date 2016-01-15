@@ -96,7 +96,7 @@ VOID  archIntHandle (ULONG  ulVector, BOOL  bPreemptive)
 VOID  archCacheErrorHandle (addr_t  ulRetAddr)
 {
     REGISTER UINT32  uiFiled  = 2 * sizeof(UINT32);
-    REGISTER UINT32  uiRegVal = 0;
+    REGISTER UINT32  uiRegVal;
 
     uiRegVal = mipsCp0ConfigRead();
     mipsCp0ConfigWrite((uiRegVal & ~M_ConfigK0) | MIPS_UNCACHED);

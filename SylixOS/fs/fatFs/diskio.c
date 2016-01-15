@@ -154,6 +154,7 @@ DRESULT disk_write (BYTE  ucDriver, const BYTE  *ucBuffer, DWORD   dwSectorNumbe
 DRESULT  disk_ioctl (BYTE  ucDriver, BYTE ucCmd, void  *pvArg)
 {
     REGISTER INT            iError;
+             ULONG          ulArgLong;
              LW_BLK_RANGE   blkrange;
     
     switch (ucCmd) {                                                    /*  转换命令                    */
@@ -162,16 +163,37 @@ DRESULT  disk_ioctl (BYTE  ucDriver, BYTE ucCmd, void  *pvArg)
         return  (RES_OK);                                               /*  注意, 目前此条命令忽略      */
     
     case GET_SECTOR_COUNT:                                              /*  获得扇区总数量              */
-        ucCmd = LW_BLKD_GET_SECNUM;
-        break;
+        if (__blockIoDevIoctl((INT)ucDriver, 
+                              LW_BLKD_GET_SECNUM, 
+                              (LONG)&ulArgLong)) {
+            return  (RES_ERROR);
+        
+        } else {
+            *(UINT32 *)pvArg = (UINT32)ulArgLong;                       /*  FatFs set 32 bit arg        */
+        }
+        return  (RES_OK);
         
     case GET_SECTOR_SIZE:                                               /*  获得扇区大小                */
-        ucCmd = LW_BLKD_GET_SECSIZE;
-        break;
+        if (__blockIoDevIoctl((INT)ucDriver, 
+                              LW_BLKD_GET_SECSIZE, 
+                              (LONG)&ulArgLong)) {
+            return  (RES_ERROR);
+        
+        } else {
+            *(UINT16 *)pvArg = (UINT16)ulArgLong;                       /*  FatFs set 16 bit arg        */
+        }
+        return  (RES_OK);
         
     case GET_BLOCK_SIZE:                                                /*  获得块大小                  */
-        ucCmd = LW_BLKD_GET_BLKSIZE;
-        break;
+        if (__blockIoDevIoctl((INT)ucDriver, 
+                              LW_BLKD_GET_BLKSIZE, 
+                              (LONG)&ulArgLong)) {
+            return  (RES_ERROR);
+        
+        } else {
+            *(UINT32 *)pvArg = (UINT32)ulArgLong;                       /*  FatFs set 32 bit arg        */
+        }
+        return  (RES_OK);
         
     case CTRL_TRIM:                                                     /*  ATA 释放扇区                */
         ucCmd = FIOTRIM;

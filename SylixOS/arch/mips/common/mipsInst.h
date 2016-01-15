@@ -28,8 +28,8 @@
  * Copyright (C) 1996, 2000 by Ralf Baechle
  * Copyright (C) 2006 by Thiemo Seufer
  */
-#ifndef _ASM_INST_H
-#define _ASM_INST_H
+#ifndef __ASM_INST_H
+#define __ASM_INST_H
 
 /*
  * Major opcodes; before MIPS IV cop1x was called cop3.
@@ -435,7 +435,7 @@ union mips_instruction {
 
 typedef unsigned int mips_instruction;
 
-#endif                                                                  /*  _ASM_INST_H                 */
+#endif                                                                  /*  __ASM_INST_H                */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

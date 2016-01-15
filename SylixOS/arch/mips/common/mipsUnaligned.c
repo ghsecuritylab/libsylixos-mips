@@ -106,7 +106,7 @@
 #define PTR         TODO
 #endif
 
-static int emulate_load_store_insn(ARCH_REG_CTX *regs, void *addr, unsigned int *pc)
+static int emulate_load_store_insn (ARCH_REG_CTX *regs, void *addr, unsigned int *pc)
 {
     union mips_instruction insn;
     unsigned long value;
