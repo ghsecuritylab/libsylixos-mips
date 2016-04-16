@@ -33,8 +33,10 @@
 2013.12.12  使用 archFindLsb() 来确定消息优先级.
 2014.05.30  使用 ROUND_UP 代替除法.
 2015.07.24  修正 mq_send 优先级为 0 时的错误.
+2016.04.13  加入 GJB7714 相关 API 支持.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDARG
+#define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
 #include "../include/px_mqueue.h"
 #include "../include/posixLib.h"                                        /*  posix 内部公共库            */
@@ -1265,7 +1267,76 @@ int  mq_notify (mqd_t  mqd, const struct sigevent  *pnotify)
     return  (PX_ERROR);
 #endif                                                                  /*  LW_CFG_SIGNAL_EN > 0        */
 }
+/*********************************************************************************************************
+** 函数名称: mq_getinfo
+** 功能描述: 获得消息队列信息
+** 输　入  : mqd           句柄
+**           info          读写锁信息
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
 
+LW_API 
+int  mq_getinfo (mqd_t  mqd, mq_info_t  *info)
+{
+    __PX_MSG           *pmq;
+    __PX_MSG_FILE      *pmqfile;
+    
+    if (info == LW_NULL) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+
+    if ((mqd == MQ_FAILED) || (mqd == 0)) {
+        errno = EBADF;
+        return  (PX_ERROR);
+    }
+    
+    pmqfile = (__PX_MSG_FILE *)mqd;
+    pmq = pmqfile->PMSGF_pmg;
+    
+    __PX_MQ_LOCK(pmq);                                                  /*  锁定消息队列                */
+    info->attr    = pmq->PMSG_mqattr;
+    info->mode    = pmq->PMSG_mode;
+    info->priomap = pmq->PMSG_u32Map;
+    __PX_MQ_UNLOCK(pmq);                                                /*  解锁消息队列                */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: mq_show
+** 功能描述: 显示消息队列信息
+** 输　入  : mqd           句柄
+**           level         显示信息等级
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  mq_show (mqd_t  mqd, int  level)
+{
+    mq_info_t  info;
+    
+    if (mq_getinfo(mqd, &info)) {
+        fprintf(stderr, "can not get message queue information.\n");
+        return  (PX_ERROR);
+    }
+    
+    printf("message queue show >>\n\n");
+    printf("mq flags   %lx\n", info.attr.mq_flags);
+    printf("mq maxmsg  %lu\n", info.attr.mq_maxmsg);
+    printf("mq msgsize %lu\n", info.attr.mq_msgsize);
+    printf("mq curmsg  %lu\n", info.attr.mq_curmsgs);
+    printf("mq mode    0%o\n", info.mode);
+
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

@@ -41,6 +41,7 @@ VOID  archSpinInit (spinlock_t  *psl)
     psl->SL_sltData   = 0;                                              /*  0: 未锁定状态  1: 锁定状态  */
     psl->SL_pcpuOwner = LW_NULL;
     psl->SL_ulCounter = 0ul;                                            /*  重入锁计数                  */
+    KN_SMP_WMB();
 }
 /*********************************************************************************************************
 ** 函数名称: archSpinDelay
@@ -141,6 +142,7 @@ INT  archSpinUnlock (spinlock_t  *psl)
     }
 
     psl->SL_pcpuOwner = LW_NULL;                                        /*  没有 CPU 获取               */
+    KN_SMP_WMB();
     
     armSpinUnlock(&psl->SL_sltData);                                    /*  解锁                        */
     

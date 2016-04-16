@@ -66,9 +66,9 @@ VOID  _StackCheckGuard (PLW_CLASS_TCB  ptcb)
 #else
         pid = 0;
 #endif
-        __LW_STACK_OVERFLOW_HOOK(pid, ptcb->TCB_ulId);
         _DebugFormat(__ERRORMESSAGE_LEVEL, "thread %s id 0x%08lx stack may overflow.\r\n",
                      ptcb->TCB_cThreadName, ptcb->TCB_ulId);
+        __LW_STACK_OVERFLOW_HOOK(pid, ptcb->TCB_ulId);
     }
 }
 /*********************************************************************************************************

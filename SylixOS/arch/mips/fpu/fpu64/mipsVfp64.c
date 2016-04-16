@@ -53,6 +53,7 @@ extern VOID     mipsVfp64Restore32(PVOID pvFpuCtx);
 *********************************************************************************************************/
 static VOID  mipsVfp64CtxShow (INT iFd, PVOID pvFpuCtx)
 {
+#if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_FIO_LIB_EN > 0)
     LW_FPU_CONTEXT *pfpuCtx    = (LW_FPU_CONTEXT *)pvFpuCtx;
     ARCH_FPU_CTX   *pcpufpuCtx = &pfpuCtx->FPUCTX_fpuctxContext;
     INT             i;
@@ -63,6 +64,7 @@ static VOID  mipsVfp64CtxShow (INT iFd, PVOID pvFpuCtx)
         fdprintf(iFd, "FPS[%02d] = 0x%08x  ", i,     pcpufpuCtx->FPUCTX_uiDreg[i]);
         fdprintf(iFd, "FPS[%02d] = 0x%08x\n", i + 1, pcpufpuCtx->FPUCTX_uiDreg[i + 1]);
     }
+#endif
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: mipsVfp64PrimaryInit

@@ -4,6 +4,44 @@ HISTORY
 
 ++ New features:
 
+    2016-04-14: han.hui
+    加入 GJB7714-2012 军用嵌入式操作系统接口规范支持.
+
+    2016-04-11: han.hui
+    加入 /proc/hook 信息.
+
+    2016-04-08: han.hui
+    加入 net_perf_cfg.h 网络性能参数配置.
+
+    2016-04-07: han.hui
+    加入 /proc/cmdline 与 /proc/dma 信息.
+
+    2016-04-06: han.hui
+    加入 yaffs 对 nor flash 支持.
+    
+    2016-03-31: han.hui
+    加入 PowerPC 体系结构支持.
+
+    2016-02-28: han.hui
+    加入 TPSFS 文件系统.
+
+++ Bugfixes:
+
+    2016-04-05: han.hui
+    修正 O_APPEND 每一次写都是追加操作的问题.
+    修正信号上下文中对浮点寄存器的保护.
+
+    2016-03-25: han.hui
+    修正 cfsetispeed, cfsetospeed 问题.
+    修正 system 参数过多问题.
+
+    2016-03-09: han.hui
+    修正 sync() 对未打开文件的磁盘 cache 操作的问题.
+
+(STABLE-1.2.1)
+
+++ New features:
+
     2015-12-16: han.hui
     加入 VLAN 支持.
     加入 NAT 内外网映射功能, 支持 NAT 别名设置.

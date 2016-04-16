@@ -48,6 +48,11 @@ INT  diskformat (CPCHAR  pcDevName)
     
     pcName = (pcDevName == LW_NULL) ? "." : pcDevName;
     
+    if (geteuid() != 0) {                                               /*  必须具有 root 权限          */
+        errno = EACCES;
+        return  (PX_ERROR);
+    }
+    
     iFd = open(pcName, O_WRONLY);                                       /*  打开设备                    */
     if (iFd < 0) {
         return  (PX_ERROR);

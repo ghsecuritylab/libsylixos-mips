@@ -48,6 +48,9 @@
 #if LW_CFG_PROCFS_KERNEL_INFO > 0
 extern  VOID  __procFsKernelInfoInit(VOID);
 #endif                                                                  /*  LW_CFG_PROCFS_KERNEL_INFO   */
+#if LW_CFG_PROCFS_HOOK_INFO > 0
+extern VOID   __procFsHookInit(VOID);
+#endif                                                                  /*  LW_CFG_PROCFS_HOOK_INFO > 0 */
 #if LW_CFG_PROCFS_BSP_INFO > 0
 extern  VOID  __procFsBspInfoInit(VOID);
 #endif                                                                  /*  LW_CFG_PROCFS_BSP_INFO      */
@@ -150,7 +153,7 @@ INT  API_ProcFsDrvInstall (VOID)
     
     _G_iProcDrvNum = iosDrvInstallEx(&fileop);
      
-    DRIVER_LICENSE(_G_iProcDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iProcDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iProcDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iProcDrvNum, "procfs driver.");
     
@@ -187,6 +190,10 @@ INT  API_ProcFsDevCreate (VOID)
 #if LW_CFG_PROCFS_KERNEL_INFO > 0
     __procFsKernelInfoInit();                                           /*  建立内核信息节点            */
 #endif                                                                  /*  LW_CFG_PROCFS_KERNEL_INFO   */
+
+#if LW_CFG_PROCFS_HOOK_INFO > 0
+    __procFsHookInit();
+#endif                                                                  /*  LW_CFG_PROCFS_HOOK_INFO > 0 */
 
     __procFssupInit();
     

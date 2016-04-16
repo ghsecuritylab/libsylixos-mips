@@ -154,9 +154,9 @@ CPCHAR  archGdbCoreXml (VOID)
 INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pregset)
 {
     ARCH_REG_CTX  regctx;
-    ARCH_REG_T    regPs;
+    ARCH_REG_T    regSp;
 
-    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
+    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regSp);
 
     lib_bzero(pregset, sizeof(GDB_REG_SET));
 
@@ -175,7 +175,7 @@ INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
     pregset->regArr[10].GDBRA_ulValue = regctx.REG_uiR10;
     pregset->regArr[11].GDBRA_ulValue = regctx.REG_uiFp;
     pregset->regArr[12].GDBRA_ulValue = regctx.REG_uiIp;
-    pregset->regArr[13].GDBRA_ulValue = regPs;
+    pregset->regArr[13].GDBRA_ulValue = regSp;
     pregset->regArr[14].GDBRA_ulValue = regctx.REG_uiLr;
     pregset->regArr[15].GDBRA_ulValue = regctx.REG_uiPc;
     pregset->regArr[16].GDBRA_ulValue = regctx.REG_uiCpsr;
@@ -230,9 +230,9 @@ INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 INT  archGdbRegSetPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, ULONG ulPc)
 {
     ARCH_REG_CTX  regctx;
-    ARCH_REG_T    regPs;
+    ARCH_REG_T    regSp;
 
-    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
+    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regSp);
 
     regctx.REG_uiPc = (ARCH_REG_T)ulPc;
 

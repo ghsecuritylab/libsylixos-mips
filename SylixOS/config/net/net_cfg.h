@@ -69,21 +69,6 @@
 *            建议将 LW_CFG_LWIP_JOBQUEUE_PRIORITY 与 LW_CFG_LWIP_PRIORITY 设置为相同(效率较高).
 *            网络驱动程序对内存的操作尽量不要放在中断中, 建议完全交由 netjob 处理.
 *********************************************************************************************************/
-
-/*********************************************************************************************************
-                     lwip 缓存配置 (以下配置决定 RAM 使用量和 lwip 效率)
-*********************************************************************************************************/
-
-#define LW_CFG_LWIP_MEM_SIZE            (512 * LW_CFG_KB_SIZE)          /*  lwip 内存大小               */
-#define LW_CFG_LWIP_MSG_SIZE            512                             /*  lwip 内部消息队列缓冲长度   */
-#define LW_CFG_LWIP_POOL_SIZE           1600                            /*  lwip POOL 内存块大小        */
-                                                                        /*  注意: 必须是字对齐的        */
-
-#define LW_CFG_LWIP_NUM_PBUFS           256                             /*  系统总 pbuf 数量            */
-#define LW_CFG_LWIP_NUM_NETBUF          256                             /*  缓冲网络分组 netbuf 数量    */
-#define LW_CFG_LWIP_NUM_POOLS           LW_CFG_LWIP_MSG_SIZE            /*  等长缓冲总数量(高速缓冲)    */
-                                                                        /*  驱动程序与 AF_PACKET 使用   */
-                                                                        
 /*********************************************************************************************************
                                   lwip 校验和配置 (建议使用软件生成校验和并检查)
 *********************************************************************************************************/
@@ -115,26 +100,12 @@
 #define LW_CFG_LWIP_NUM_PPP             0                               /*  lwip ppp 最大会话数         */
 #endif                                                                  /*  __GNUC__                    */
 
-#define LW_CFG_LWIP_JOBQUEUE_SIZE       256                             /*  sylixos job queue size      */
-#define LW_CFG_LWIP_STK_SIZE            4096                            /*  lwip thread default stksize */
-
 #define LW_CFG_LWIP_TCP_PCB             100                             /*  允许同时的 TCP 连接数       */
 #define LW_CFG_LWIP_UDP_PCB             100                             /*  允许同时的 UDP 数量         */
 #define LW_CFG_LWIP_RAW_PCB             20                              /*  允许同时的 RAW 数量         */
 
 #define LW_CFG_LWIP_DHCP                1                               /*  是否允许 DHCP 协议          */
 #define LW_CFG_LWIP_AUTOIP              1                               /*  自动分析获取 IP             */
-
-/*********************************************************************************************************
-*                                       lwip TCP 设置 
-*
-* 关于 LW_CFG_LWIP_TCP_WND 不能大于网卡的接收缓冲区大小, 否则可能出现网卡接收溢出的错误, 造成网络速度颠簸.
-*********************************************************************************************************/
-
-#define LW_CFG_LWIP_TCP_WND             0                               /*  接收缓冲大小, 0 为自动      */
-#define LW_CFG_LWIP_TCP_RCV_SCALE       0                               /*  TCP 接收窗口扩大指数 0 ~ 14 */
-#define LW_CFG_LWIP_TCP_MAXRTX          8                               /*  TCP 最大重传数, 1 ~ 12      */
-#define LW_CFG_LWIP_TCP_SYNMAXRTX       6                               /*  最大 SYN 重传数, 1 ~ 12     */
 
 /*********************************************************************************************************
 *                                       lwip SNMP 设置

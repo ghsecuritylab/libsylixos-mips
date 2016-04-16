@@ -17,6 +17,9 @@
 ** 文件创建日期: 2015 年 12 月 01 日
 **
 ** 描        述: MIPS32 体系构架 CACHE 驱动.
+**
+** BUG:
+2016.04.06	 Add Cache Init 对CP0_ECC Register Init(loongson2H支持)
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
@@ -697,12 +700,12 @@ static INT  mips32CacheProbe (VOID)
 /*********************************************************************************************************
 ** 函数名称: mips32CacheProbe
 ** 功能描述: CACHE 探测
-** 输　入  : NONE
+** 输　入  : pcMachineName  机器名称
 ** 输　出  : ERROR or OK
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static INT  mips32CacheHwInit (VOID)
+static INT  mips32CacheHwInit (CPCHAR   pcMachineName)
 {
     PCHAR   pcLineAddr;
     PCHAR   pcBaseAddr = (PCHAR)A_K0BASE;
@@ -715,6 +718,10 @@ static INT  mips32CacheHwInit (VOID)
 
     if (_G_bHaveTagHi) {
         mipsCp0TagHiWrite(0);
+    }
+
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS2X) == 0) {
+        mipsCp0ECCWrite(0x00);
     }
 
     pcEndAddr = (PCHAR)(A_K0BASE + _G_ICache.CACHE_uiSize);
@@ -735,6 +742,10 @@ static INT  mips32CacheHwInit (VOID)
              */
             mips32ICacheIndexStoreTag(pcLineAddr);
         }
+    }
+
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS2X) == 0) {
+        mipsCp0ECCWrite(0x22);
     }
 
     pcEndAddr = (PCHAR)(A_K0BASE + _G_DCache.CACHE_uiSize);
@@ -779,7 +790,8 @@ VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
 {
     INT     iError;
 
-    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1B) == 0) {
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1X) == 0 ||
+        lib_strcmp(pcMachineName, MIPS_MACHINE_LS2X) == 0) {
         _G_bHaveTagHi         = LW_FALSE;
         _G_bHaveFillI         = LW_FALSE;
         _G_bHaveHitWritebackD = LW_FALSE;
@@ -790,7 +802,7 @@ VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
         return;
     }
 
-    iError = mips32CacheHwInit();
+    iError = mips32CacheHwInit(pcMachineName);
     if (iError != ERROR_NONE) {
         return;
     }

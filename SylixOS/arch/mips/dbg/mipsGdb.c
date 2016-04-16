@@ -131,10 +131,10 @@ CPCHAR  archGdbCoreXml (VOID)
 INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pregset)
 {
     ARCH_REG_CTX  regctx;
-    ARCH_REG_T    regPs;
+    ARCH_REG_T    regSp;
     INT           iIndex = 0;
 
-    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
+    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regSp);
 
     lib_bzero(pregset, sizeof(GDB_REG_SET));
 
@@ -167,7 +167,7 @@ INT  archGdbRegsGet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
     pregset->regArr[iIndex++].GDBRA_ulValue = 0;                        /*  k0, k1                      */
     pregset->regArr[iIndex++].GDBRA_ulValue = 0;
     pregset->regArr[iIndex++].GDBRA_ulValue = regctx.REG_uiReg[REG_GP];
-    pregset->regArr[iIndex++].GDBRA_ulValue = regPs;
+    pregset->regArr[iIndex++].GDBRA_ulValue = regSp;
     pregset->regArr[iIndex++].GDBRA_ulValue = regctx.REG_uiReg[REG_FP];
     pregset->regArr[iIndex++].GDBRA_ulValue = regctx.REG_uiReg[REG_RA];
     pregset->regArr[iIndex++].GDBRA_ulValue = regctx.REG_uiCP0Status;
@@ -260,9 +260,9 @@ INT  archGdbRegsSet (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET *pre
 INT  archGdbRegSetPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, ULONG ulPc)
 {
     ARCH_REG_CTX  regctx;
-    ARCH_REG_T    regPs;
+    ARCH_REG_T    regSp;
 
-    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
+    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regSp);
 
     regctx.REG_uiCP0EPC = (ARCH_REG_T)ulPc;
 
@@ -302,7 +302,7 @@ ULONG  archGdbGetNextPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET 
     ULONG           pc;
     ULONG           ulFpcsr;
     ARCH_REG_CTX    regctx;
-    ARCH_REG_T      regPs;
+    ARCH_REG_T      regSp;
     ARCH_FPU_CTX    fpuctx;
 
     API_DtraceGetFpuRegs(pvDtrace, ulThread, &fpuctx);
@@ -312,7 +312,7 @@ ULONG  archGdbGetNextPc (PVOID pvDtrace, LW_OBJECT_HANDLE ulThread, GDB_REG_SET 
     /*
      * 如果 PC 为分支延时槽指令，则需调整为 branch 指令
      */
-    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regPs);
+    API_DtraceGetRegs(pvDtrace, ulThread, &regctx, &regSp);
     if (regctx.REG_uiCP0Cause & M_CauseBD) {
         pc -= sizeof(ULONG);
     }

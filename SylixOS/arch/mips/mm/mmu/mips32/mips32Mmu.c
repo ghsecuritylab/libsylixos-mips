@@ -17,6 +17,9 @@
 ** 文件创建日期: 2015 年 10 月 12 日
 **
 ** 描        述: MIPS32 体系构架 MMU 驱动.
+**
+** BUG:
+2016.04.06	 修改TLB无效对EntryHi Register 操作(JZ4780支持)
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
@@ -95,7 +98,8 @@ static VOID  mips32MmuInvalidateTLB (VOID)
         mipsCp0IndexWrite(i);
         mipsCp0EntryLo0Write(0);
         mipsCp0EntryLo1Write(0);
-        mipsCp0EntryHiWrite(0);
+        mipsCp0EntryHiWrite(A_K1BASE | ((i) << (LW_CFG_VMM_PAGE_SHIFT + 1)));
+        mipsCp0PageMaskWrite(0);
 
         MIPS_MMU_TLB_WRITE();
     }
@@ -644,6 +648,7 @@ static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  u
 ** 功能描述: 设置页面映射关系
 ** 输　入  : pmmuctx        mmu 上下文
 **           p_pteentry     对应的页表项
+**           ulVirtualAddr  虚拟地址
 **           ulPhysicalAddr 物理地址
 **           ulFlag         对应的类型
 ** 输　出  : NONE
@@ -653,6 +658,7 @@ static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  u
 *********************************************************************************************************/
 static VOID  mips32MmuMakeTrans (PLW_MMU_CONTEXT     pmmuctx,
                                  LW_PTE_TRANSENTRY  *p_pteentry,
+                                 addr_t              ulVirtualAddr,
                                  addr_t              ulPhysicalAddr,
                                  addr_t              ulFlag)
 {
@@ -755,7 +761,7 @@ static VOID  mips32MmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
 *********************************************************************************************************/
 VOID  mips32MmuInit (LW_MMU_OP  *pmmuop, CPCHAR  pcMachineName)
 {
-    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1B) == 0) {
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1X) == 0) {
         _G_iHwNeverExecBit  = 30;
         _G_uiEntryLoPFNMask = MIPS32_ENTRYLO_PFN_DEFAULT_MASK & (~(0x3 << 30));
     } else {

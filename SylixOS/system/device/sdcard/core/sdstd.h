@@ -203,14 +203,14 @@
 *********************************************************************************************************/
 #define MMC_CMD_SEND_EXT_CSD            8
 
-#define EXT_CSD_CMD_SET_NORMAL          (1<<0)
-#define EXT_CSD_CMD_SET_SECURE          (1<<1)
-#define EXT_CSD_CMD_SET_CPSECURE        (1<<2)
+#define EXT_CSD_CMD_SET_NORMAL          (1 << 0)
+#define EXT_CSD_CMD_SET_SECURE          (1 << 1)
+#define EXT_CSD_CMD_SET_CPSECURE        (1 << 2)
 
-#define EXT_CSD_CARD_TYPE_26            (1<<0)
-#define EXT_CSD_CARD_TYPE_52            (1<<1)
-#define EXT_CSD_CARD_TYPE_52_DDR_18_30  (1<<2)
-#define EXT_CSD_CARD_TYPE_52_DDR_12     (1<<3)
+#define EXT_CSD_CARD_TYPE_26            (1 << 0)
+#define EXT_CSD_CARD_TYPE_52            (1 << 1)
+#define EXT_CSD_CARD_TYPE_52_DDR_18_30  (1 << 2)
+#define EXT_CSD_CARD_TYPE_52_DDR_12     (1 << 3)
 
 #define EXT_CSD_BUS_WIDTH_1             0
 #define EXT_CSD_BUS_WIDTH_4             1
@@ -219,14 +219,14 @@
 #define EXT_CSD_BUS_WIDTH_8_DDR         6
 
 #define MMC_HS_TIMING                   0x00000100
-#define MMC_HS_52MHZ                    (0x1<<1)
-#define MMC_HS_52MHZ_1_8V_3V_IO         (0x1<<2)
-#define MMC_HS_52MHZ_1_2V_IO            (0x1<<3)
+#define MMC_HS_52MHZ                    (0x1 << 1)
+#define MMC_HS_52MHZ_1_8V_3V_IO         (0x1 << 2)
+#define MMC_HS_52MHZ_1_2V_IO            (0x1 << 3)
 
-#define MMC_MODE_HS                     0x001
-#define MMC_MODE_HS_52MHz               0x010
-#define MMC_MODE_HS_52MHz_DDR_18_3V     0x020
-#define MMC_MODE_HS_52MHz_DDR_12V       0x040
+#define MMC_MODE_HS                     SDHOST_CAP_HIGHSPEED            /*  这里与 SDM 层定义一致       */
+#define MMC_MODE_HS_52MHz               0x00100000
+#define MMC_MODE_HS_52MHz_DDR_18_3V     0x00200000
+#define MMC_MODE_HS_52MHz_DDR_12V       0x00400000
 
 #endif                                                                  /*  __SDSTD_H                   */
 /*********************************************************************************************************

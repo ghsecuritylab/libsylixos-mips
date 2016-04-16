@@ -45,7 +45,7 @@
 LW_API 
 int  sched_get_priority_max (int  iPolicy)
 {
-    (void)iPolicy;
+    (VOID)iPolicy;
 
     return  (__PX_PRIORITY_MAX);                                        /*  254                         */
 }
@@ -61,7 +61,7 @@ int  sched_get_priority_max (int  iPolicy)
 LW_API 
 int  sched_get_priority_min (int  iPolicy)
 {
-    (void)iPolicy;
+    (VOID)iPolicy;
     
     return  (__PX_PRIORITY_MIN);                                        /*  1                           */
 }
@@ -376,11 +376,11 @@ int  sched_setaffinity (pid_t pid, size_t setsize, const cpu_set_t *set)
 {
 #if LW_CFG_SMP_EN > 0
     if (!setsize || !set) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (PX_ERROR);
     }
     if (vprocSetAffinity(pid, setsize, (PLW_CLASS_CPUSET)set)) {
-        _ErrorHandle(ESRCH);
+        errno = ESRCH;
         return  (PX_ERROR);
     }
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
@@ -403,17 +403,81 @@ int  sched_getaffinity (pid_t pid, size_t setsize, cpu_set_t *set)
 {
 #if LW_CFG_SMP_EN > 0
     if ((setsize < sizeof(cpu_set_t)) || !set) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (PX_ERROR);
     }
     if (vprocGetAffinity(pid, setsize, set)) {
-        _ErrorHandle(ESRCH);
+        errno = ESRCH;
         return  (PX_ERROR);
     }
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
     
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: sched_settimeslice
+** 功能描述: 设置系统调度时间片
+** 输　入  : ticks         时间片
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API  
+int  sched_settimeslice (UINT32  ticks)
+{
+    INT             i;
+    PLW_CLASS_TCB   ptcb;
+    
+    if (geteuid() != 0) {
+        errno = EACCES;
+        return  (PX_ERROR);
+    }
+    
+    if (ticks > 100) {
+        errno = ERANGE;
+        return  (PX_ERROR);
+    }
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    for (i = 0; i < LW_CFG_MAX_THREADS; i++) {
+        ptcb = _K_ptcbTCBIdTable[i];                                    /*  获得 TCB 控制块             */
+        if (ptcb == LW_NULL) {                                          /*  线程不存在                  */
+            continue;
+        }
+        
+        ptcb->TCB_usSchedSlice = (UINT16)ticks;
+    }
+    
+    LW_SCHED_SLICE = (UINT16)ticks;
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: sched_gettimeslice
+** 功能描述: 获得系统调度时间片
+** 输　入  : NONE
+** 输　出  : 时间片
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+unsigned int  sched_gettimeslice (void)
+{
+    unsigned int  ticks;
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    ticks = (unsigned int)LW_SCHED_SLICE;
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+
+    return  (ticks);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

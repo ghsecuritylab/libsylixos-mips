@@ -42,13 +42,13 @@ int  adjtime (const struct timeval *delta, struct timeval *olddelta)
     INT32   iOldDelta;
     
     if (geteuid()) {                                                    /*  只有 root 权限可以操作      */
-        _ErrorHandle(EPERM);
+        errno = EPERM;
         return  (PX_ERROR);
     }
     
     if (delta) {
         if (delta->tv_sec > 86400) {                                    /*  调整时间不得超过 1 天       */
-            _ErrorHandle(ENOTSUP);
+            errno = ENOTSUP;
             return  (PX_ERROR);
         }
         iDelta  = (INT32)delta->tv_sec * LW_TICK_HZ;

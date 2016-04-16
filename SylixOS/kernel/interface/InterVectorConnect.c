@@ -156,6 +156,7 @@ ULONG  API_InterVectorConnectEx (ULONG              ulVector,
                                  &pidesc->IDESC_plineAction);
             bNeedFree = LW_FALSE;
         }
+    
     } else {                                                            /*  非队列服务式中断向量        */
         if (pidesc->IDESC_plineAction) {
             piactionOld = _LIST_ENTRY(pidesc->IDESC_plineAction, 
@@ -201,8 +202,28 @@ ULONG  API_InterVectorDisconnect (ULONG             ulVector,
                                   PINT_SVR_ROUTINE  pfuncIsr,
                                   PVOID             pvArg)
 {
+    return  (API_InterVectorDisconnectEx(ulVector, pfuncIsr, pvArg, LW_IRQ_DISCONN_DEFAULT));
+}
+/*********************************************************************************************************
+** 函数名称: API_InterVectorDisconnectEx
+** 功能描述: 解除系统指定向量中断服务
+** 输　入  : ulVector                      中断向量号
+**           pfuncIsr                      服务函数
+**           pvArg                         服务函数参数
+**           ulOption                      删除选项
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API
+ULONG  API_InterVectorDisconnectEx (ULONG             ulVector,
+                                    PINT_SVR_ROUTINE  pfuncIsr,
+                                    PVOID             pvArg,
+                                    ULONG             ulOption)
+{
     INTREG              iregInterLevel;
-    BOOL                bNeedFree = LW_FALSE;
+    BOOL                bNeedFree;
     
     PLW_LIST_LINE       plineTemp;
     PLW_CLASS_INTACT    piaction;
@@ -226,6 +247,9 @@ ULONG  API_InterVectorDisconnect (ULONG             ulVector,
         return  (ERROR_KERNEL_VECTOR_NULL);
     }
     
+__disconn:
+    bNeedFree = LW_FALSE;
+
     INTER_SHOWLOCK_LOCK();
 
     pidesc = LW_IVEC_GET_IDESC(ulVector);
@@ -237,11 +261,24 @@ ULONG  API_InterVectorDisconnect (ULONG             ulVector,
          plineTemp  = _list_line_get_next(plineTemp)) {
          
         piaction = _LIST_ENTRY(plineTemp, LW_CLASS_INTACT, IACT_plineManage);
-        if ((piaction->IACT_pfuncIsr == pfuncIsr) &&
-            (piaction->IACT_pvArg    == pvArg)) {
+        if (ulOption & LW_IRQ_DISCONN_ALL) {                            /*  删除所有                    */
+            bNeedFree = LW_TRUE;
+        
+        } else if (ulOption & LW_IRQ_DISCONN_IGNORE_ARG) {
+            if (piaction->IACT_pfuncIsr == pfuncIsr) {                  /*  删除匹配的函数              */
+                bNeedFree = LW_TRUE;
+            }
+        
+        } else {
+            if ((piaction->IACT_pfuncIsr == pfuncIsr) &&
+                (piaction->IACT_pvArg    == pvArg)) {                   /*  删除匹配的函数与参数        */
+                bNeedFree = LW_TRUE;
+            }
+        }
+        
+        if (bNeedFree) {
             _List_Line_Del(&piaction->IACT_plineManage,
                            &pidesc->IDESC_plineAction);
-            bNeedFree = LW_TRUE;
             break;
         }
     }
@@ -252,6 +289,9 @@ ULONG  API_InterVectorDisconnect (ULONG             ulVector,
     
     if (bNeedFree) {
         __KHEAP_FREE(piaction);
+        if (ulOption & (LW_IRQ_DISCONN_ALL | LW_IRQ_DISCONN_IGNORE_ARG)) {
+            goto    __disconn;
+        }
     }
     
     return  (ERROR_NONE);

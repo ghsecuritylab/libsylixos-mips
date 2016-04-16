@@ -33,6 +33,7 @@
 2015.03.14  增加 SDHCI 不能发出 SDIO 硬件中断的处理.
 2015.11.20  增加 对不支持 ACMD12 的控制器处理.
             增加 对 SDHCI v3.0 的兼容性支持.
+2016.12.16  修正 在传输过程中可能产生死锁的问题.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #define  __SYLIXOS_IO
@@ -908,12 +909,12 @@ static INT __sdhciTransferNorm (__PSDHCI_HOST       psdhcihost,
             return  (PX_ERROR);
         }
 
+        __SDHCI_TRANS_UNLOCK(psdhcitrans);
+
         iError = __sdhciTransStart(psdhcitrans);
         if (iError != ERROR_NONE) {
-            __SDHCI_TRANS_UNLOCK(psdhcitrans);
             return  (PX_ERROR);
         }
-        __SDHCI_TRANS_UNLOCK(psdhcitrans);                              /*  解锁传输                    */
 
         iError = __sdhciTransFinishWait(psdhcitrans);                   /*  等待本次传输完成            */
         if (iError != ERROR_NONE) {
@@ -1872,6 +1873,7 @@ __timeout:
     psdhcitrans->SDHCITS_iCmdError = PX_ERROR;
     psdhcitrans->SDHCITS_iDatError = PX_ERROR;
     __sdhciTransFinish(psdhcitrans);
+
     return  (PX_ERROR);
 }
 /*********************************************************************************************************
@@ -2012,7 +2014,6 @@ static INT __sdhciDataReadNorm (__PSDHCI_TRANS    psdhcitrans)
     /*
      * 以下可以处理块大小不是 4 倍数的情况
      */
-    __SDHCI_TRANS_LOCK(psdhcitrans);
     while (uiBlkSize) {
         if (uiChunk == 0) {
             uiData = SDHCI_READL(psdhcihostattr, SDHCI_BUFFER);
@@ -2028,7 +2029,6 @@ static INT __sdhciDataReadNorm (__PSDHCI_TRANS    psdhcitrans)
 
     psdhcitrans->SDHCITS_uiBlkCntRemain -= 1;
     psdhcitrans->SDHCITS_pucDatBuffCurr  = pucBuffer;                   /*  记录下一次数据处理位置      */
-    __SDHCI_TRANS_UNLOCK(psdhcitrans);
 
     return  (ERROR_NONE);
 }
@@ -2057,7 +2057,6 @@ static INT __sdhciDataWriteNorm (__PSDHCI_TRANS    psdhcitrans)
     /*
      * 以下可以处理块大小不是 4 倍数的情况
      */
-    __SDHCI_TRANS_LOCK(psdhcitrans);
     while (uiBlkSize) {
         uiData |= (UINT32)(*pucBuffer) << (uiChunk << 3);
 
@@ -2073,7 +2072,6 @@ static INT __sdhciDataWriteNorm (__PSDHCI_TRANS    psdhcitrans)
 
     psdhcitrans->SDHCITS_uiBlkCntRemain -= 1;
     psdhcitrans->SDHCITS_pucDatBuffCurr  = pucBuffer;                   /*  记录下一次数据处理位置      */
-    __SDHCI_TRANS_UNLOCK(psdhcitrans);
 
     return  (ERROR_NONE);
 }
@@ -2463,6 +2461,10 @@ static INT  __sdhciTransStart (__SDHCI_TRANS *psdhcitrans)
                           psdhcitrans->SDHCITS_psdcmd,
                           psdhcitrans->SDHCITS_psddat);
 
+    if (iRet != ERROR_NONE) {
+        API_SemaphoreBClear(psdhcitrans->SDHCITS_hFinishSync);
+    }
+
     return  (iRet);
 }
 /*********************************************************************************************************
@@ -2515,6 +2517,8 @@ static INT  __sdhciTransClean (__SDHCI_TRANS *psdhcitrans)
         __sdhciIntClear(psdhcitrans->SDHCITS_psdhcihost);
     }
 
+    API_SemaphoreBClear(psdhcitrans->SDHCITS_hFinishSync);
+
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -2536,8 +2540,6 @@ static irqreturn_t   __sdhciTransIrq (VOID *pvArg, ULONG ulVector)
     UINT32               uiIntSta;
     irqreturn_t          irqret;
 
-    __SDHCI_TRANS_LOCK(psdhcitrans);
-
     if (psdhcihostattr->SDHCIHOST_pquirkop &&
         psdhcihostattr->SDHCIHOST_pquirkop->SDHCIQOP_pfuncIsrEnterHook) {
         psdhcihostattr->SDHCIHOST_pquirkop->SDHCIQOP_pfuncIsrEnterHook(psdhcihostattr);
@@ -2552,6 +2554,8 @@ __redo:
         irqret = LW_IRQ_NONE;
         goto    __end;                                                  /*  无效或未知的中断            */
     }
+
+    __SDHCI_TRANS_LOCK(psdhcitrans);
 
     psdhcitrans->SDHCITS_uiIntSta = uiIntSta;
 
@@ -2601,7 +2605,6 @@ __redo:
 
     KN_IO_MB();
 
-__end:
     if (bSdioInt && !SDHCI_QUIRK_FLG(psdhcihostattr, SDHCI_QUIRK_FLG_CANNOT_SDIO_INT)) {
         __sdhciSdioIntEn(psdhcitrans->SDHCITS_psdhcihost, LW_FALSE);
         __SDHCI_SDIO_NOTIFY(psdhcitrans);
@@ -2615,15 +2618,19 @@ __end:
     if (SDHCI_QUIRK_FLG(psdhcihostattr, SDHCI_QUIRK_FLG_RECHECK_INTS_AFTER_ISR)) {
         uiIntSta = SDHCI_READL(psdhcihostattr, SDHCI_INT_STATUS);
         if (uiIntSta) {
+            __SDHCI_TRANS_UNLOCK(psdhcitrans);
+            bSdioInt = LW_FALSE;
             goto __redo;
         }
     }
 
+    __SDHCI_TRANS_UNLOCK(psdhcitrans);
+
+__end:
     if (psdhcihostattr->SDHCIHOST_pquirkop &&
         psdhcihostattr->SDHCIHOST_pquirkop->SDHCIQOP_pfuncIsrExitHook) {
         psdhcihostattr->SDHCIHOST_pquirkop->SDHCIQOP_pfuncIsrExitHook(psdhcihostattr);
     }
-    __SDHCI_TRANS_UNLOCK(psdhcitrans);
 
     return  (irqret);
 }

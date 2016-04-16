@@ -109,7 +109,9 @@ static VOID  armVfpNoneRestore (PVOID pvFpuCtx)
 *********************************************************************************************************/
 static VOID  armVfpNoneCtxShow (INT iFd, PVOID pvFpuCtx)
 {
+#if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_FIO_LIB_EN > 0)
     fdprintf(iFd, "no vfp\n");
+#endif
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: armVfpNonePrimaryInit

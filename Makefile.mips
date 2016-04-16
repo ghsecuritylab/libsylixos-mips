@@ -240,6 +240,7 @@ SylixOS/fs/procFs/procFs.c \
 SylixOS/fs/procFs/procFsLib.c \
 SylixOS/fs/procFs/procBsp/procBsp.c \
 SylixOS/fs/procFs/procFssup/procFssup.c \
+SylixOS/fs/procFs/procHook/procHook.c \
 SylixOS/fs/procFs/procKernel/procKernel.c \
 SylixOS/fs/procFs/procPower/procPower.c \
 SylixOS/fs/ramFs/ramFs.c \
@@ -248,6 +249,15 @@ SylixOS/fs/romFs/romFs.c \
 SylixOS/fs/romFs/romFsLib.c \
 SylixOS/fs/rootFs/rootFs.c \
 SylixOS/fs/rootFs/rootFsLib.c \
+SylixOS/fs/tpsFs/tpsfs_btree.c \
+SylixOS/fs/tpsFs/tpsfs_dev_buf.c \
+SylixOS/fs/tpsFs/tpsfs_dir.c \
+SylixOS/fs/tpsFs/tpsfs_inode.c \
+SylixOS/fs/tpsFs/tpsfs_log.c \
+SylixOS/fs/tpsFs/tpsfs_super.c \
+SylixOS/fs/tpsFs/tpsfs_sylixos.c \
+SylixOS/fs/tpsFs/tpsfs_trans.c \
+SylixOS/fs/tpsFs/tpsfs.c \
 SylixOS/fs/unique/unique.c \
 SylixOS/fs/yaffs2/yaffs_allocator.c \
 SylixOS/fs/yaffs2/yaffs_attribs.c \
@@ -258,6 +268,7 @@ SylixOS/fs/yaffs2/yaffs_guts.c \
 SylixOS/fs/yaffs2/yaffs_mtdif_multi.c \
 SylixOS/fs/yaffs2/yaffs_nameval.c \
 SylixOS/fs/yaffs2/yaffs_nand.c \
+SylixOS/fs/yaffs2/yaffs_nor.c \
 SylixOS/fs/yaffs2/yaffs_packedtags1.c \
 SylixOS/fs/yaffs2/yaffs_packedtags2.c \
 SylixOS/fs/yaffs2/yaffs_summary.c \
@@ -957,6 +968,12 @@ SylixOS/posix/dlfcn/dlfcn.c \
 SylixOS/posix/execinfo/execinfo.c \
 SylixOS/posix/fmtmsg/fmtmsg.c \
 SylixOS/posix/fnmatch/fnmatch.c \
+SylixOS/posix/gjbext/gjb_devrel.c \
+SylixOS/posix/gjbext/gjb_fsrel.c \
+SylixOS/posix/gjbext/gjb_interrupt.c \
+SylixOS/posix/gjbext/gjb_memrel.c \
+SylixOS/posix/gjbext/gjb_netrel.c \
+SylixOS/posix/gjbext/gjb_timerel.c \
 SylixOS/posix/mman/mman.c \
 SylixOS/posix/mqueue/mqueue.c \
 SylixOS/posix/poll/poll.c \

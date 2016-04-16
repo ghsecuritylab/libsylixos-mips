@@ -77,7 +77,7 @@ INT  API_HstimerfdDrvInstall (VOID)
                                            _hstmrfdRead,
                                            LW_NULL,
                                            _hstmrfdIoctl);
-        DRIVER_LICENSE(_G_iHstmrfdDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iHstmrfdDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iHstmrfdDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iHstmrfdDrvNum, "hstimerfd driver.");
     }

@@ -17,7 +17,8 @@
 ** 文件创建日期: 2009 年 12 月 30 日
 **
 ** 描        述: pthread 兼容库.
-** 注        意: SylixOS pthread_rwlock_rdlock() 不支持同一线程嵌套调用!!!
+**
+** 注        意: SylixOS pthread_rwlock_rdlock() 不支持同一线程嵌套调用.
 *********************************************************************************************************/
 
 #ifndef __PX_PTHREAD_H
@@ -29,6 +30,10 @@
   裁剪支持
 *********************************************************************************************************/
 #if LW_CFG_POSIX_EN > 0
+
+#if LW_CFG_GJB7714_EN > 0
+#include "px_gjbext.h"
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,6 +99,12 @@ typedef LW_THREAD_COND      pthread_cond_t;
 #define PTHREAD_MUTEX_RECURSIVE_NP          PTHREAD_MUTEX_RECURSIVE
 
 #define PTHREAD_MUTEX_DEFAULT               PTHREAD_MUTEX_RECURSIVE     /*  默认支持递归调用            */
+
+#define PTHREAD_WAITQ_PRIO                  1
+#define PTHREAD_WAITQ_FIFO                  0
+
+#define PTHREAD_CANCEL_SAFE                 1
+#define PTHREAD_CANCEL_UNSAFE               0
 
 typedef struct {
     int                     PMUTEXATTR_iIsEnable;                       /*  此属性块是否有效            */
@@ -262,6 +273,10 @@ LW_API int          pthread_mutexattr_setpshared(pthread_mutexattr_t *pmutexattr
 LW_API int          pthread_mutexattr_getpshared(const pthread_mutexattr_t *pmutexattr, int  *pshared);
 LW_API int          pthread_mutexattr_settype(pthread_mutexattr_t *pmutexattr, int  type);
 LW_API int          pthread_mutexattr_gettype(const pthread_mutexattr_t *pmutexattr, int  *type);
+LW_API int          pthread_mutexattr_setwaitqtype(pthread_mutexattr_t  *pmutexattr, int  waitq_type);
+LW_API int          pthread_mutexattr_getwaitqtype(const pthread_mutexattr_t *pmutexattr, int *waitq_type);
+LW_API int          pthread_mutexattr_setcancelsafe(pthread_mutexattr_t  *pmutexattr, int  cancel_safe);
+LW_API int          pthread_mutexattr_getcancelsafe(const pthread_mutexattr_t *pmutexattr, int *cancel_safe);
 LW_API int          pthread_mutex_init(pthread_mutex_t  *pmutex, const pthread_mutexattr_t *pmutexattr);
 LW_API int          pthread_mutex_destroy(pthread_mutex_t  *pmutex);
 LW_API int          pthread_mutex_lock(pthread_mutex_t  *pmutex);
@@ -314,6 +329,104 @@ LW_API int          pthread_int_unlock_np(pthread_int_t irqctx);
 LW_API int          pthread_setaffinity_np(pthread_t  thread, size_t setsize, const cpu_set_t *set);
 LW_API int          pthread_getaffinity_np(pthread_t  thread, size_t setsize, cpu_set_t *set);
 #endif                                                                  /*  LW_CFG_POSIXEX_EN > 0       */
+
+/*********************************************************************************************************
+  pthread GJB7714 extern api
+*********************************************************************************************************/
+
+#if LW_CFG_GJB7714_EN > 0
+
+#define PTHREAD_STACK_FILLED        1
+#define PTHREAD_NO_STACK_FILLED     0
+
+#define PTHREAD_BREAK_ALLOWED       1
+#define PTHREAD_BREAK_DISALLOWED    0
+
+#define PTHREAD_FP_ALLOWED          1
+#define PTHREAD_FP_DISALLOWED       0
+
+typedef struct {
+    int         value;
+    int         inherit;
+    int         prioceiling;
+    int         wait_type;
+    int         cancel_type;
+    int         blocknum;
+    pthread_t   ownner;
+    ULONG       reservepad[6];
+} pthread_mutex_info_t;
+
+typedef struct {
+    LW_OBJECT_HANDLE    signal;
+    LW_OBJECT_HANDLE    mutex;
+    ULONG               cnt;
+    ULONG               reservepad[6];
+} pthread_cond_info_t;
+
+typedef struct {
+    LW_OBJECT_HANDLE    owner;
+    unsigned int        opcnt;
+    unsigned int        rpend;
+    unsigned int        wpend;
+    ULONG               reservepad[10];
+} pthread_rwlock_info_t;
+
+LW_API int          pthread_attr_getstackfilled(const pthread_attr_t *pattr, int *stackfilled);
+LW_API int          pthread_attr_setstackfilled(pthread_attr_t *pattr, int stackfilled);
+LW_API int          pthread_attr_getbreakallowed(const pthread_attr_t *pattr, int *breakallowed);
+LW_API int          pthread_attr_setbreakallowed(pthread_attr_t *pattr, int breakallowed);
+LW_API int          pthread_attr_getfpallowed(const pthread_attr_t *pattr, int *fpallowed);
+LW_API int          pthread_attr_setfpallowed(pthread_attr_t *pattr, int fpallowed);
+
+LW_API int          pthread_getid(const char *name, pthread_t *pthread);
+LW_API int          pthread_getname(pthread_t thread, char *name);
+LW_API int          pthread_suspend(pthread_t thread);
+LW_API int          pthread_resume(pthread_t thread);
+LW_API int          pthread_delay(int  ticks);
+LW_API int          pthread_lock(void);
+LW_API int          pthread_unlock(void);
+LW_API boolean      pthread_is_ready(pthread_t thread);
+LW_API boolean      pthread_is_suspend(pthread_t thread);
+LW_API int          pthread_cancelforce(pthread_t thread);
+LW_API int          pthread_getinfo(pthread_t thread, pthread_info_t *info);
+LW_API int          pthread_getregs(pthread_t thread, REG_SET *pregs);
+LW_API int          pthread_show(pthread_t thread, int level);
+LW_API int          pthread_showstack(pthread_t thread);
+LW_API int          pthread_showstackframe(pthread_t thread);
+
+/*********************************************************************************************************
+  var function (ONLY 32bit UP system can use the following routine)
+*********************************************************************************************************/
+
+#if (LW_CFG_SMP_EN == 0) && (LW_CFG_CPU_WORD_LENGHT == 32)
+LW_API int          pthread_addvar(pthread_t thread, int *pvar);
+LW_API int          pthread_delvar(pthread_t thread, int *pvar);
+LW_API int          pthread_setvar(pthread_t thread, int *pvar, int value);
+LW_API int          pthread_getvar(pthread_t thread, int *pvar, int *value);
+#endif                                                                  /*  SMP ...                     */
+
+/*********************************************************************************************************
+  hook function (ONLY kernel program can use the following routine)
+*********************************************************************************************************/
+
+#ifdef __SYLIXOS_KERNEL
+LW_API int          pthread_create_hook_add(OS_STATUS (*create_hook)(pthread_t));
+LW_API int          pthread_create_hook_delete(OS_STATUS (*create_hook)(pthread_t));
+LW_API int          pthread_switch_hook_add(OS_STATUS (*switch_hook)(pthread_t, pthread_t));
+LW_API int          pthread_switch_hook_delete(OS_STATUS (*switch_hook)(pthread_t, pthread_t));
+LW_API int          pthread_close_hook_add(OS_STATUS (*close_hook)(pthread_t));
+LW_API int          pthread_close_hook_delete(OS_STATUS (*close_hook)(pthread_t));
+#endif                                                                  /*  __SYLIXOS_KERNEL            */
+
+LW_API int          pthread_mutex_getinfo(pthread_mutex_t  *pmutex, pthread_mutex_info_t  *info);
+LW_API int          pthread_mutex_show(pthread_mutex_t  *pmutex, int  level);
+
+LW_API int          pthread_cond_getinfo(pthread_cond_t  *pcond, pthread_cond_info_t  *info);
+LW_API int          pthread_cond_show(pthread_cond_t  *pcond, int  level);
+
+LW_API int          pthread_rwlock_getinfo(pthread_rwlock_t  *prwlock, pthread_rwlock_info_t  *info);
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 
 #ifdef __cplusplus
 }

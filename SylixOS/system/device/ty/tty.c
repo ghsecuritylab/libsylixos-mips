@@ -73,7 +73,7 @@ INT  API_TtyDrvInstall (VOID)
                                    _TyWrite,
                                    _ttyIoctl);
                                     
-    DRIVER_LICENSE(_G_iTycoDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iTycoDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iTycoDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iTycoDrvNum, "tty driver.");
     

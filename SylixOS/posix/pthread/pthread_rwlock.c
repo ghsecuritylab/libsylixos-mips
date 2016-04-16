@@ -25,6 +25,7 @@
 2012.12.13  由于 SylixOS 支持进程资源回收, 这里开始支持静态初始化.
 2013.05.01  If successful, the pthread_rwlockattr_*() and pthread_rwlock_*() functions shall return zero;
             otherwise, an error number shall be returned to indicate the error.
+2016.04.13  加入 GJB7714 相关 API 支持.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../include/px_pthread.h"                                      /*  已包含操作系统头文件        */
@@ -607,6 +608,37 @@ int  pthread_rwlock_unlock (pthread_rwlock_t  *prwlock)
     
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: pthread_rwlock_getinfo
+** 功能描述: 获得读写锁信息
+** 输　入  : prwlock       读写锁控制块
+**           info          读写锁信息
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API 
+int  pthread_rwlock_getinfo (pthread_rwlock_t  *prwlock, pthread_rwlock_info_t  *info)
+{
+    if ((prwlock == LW_NULL) || (info == LW_NULL)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    __PX_RWLOCK_LOCK(prwlock);                                          /*  锁定读写锁                  */
+    info->owner = prwlock->PRWLOCK_ulOwner;
+    info->opcnt = prwlock->PRWLOCK_uiOpCounter;
+    info->rpend = prwlock->PRWLOCK_uiRPendCounter;
+    info->wpend = prwlock->PRWLOCK_uiWPendCounter;
+    __PX_RWLOCK_UNLOCK(prwlock);                                        /*  解锁读写锁                  */
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

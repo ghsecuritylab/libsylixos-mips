@@ -240,7 +240,8 @@ ULONG  __vmmLibPageMap (addr_t  ulPhysicalAddr,
         }
         
         iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
-        __VMM_MMU_MAKE_TRANS(pmmuctx, p_pteentry, 
+        __VMM_MMU_MAKE_TRANS(pmmuctx, p_pteentry,
+                             ulVirtualAddr,
                              ulPhysicalAddr, ulFlag);                   /*  创建映射关系                */
         KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
         

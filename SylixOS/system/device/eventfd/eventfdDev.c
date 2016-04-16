@@ -93,7 +93,7 @@ INT  API_EventfdDrvInstall (VOID)
                                          _evtfdRead,
                                          _evtfdWrite,
                                          _evtfdIoctl);
-        DRIVER_LICENSE(_G_iEvtfdDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iEvtfdDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iEvtfdDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iEvtfdDrvNum, "eventfd driver.");
     }

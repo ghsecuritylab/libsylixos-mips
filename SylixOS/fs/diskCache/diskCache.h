@@ -48,7 +48,6 @@
   ÍÆ¼öÊ¹ÓÃ oem ´ÅÅÌ²Ù×÷¿â.
 *********************************************************************************************************/
 
-
 /*********************************************************************************************************
   ²Ã¼ôºê
 *********************************************************************************************************/
@@ -81,10 +80,21 @@ LW_API ULONG  API_DiskCacheCreate(PLW_BLK_DEV   pblkdDisk,
                                   INT           iMaxBurstSector,
                                   PLW_BLK_DEV  *ppblkDiskCache);
                                   
+LW_API ULONG  API_DiskCacheCreateEx(PLW_BLK_DEV   pblkdDisk, 
+                                    PVOID         pvDiskCacheMem, 
+                                    size_t        stMemSize, 
+                                    INT           iMaxRBurstSector,
+                                    INT           iMaxWBurstSector,
+                                    PLW_BLK_DEV  *ppblkDiskCache);
+                                  
 LW_API INT    API_DiskCacheDelete(PLW_BLK_DEV   pblkdDiskCache);
 
+LW_API INT    API_DiskCacheSync(PLW_BLK_DEV   pblkdDiskCache);
+
 #define diskCacheCreate     API_DiskCacheCreate
+#define diskCacheCreateEx   API_DiskCacheCreateEx
 #define diskCacheDelete     API_DiskCacheDelete
+#define diskCacheSync       API_DiskCacheSync
 
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
                                                                         /*  (LW_CFG_DISKCACHE_EN > 0)   */

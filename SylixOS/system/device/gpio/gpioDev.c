@@ -73,7 +73,7 @@ INT  API_GpiofdDrvInstall (VOID)
                                          _gpiofdRead,
                                          _gpiofdWrite,
                                          _gpiofdIoctl);
-        DRIVER_LICENSE(_G_iGpiofdDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iGpiofdDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iGpiofdDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iGpiofdDrvNum, "gpiofd driver.");
     }

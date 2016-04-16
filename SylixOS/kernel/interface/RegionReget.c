@@ -84,7 +84,7 @@ PVOID  API_RegionReget (LW_OBJECT_HANDLE    ulId,
     pvAllocate = _HeapRealloc(pheap, pvOldMem, stNewByteSize, LW_TRUE, __func__);
     
     if (!pvAllocate) {                                                  /*  是否分配成功                */
-        _ErrorHandle(ERROR_REGION_NULL);
+        _ErrorHandle(ERROR_REGION_NOMEM);
     }
     
     return  (pvAllocate);

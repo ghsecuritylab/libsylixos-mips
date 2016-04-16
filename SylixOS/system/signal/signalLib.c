@@ -60,6 +60,7 @@
 2014.11.04  支持 SA_NOCLDWAIT 自动回收子进程.
 2015.11.16  __sigMakeReady() 仅需要关闭中断即可.
             _sigPendAlloc() 与 _sigPendFree() 不需要关闭中断.
+2016.04.15  信号上下文需要保存 FPU 上下文.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -467,23 +468,27 @@ static  VOID  __sigCtlCreate (PLW_CLASS_TCB         ptcb,
 ** 函数名称: __sigReturn
 ** 功能描述: 信号句柄的外壳函数调用此函数从信号上下文中返回任务上下文.
 ** 输　入  : psigctx                 信号任务相关信息
+**           ptcbCur                 当前任务上下文
 **           psigctlmsg              信号控制信息
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-static VOID  __sigReturn (PLW_CLASS_SIGCONTEXT  psigctx, PLW_CLASS_SIGCTLMSG  psigctlmsg)
+static VOID  __sigReturn (PLW_CLASS_SIGCONTEXT  psigctx, 
+                          PLW_CLASS_TCB         ptcbCur, 
+                          PLW_CLASS_SIGCTLMSG   psigctlmsg)
 {
+             INTREG   iregInterLevel;
+#if LW_CFG_CPU_FPU_EN > 0
+    REGISTER PVOID    pvStackFP;
+#endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
+
     __KERNEL_ENTER();                                                   /*  进入内核                    */
-    
     psigctx->SIGCTX_sigsetSigBlockMask = psigctlmsg->SIGCTLMSG_sigsetMask;
                                                                         /*  恢复原先的掩码              */
     _sigPendRunSelf();                                                  /*  检查并运行需要运行的信号    */
-    
     __KERNEL_SPACE_SET(psigctlmsg->SIGCTLMSG_iKernelSpace);             /*  恢复成进入信号前的状态      */
-    
     _SchedSetRet(psigctlmsg->SIGCTLMSG_iSchedRet);                      /*  通知调度器返回的情况        */
-    
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     /*
@@ -492,7 +497,16 @@ static VOID  __sigReturn (PLW_CLASS_SIGCONTEXT  psigctx, PLW_CLASS_SIGCTLMSG  ps
      */
     errno = psigctlmsg->SIGCTLMSG_iLastErrno;                           /*  恢复错误号                  */
     
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭当前 CPU 中断           */
+#if LW_CFG_CPU_FPU_EN > 0
+    if (psigctlmsg->SIGCTLMSG_bFpuRestore &&
+        (ptcbCur->TCB_ulOption & LW_OPTION_THREAD_USED_FP)) {
+        pvStackFP = &psigctlmsg->SIGCTLMSG_fpuctxContext;
+        __ARCH_FPU_RESTORE(pvStackFP);                                  /*  恢复被信号中断前 FPU 上下文 */
+    }
+#endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
     archSigCtxLoad(psigctlmsg->SIGCTLMSG_pvStackRet);                   /*  从信号上下文中返回          */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  运行不到这里                */
 }
 /*********************************************************************************************************
 ** 函数名称: __sigRunHandle
@@ -597,6 +611,7 @@ static VOID  __sigRunHandle (PLW_CLASS_SIGCONTEXT  psigctx,
 *********************************************************************************************************/
 static VOID  __sigShell (PLW_CLASS_SIGCTLMSG  psigctlmsg)
 {
+             INTREG                iregInterLevel;
              PLW_CLASS_TCB         ptcbCur;
     REGISTER PLW_CLASS_SIGCONTEXT  psigctx;
     REGISTER struct siginfo       *psiginfo = &psigctlmsg->SIGCTLMSG_siginfo;
@@ -606,12 +621,24 @@ static VOID  __sigShell (PLW_CLASS_SIGCTLMSG  psigctlmsg)
     
     psigctx = &_K_sigctxTable[_ObjectGetIndex(ptcbCur->TCB_ulId)];
     
+#if LW_CFG_CPU_FPU_EN > 0
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭当前 CPU 中断           */
+    if (ptcbCur->TCB_ulOption & LW_OPTION_THREAD_USED_FP) {             /*  当前线程使用 FPU            */
+        psigctlmsg->SIGCTLMSG_bFpuRestore   = LW_TRUE;                  /*  拷贝 TCB 浮点上下文         */
+        psigctlmsg->SIGCTLMSG_fpuctxContext = ptcbCur->TCB_fpuctxContext;
+        
+    } else {
+        psigctlmsg->SIGCTLMSG_bFpuRestore   = LW_FALSE;                 /*  不需要恢复 FPU 上下文       */
+    }
+    KN_INT_ENABLE(iregInterLevel);                                      /*  打开当前 CPU 中断           */
+#endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
+
     MONITOR_EVT_LONG3(MONITOR_EVENT_ID_SIGNAL, MONITOR_EVENT_SIGNAL_SIGRUN, 
                       ptcbCur->TCB_ulId, iSigNo, psiginfo->si_code, LW_NULL);
     
     __sigRunHandle(psigctx, iSigNo, psiginfo, psigctlmsg);              /*  运行信号句柄                */
     
-    __sigReturn(psigctx, psigctlmsg);                                   /*  信号返回                    */
+    __sigReturn(psigctx, ptcbCur, psigctlmsg);                          /*  信号返回                    */
 }
 /*********************************************************************************************************
 ** 函数名称: _signalInit

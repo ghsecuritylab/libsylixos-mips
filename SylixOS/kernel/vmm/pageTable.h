@@ -208,9 +208,10 @@ extern  LW_MMU_OP            _G_mmuOpLib;                               /*  MMU 
   MMU ÄÚ²¿²Ù×÷
 *********************************************************************************************************/
 
-#define __VMM_MMU_MAKE_TRANS(pmmuctx, p_pteentry, ulPhysicalAddr, ulFlag)   \
+#define __VMM_MMU_MAKE_TRANS(pmmuctx, p_pteentry, ulVirtualAddr, ulPhysicalAddr, ulFlag)   \
         if (_G_mmuOpLib.MMUOP_pfuncMakeTrans) { \
-            _G_mmuOpLib.MMUOP_pfuncMakeTrans(pmmuctx, p_pteentry, ulPhysicalAddr, (ulFlag));  \
+            _G_mmuOpLib.MMUOP_pfuncMakeTrans(pmmuctx, p_pteentry,                       \
+                                             ulVirtualAddr, ulPhysicalAddr, (ulFlag));  \
         }
 #define __VMM_MMU_MAKE_CURCTX(pmmuctx)  \
         if (_G_mmuOpLib.MMUOP_pfuncMakeCurCtx) {    \

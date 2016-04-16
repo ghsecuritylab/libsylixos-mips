@@ -128,6 +128,7 @@
 #define CP0_LLADDR      $17
 #define CP0_WATCHLO     $18
 #define CP0_WATCHHI     $19
+#define CP0_DIAG        $22                                             /*  loongson2/3 only have       */
 #define CP0_ECC         $26
 #define CP0_CACHEERR    $27
 #define CP0_TAGLO       $28
@@ -163,6 +164,7 @@
 #define CP0_LLADDR      "$17"
 #define CP0_WATCHLO     "$18"
 #define CP0_WATCHHI     "$19"
+#define CP0_DIAG        "$22"                                           /*  loongson2/3 only have       */
 #define CP0_ECC         "$26"
 #define CP0_CACHEERR    "$27"
 #define CP0_TAGLO       "$28"

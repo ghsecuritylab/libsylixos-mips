@@ -119,6 +119,7 @@ VOID  __diskCacheListDel (PLW_DISKCACHE_CB   pdiskcDiskCache)
                    &_G_plineDiskCacheHeader);
     __LW_DISKCACHE_LIST_UNLOCK();
 }
+
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
                                                                         /*  (LW_CFG_DISKCACHE_EN > 0)   */
 /*********************************************************************************************************

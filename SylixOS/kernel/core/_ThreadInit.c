@@ -156,8 +156,8 @@ VOID  _TCBBuild (UINT8                    ucPriority,
     
     ptcb->TCB_ucPriority          = ucPriority;                         /*  优先级                      */
     ptcb->TCB_ucSchedPolicy       = LW_OPTION_SCHED_RR;                 /*  初始化同优先级调度策略      */
-    ptcb->TCB_usSchedSlice        = LW_CFG_SLICE_DEFAULT;               /*  时间片初始化                */
-    ptcb->TCB_usSchedCounter      = LW_CFG_SLICE_DEFAULT;
+    ptcb->TCB_usSchedSlice        = LW_SCHED_SLICE;                     /*  时间片初始化                */
+    ptcb->TCB_usSchedCounter      = LW_SCHED_SLICE;
     ptcb->TCB_ucSchedActivateMode = LW_OPTION_RESPOND_AUTO;             /*  相同优先级响应程度          */
                                                                         /*  初始化为内核自动识别        */
     ptcb->TCB_ucSchedActivate     = LW_SCHED_ACT_OTHER;                 /*  初始化为非中断激活方式      */

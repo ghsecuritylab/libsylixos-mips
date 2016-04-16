@@ -88,7 +88,7 @@ PVOID  API_RegionGet (LW_OBJECT_HANDLE  ulId, size_t  stByteSize)
     pvAllocate = _HeapAllocate(pheap, stByteSize, __func__);
     
     if (!pvAllocate) {                                                  /*  是否分配成功                */
-        _ErrorHandle(ERROR_REGION_NULL);
+        _ErrorHandle(ERROR_REGION_NOMEM);
     }
     
     return  (pvAllocate);

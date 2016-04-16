@@ -173,18 +173,18 @@ int  pthread_mutexattr_setprotocol (pthread_mutexattr_t *pmutexattr, int  protoc
     switch (protocol) {
     
     case PTHREAD_PRIO_NONE:                                             /*  默认使用优先级继承算法      */
-        pmutexattr->PMUTEXATTR_ulOption |= LW_OPTION_INHERIT_PRIORITY;
-        pmutexattr->PMUTEXATTR_ulOption &= LW_OPTION_WAIT_PRIORITY;     /*  fifo                        */
+        pmutexattr->PMUTEXATTR_ulOption |=  LW_OPTION_INHERIT_PRIORITY;
+        pmutexattr->PMUTEXATTR_ulOption &= ~LW_OPTION_WAIT_PRIORITY;    /*  fifo                        */
         break;
     
     case PTHREAD_PRIO_INHERIT:
-        pmutexattr->PMUTEXATTR_ulOption |= LW_OPTION_INHERIT_PRIORITY;  /*  优先级继承算法              */
-        pmutexattr->PMUTEXATTR_ulOption |= LW_OPTION_WAIT_PRIORITY;
+        pmutexattr->PMUTEXATTR_ulOption |=  LW_OPTION_INHERIT_PRIORITY; /*  优先级继承算法              */
+        pmutexattr->PMUTEXATTR_ulOption |=  LW_OPTION_WAIT_PRIORITY;
         break;
         
     case PTHREAD_PRIO_PROTECT:
-        pmutexattr->PMUTEXATTR_ulOption &= LW_OPTION_INHERIT_PRIORITY;  /*  优先级天花板                */
-        pmutexattr->PMUTEXATTR_ulOption |= LW_OPTION_WAIT_PRIORITY;
+        pmutexattr->PMUTEXATTR_ulOption &= ~LW_OPTION_INHERIT_PRIORITY; /*  优先级天花板                */
+        pmutexattr->PMUTEXATTR_ulOption |=  LW_OPTION_WAIT_PRIORITY;
         break;
         
     default:
@@ -298,6 +298,122 @@ int  pthread_mutexattr_gettype (const pthread_mutexattr_t *pmutexattr, int  *typ
     }
     
     *type = pmutexattr->PMUTEXATTR_iType;
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_mutexattr_setwaitqtype
+** 功能描述: 设置互斥量等待队列类型.
+** 输　入  : pmutexattr     属性
+**           waitq_type     等待队列类型
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_mutexattr_setwaitqtype (pthread_mutexattr_t  *pmutexattr, int  waitq_type)
+{
+    if (pmutexattr == LW_NULL) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (waitq_type == PTHREAD_WAITQ_PRIO) {
+        pmutexattr->PMUTEXATTR_ulOption |= LW_OPTION_WAIT_PRIORITY;
+    
+    } else if (waitq_type == PTHREAD_WAITQ_FIFO) {
+        pmutexattr->PMUTEXATTR_ulOption &= ~LW_OPTION_WAIT_PRIORITY;
+    
+    } else {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_mutexattr_getwaitqtype
+** 功能描述: 获得互斥量等待队列类型.
+** 输　入  : pmutexattr     属性
+**           waitq_type     等待队列类型
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_mutexattr_getwaitqtype (const pthread_mutexattr_t *pmutexattr, int *waitq_type)
+{
+    if ((pmutexattr == LW_NULL) || (waitq_type == LW_NULL)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (pmutexattr->PMUTEXATTR_ulOption & LW_OPTION_WAIT_PRIORITY) {
+        *waitq_type = PTHREAD_WAITQ_PRIO;
+    
+    } else {
+        *waitq_type = PTHREAD_WAITQ_FIFO;
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_mutexattr_setcancelsafe
+** 功能描述: 设置互斥量安全类型.
+** 输　入  : pmutexattr     属性
+**           cancel_safe    安全类型
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_mutexattr_setcancelsafe (pthread_mutexattr_t  *pmutexattr, int  cancel_safe)
+{
+    if (pmutexattr == LW_NULL) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (cancel_safe == PTHREAD_CANCEL_SAFE) {
+        pmutexattr->PMUTEXATTR_ulOption |= LW_OPTION_DELETE_SAFE;
+    
+    } else if (cancel_safe == PTHREAD_CANCEL_UNSAFE) {
+        pmutexattr->PMUTEXATTR_ulOption &= ~LW_OPTION_DELETE_SAFE;
+    
+    } else {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_mutexattr_getcancelsafe
+** 功能描述: 获得互斥量安全类型.
+** 输　入  : pmutexattr     属性
+**           cancel_safe    安全类型
+** 输　出  : ERROR CODE
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_mutexattr_getcancelsafe (const pthread_mutexattr_t *pmutexattr, int *cancel_safe)
+{
+    if ((pmutexattr == LW_NULL) || (cancel_safe == LW_NULL)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (pmutexattr->PMUTEXATTR_ulOption & LW_OPTION_DELETE_SAFE) {
+        *cancel_safe = PTHREAD_CANCEL_SAFE;
+    
+    } else {
+        *cancel_safe = PTHREAD_CANCEL_UNSAFE;
+    }
     
     return  (ERROR_NONE);
 }
@@ -610,7 +726,7 @@ int  pthread_mutex_setprioceiling (pthread_mutex_t  *pmutex, int  prioceiling)
     pevent = &_K_eventBuffer[usIndex];
     
     __KERNEL_ENTER();                                                   /*  进入内核                    */
-    pevent->EVENT_ucCeilingPriority = (UINT8)prioceiling;
+    pevent->EVENT_ucCeilingPriority = (UINT8)PX_PRIORITY_CONVERT(prioceiling);
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     return  (ERROR_NONE);
@@ -652,11 +768,115 @@ int  pthread_mutex_getprioceiling (pthread_mutex_t  *pmutex, int  *prioceiling)
     pevent = &_K_eventBuffer[usIndex];
     
     __KERNEL_ENTER();                                                   /*  进入内核                    */
-    *prioceiling = (int)pevent->EVENT_ucCeilingPriority;
+    *prioceiling = PX_PRIORITY_CONVERT(pevent->EVENT_ucCeilingPriority);
     __KERNEL_EXIT();                                                    /*  退出内核                    */
     
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: pthread_mutex_getinfo
+** 功能描述: 获得互斥量信息.
+** 输　入  : pmutex        互斥量句柄
+**           info          互斥量信息
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API 
+int  pthread_mutex_getinfo (pthread_mutex_t  *pmutex, pthread_mutex_info_t  *info)
+{
+             UINT16             usIndex;
+    REGISTER PLW_CLASS_EVENT    pevent;
+    
+    if ((pmutex == LW_NULL) || (info == LW_NULL)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    __pthread_mutex_init_invisible(pmutex);
+    
+    usIndex = _ObjectGetIndex(pmutex->PMUTEX_ulMutex);
+    
+    if (!_ObjectClassOK(pmutex->PMUTEX_ulMutex, _OBJECT_SEM_M)) {       /*  类型是否正确                */
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    if (_Event_Index_Invalid(usIndex)) {                                /*  下标是否正正确              */
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    pevent = &_K_eventBuffer[usIndex];
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    if (pevent->EVENT_ulCounter) {
+        info->value = 1;
+    } else {
+        info->value = 0;
+    }
+    
+    if (pevent->EVENT_ulOption & LW_OPTION_INHERIT_PRIORITY) {
+        info->inherit = 1;
+    } else {
+        info->inherit = 0;
+    }
+    
+    info->prioceiling = PX_PRIORITY_CONVERT(pevent->EVENT_ucCeilingPriority);
+    
+    if (pevent->EVENT_ulOption & LW_OPTION_WAIT_PRIORITY) {
+        info->wait_type = PTHREAD_WAITQ_PRIO;
+    } else {
+        info->wait_type = PTHREAD_WAITQ_FIFO;
+    }
+    
+    if (pevent->EVENT_ulOption & LW_OPTION_DELETE_SAFE) {
+        info->cancel_type = PTHREAD_CANCEL_SAFE;
+    } else {
+        info->cancel_type = PTHREAD_CANCEL_UNSAFE;
+    }
+    
+    info->blocknum = _EventWaitNum(pevent);
+    
+    if (info->value == 0) {
+        info->ownner = ((PLW_CLASS_TCB)(pevent->EVENT_pvTcbOwn))->TCB_ulId;
+    } else {
+        info->ownner = LW_OBJECT_HANDLE_INVALID;
+    }
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_mutex_show
+** 功能描述: 显示互斥量信息.
+** 输　入  : pmutex        互斥量句柄
+**           level         等级
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_mutex_show (pthread_mutex_t  *pmutex, int  level)
+{
+    (VOID)level;
+
+    if (pmutex == LW_NULL) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    __pthread_mutex_init_invisible(pmutex);
+    
+    API_SemaphoreShow(pmutex->PMUTEX_ulMutex);
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

@@ -684,6 +684,7 @@ static INT  armMmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  ulFl
 ** 功能描述: 设置页面映射关系
 ** 输　入  : pmmuctx        mmu 上下文
 **           p_pteentry     对应的页表项
+**           ulVirtualAddr  虚拟地址
 **           ulPhysicalAddr 物理地址
 **           ulFlag         对应的类型
 ** 输　出  : NONE
@@ -693,6 +694,7 @@ static INT  armMmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  ulFl
 *********************************************************************************************************/
 static VOID  armMmuMakeTrans (PLW_MMU_CONTEXT     pmmuctx,
                               LW_PTE_TRANSENTRY  *p_pteentry,
+                              addr_t              ulVirtualAddr,
                               addr_t              ulPhysicalAddr,
                               addr_t              ulFlag)
 {

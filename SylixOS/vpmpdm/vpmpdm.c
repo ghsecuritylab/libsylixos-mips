@@ -50,6 +50,13 @@
 #include "./loader/include/loader_lib.h" /* need _Unwind_Ptr */
 #endif /* LW_CFG_CPU_ARCH_ARM */
 
+/*
+ * fixed gcc for PowerPC.
+ */
+#ifdef LW_CFG_CPU_ARCH_PPC
+#include "./loader/include/loader_lib.h" /* need __eabi */
+#endif /* LW_CFG_CPU_ARCH_PPC */
+
 #define __VP_PATCH_VERSION      "1.5.1" /* vp patch version */
 
 /*
@@ -138,6 +145,35 @@ _Unwind_Ptr __gnu_Unwind_Find_exidx (_Unwind_Ptr pc, int *pcount)
     return dl_unwind_find_exidx(pc, pcount, ctx.proc);
 }
 #endif /* LW_CFG_CPU_ARCH_ARM */
+
+#ifdef LW_CFG_CPU_ARCH_PPC
+/* a simple __eabi() that initializes registers GPR2 and GPR13.
+ *
+ * The symbols _SDA_BASE and _SDA2_BASE are defined during linking.
+ * They specify the locations of the small data areas.
+ * A program must load these values into GPR13 and GPR2, respectively, before accessing program data.
+ * The small data areas contain part of the data of the executable.
+ * They hold a number of variables that can be accessed within a 16-bit signed offset
+ * of _SDA_BASE or _SDA2_BASE.
+ * References to these variables are performed through references to GPR13 and GPR2 by the user program.
+ * Typically, the small data areas contain program variables that are less than or
+ * equal to 8 bytes in size, although this differs by compiler. The variables in SDA2 are read-only.
+ */
+void __eabi (void)
+{
+    if (ctx.proc) {
+        LW_LD_EXEC_MODULE *pmodule = _LIST_ENTRY(((LW_LD_VPROC *)ctx.proc)->VP_ringModules,
+                                                 LW_LD_EXEC_MODULE, EMOD_ringModules);
+        if (pmodule) {
+            addr_t  _SDA_BASE_  = (addr_t)API_ModuleSym(pmodule, "_SDA_BASE_");
+            addr_t  _SDA2_BASE_ = (addr_t)API_ModuleSym(pmodule, "_SDA2_BASE_");
+
+            asm volatile ("mr 2,  %0" :: "r"(_SDA2_BASE_));
+            asm volatile ("mr 13, %0" :: "r"(_SDA_BASE_));
+        }
+    }
+}
+#endif /* LW_CFG_CPU_ARCH_PPC */
 
 /*
  *  get vp patch version

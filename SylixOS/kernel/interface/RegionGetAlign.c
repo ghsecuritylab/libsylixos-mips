@@ -94,7 +94,7 @@ PVOID  API_RegionGetAlign (LW_OBJECT_HANDLE  ulId, size_t  stByteSize, size_t  s
     pvAllocate = _HeapAllocateAlign(pheap, stByteSize, stAlign, __func__);
     
     if (!pvAllocate) {                                                  /*  是否分配成功                */
-        _ErrorHandle(ERROR_REGION_NULL);
+        _ErrorHandle(ERROR_REGION_NOMEM);
     }
     
     return  (pvAllocate);

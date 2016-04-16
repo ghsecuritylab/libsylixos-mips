@@ -923,7 +923,7 @@ INT  API_CanDrvInstall (void)
     _G_iCanDrvNum = iosDrvInstall(__canOpen, LW_NULL, __canOpen, __canClose,
                                   __canRead, __canWrite, __canIoctl);
 
-    DRIVER_LICENSE(_G_iCanDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iCanDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iCanDrvNum,      "Wang.feng");
     DRIVER_DESCRIPTION(_G_iCanDrvNum, "CAN Bus driver.");
 

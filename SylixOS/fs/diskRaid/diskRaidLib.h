@@ -39,7 +39,7 @@ INT  __diskRaidCheck(PLW_BLK_DEV   pblkd[],
                      ULONG        *pulTotalSector);
 
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
-                                                                        /*  (LW_CFG_FATFS_EN > 0)       */
+                                                                        /*  (LW_CFG_DISKRAID_EN > 0)    */
 #endif                                                                  /*  __DISKRAIDLIB_H             */
 /*********************************************************************************************************
   END

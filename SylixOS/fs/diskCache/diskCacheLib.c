@@ -30,8 +30,8 @@
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 #include "../SylixOS/system/include/s_system.h"
-#include "diskCache.h"
 #include "diskCacheLib.h"
+#include "diskCache.h"
 /*********************************************************************************************************
   裁剪宏
 *********************************************************************************************************/
@@ -152,7 +152,7 @@ static VOID  __diskCacheHashRemove (PLW_DISKCACHE_CB   pdiskcDiskCache, PLW_DISK
     _List_Line_Del(&pdiskn->DISKN_lineHash, pplineHashEntry);
     
     pdiskn->DISKN_ulSectorNo = (ULONG)PX_ERROR;
-    pdiskn->DISKN_iStatus    = 0;                                       /*  无脏位于有效位              */
+    pdiskn->DISKN_iStatus    = 0;                                       /*  无脏位与有效位              */
 }
 /*********************************************************************************************************
 ** 函数名称: __diskCacheHashFind
@@ -294,7 +294,7 @@ static INT  __diskCacheFlushList (PLW_DISKCACHE_CB   pdiskcDiskCache,
         pdisknContinue = pdiskn;
         
         for (iBurstCount = 1; 
-             iBurstCount < pdiskcDiskCache->DISKC_iMaxBurstSector;
+             iBurstCount < pdiskcDiskCache->DISKC_iMaxWBurstSector;
              iBurstCount++) {
             
             pdisknContinue = 
@@ -309,6 +309,7 @@ static INT  __diskCacheFlushList (PLW_DISKCACHE_CB   pdiskcDiskCache,
             lib_memcpy(pdiskcDiskCache->DISKC_pcBurstBuffer,
                        pdiskn->DISKN_pcData,
                        (size_t)pdiskcDiskCache->DISKC_ulBytesPerSector);
+        
         } else {                                                        /*  可以使用猝发写入            */
             pcBurstBuffer  = (PCHAR)pdiskcDiskCache->DISKC_pcBurstBuffer;
             pdisknContinue = pdiskn;
@@ -357,6 +358,7 @@ static INT  __diskCacheFlushList (PLW_DISKCACHE_CB   pdiskcDiskCache,
     
     if (bHasError) {
         return  (PX_ERROR);
+    
     } else {
         return  (ERROR_NONE);
     }
@@ -416,6 +418,7 @@ __check_again:
     
     if (!_LIST_RING_IS_EMPTY(pringFlushHeader)) {                       /*  是否需要回写                */
         return  (__diskCacheFlushList(pdiskcDiskCache, pringFlushHeader, bMakeInvalidate));
+    
     } else {
         return  (ERROR_NONE);
     }
@@ -477,6 +480,7 @@ __check_again:
     
     if (!_LIST_RING_IS_EMPTY(pringFlushHeader)) {                       /*  是否需要回写                */
         return  (__diskCacheFlushList(pdiskcDiskCache, pringFlushHeader, bMakeInvalidate));
+    
     } else {
         return  (ERROR_NONE);
     }
@@ -534,7 +538,7 @@ __check_again:                                                          /*  从最
     if (pringTemp == pdiskcDiskCache->DISKC_pringLruHeader) {           /*  没有合适的控制块            */
         pdiskn = (PLW_DISKCACHE_NODE)pringTemp;
         if (__LW_DISKCACHE_IS_DIRTY(pdiskn)) {                          /*  表头也不可使用              */
-            REGISTER INT   iWriteNum = pdiskcDiskCache->DISKC_iMaxBurstSector;
+            REGISTER INT   iWriteNum = pdiskcDiskCache->DISKC_iMaxWBurstSector;
             __diskCacheFlushInvalidate2(pdiskcDiskCache, 
                                         iWriteNum,
                                         LW_TRUE, LW_FALSE);             /*  回写一些扇区的数据          */
@@ -570,7 +574,7 @@ static INT  __diskCacheNodeReadData (PLW_DISKCACHE_CB  pdiskcDiskCache, PLW_DISK
              ULONG      ulStartSector = pdiskn->DISKN_ulSectorNo;
              PCHAR      pcData;
              
-    iNSector = (INT)__MIN((ULONG)pdiskcDiskCache->DISKC_iMaxBurstSector, 
+    iNSector = (INT)__MIN((ULONG)pdiskcDiskCache->DISKC_iMaxRBurstSector, 
                      (ULONG)((pdiskcDiskCache->DISKC_ulNCacheNode - 
                       pdiskcDiskCache->DISKC_ulDirtyCounter)));         /*  获得读扇区的个数            */
                       
@@ -661,6 +665,7 @@ __data_op:
                 return  (LW_NULL);
             }
         }
+    
     } else {                                                            /*  写数据                      */
         if (__LW_DISKCACHE_IS_DIRTY(pdiskn) == 0) {
             __LW_DISKCACHE_SET_DIRTY(pdiskn);                           /*  设置脏位标志                */
@@ -839,7 +844,8 @@ INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg
                                    LW_TRUE, LW_FALSE);
         break;
     
-    case FIOSYNCMETA:
+    case FIOTRIM:
+    case FIOSYNCMETA:                                                   /*  TRIM, SYNCMETA 需要回写区域 */
         iError    = ERROR_NONE;
         pblkrange = (PLW_BLK_RANGE)lArg;
         __diskCacheFlushInvalidate(pdiskcDiskCache,
@@ -847,7 +853,7 @@ INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg
                                    pblkrange->BLKR_ulEndSector,
                                    LW_TRUE, LW_FALSE);                  /*  回写指定范围的数据          */
         break;
-    
+        
     case FIODISKCHANGE:                                                 /*  磁盘发生改变                */
         pdiskcDiskCache->DISKC_blkdCache.BLKD_bDiskChange = LW_TRUE;
     case FIOCANCEL:                                                     /*  停止 CACHE, 复位内存,不回写 */
@@ -872,6 +878,7 @@ INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg
         
         if (pblkdDisk->BLKD_ulNSector) {
             ulNDiskSector = pblkdDisk->BLKD_ulNSector;
+        
         } else {
             pblkdDisk->BLKD_pfuncBlkIoctl(pblkdDisk, 
                                           LW_BLKD_GET_SECNUM, 
@@ -892,7 +899,7 @@ INT  __diskCacheIoctl (PLW_DISKCACHE_CB   pdiskcDiskCache, INT  iCmd, LONG  lArg
 *********************************************************************************************************/
 INT  __diskCacheReset (PLW_DISKCACHE_CB   pdiskcDiskCache)
 {
-    __diskCacheIoctl(pdiskcDiskCache, FIOFLUSH, 0);                     /*  CACHE 回写磁盘              */
+    __diskCacheIoctl(pdiskcDiskCache, FIOSYNC, 0);                      /*  CACHE 回写磁盘              */
 
     return  (__LW_DISKCACHE_DISK_RESET(pdiskcDiskCache)(pdiskcDiskCache->DISKC_pblkdDisk));
 }
@@ -908,6 +915,7 @@ INT  __diskCacheStatusChk (PLW_DISKCACHE_CB   pdiskcDiskCache)
 {
     return  (__LW_DISKCACHE_DISK_STATUS(pdiskcDiskCache)(pdiskcDiskCache->DISKC_pblkdDisk));
 }
+
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
                                                                         /*  (LW_CFG_DISKCACHE_EN > 0)   */
 /*********************************************************************************************************

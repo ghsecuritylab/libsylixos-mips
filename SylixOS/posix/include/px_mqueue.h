@@ -86,6 +86,24 @@ LW_API ssize_t          mq_reltimedreceive_np(mqd_t  mqd, char  *msg, size_t  ms
 #endif                                                                  /*  LW_CFG_POSIXEX_EN > 0       */
 LW_API int              mq_notify(mqd_t  mqd, const struct sigevent  *pnotify);
 
+/*********************************************************************************************************
+  mqueue GJB7714 extern api
+*********************************************************************************************************/
+
+#if LW_CFG_GJB7714_EN > 0
+
+typedef struct {
+    mq_attr_t       attr;
+    mode_t          mode;
+    uint32_t        priomap;
+    ULONG           reservepad[12];
+} mq_info_t;
+
+LW_API int              mq_getinfo(mqd_t  mqd, mq_info_t  *info);
+LW_API int              mq_show(mqd_t  mqd, int  level);
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
+
 #ifdef __cplusplus
 }
 #endif                                                                  /*  __cplusplus                 */

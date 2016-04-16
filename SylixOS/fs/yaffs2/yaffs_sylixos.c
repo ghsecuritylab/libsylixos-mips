@@ -356,7 +356,7 @@ INT  API_YaffsDrvInstall (VOID)
     
     _G_iYaffsDrvNum = iosDrvInstallEx2(&fileop, LW_DRV_TYPE_NEW_1);     /*  新型 NEW_1 驱动             */
     
-    DRIVER_LICENSE(_G_iYaffsDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iYaffsDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iYaffsDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iYaffsDrvNum, "yaffs2 driver.");
     
@@ -564,9 +564,10 @@ static LONG  __yaffsOpen (PYAFFS_FSLIB    pyaffs,
                 return  (PX_ERROR);
             }
             iError = yaffs_open(pcName, O_RDONLY, iMode);               /*  打开目录                    */
+        
         } else {                                                        /*  打开或创建文件              */
-            iError = yaffs_open(pcName, iFlags, iMode);                 /*  打开普通文件                */
-        }
+            iError = yaffs_open(pcName, (iFlags & ~O_BINARY), iMode);   /*  打开普通文件                */
+        }                                                               /*  yaffs 打开目录不能有此选项  */
 
         pyaffile->YAFFIL_iFd = iError;
         pyaffile->YAFFIL_iFileType = __YAFFS_FILE_TYPE_NODE;            /*  可以被 close 掉             */
@@ -779,7 +780,6 @@ static INT  __yaffsClose (PLW_FD_ENTRY    pfdentry)
         }
         
         LW_DEV_DEC_USE_COUNT(&pyaffs->YAFFS_devhdrHdr);
-        
         __YAFFS_OPUNLOCK();
         
         if (bFree) {
@@ -810,13 +810,17 @@ static ssize_t  __yaffsRead (PLW_FD_ENTRY   pfdentry,
     ssize_t       sstReadNum = PX_ERROR;
              
     __YAFFS_OPLOCK();
-    if (pyaffile->YAFFIL_iFileType == __YAFFS_FILE_TYPE_NODE) {
-        sstReadNum = (ssize_t)yaffs_pread(pyaffile->YAFFIL_iFd,
-                                          (PVOID)pcBuffer, (unsigned int)stMaxBytes, 
-                                          pfdentry->FDENTRY_oftPtr);
-        if (sstReadNum > 0) {
-            pfdentry->FDENTRY_oftPtr += (off_t)sstReadNum;              /*  更新文件指针                */
-        }
+    if (pyaffile->YAFFIL_iFileType != __YAFFS_FILE_TYPE_NODE) {
+        __YAFFS_OPUNLOCK();
+        _ErrorHandle(EISDIR);
+        return  (PX_ERROR);
+    }
+    
+    sstReadNum = (ssize_t)yaffs_pread(pyaffile->YAFFIL_iFd,
+                                      (PVOID)pcBuffer, (unsigned int)stMaxBytes, 
+                                      pfdentry->FDENTRY_oftPtr);
+    if (sstReadNum > 0) {
+        pfdentry->FDENTRY_oftPtr += (off_t)sstReadNum;                  /*  更新文件指针                */
     }
     __YAFFS_OPUNLOCK();
     
@@ -843,11 +847,15 @@ static ssize_t  __yaffsPRead (PLW_FD_ENTRY   pfdentry,
     ssize_t       sstReadNum = PX_ERROR;
              
     __YAFFS_OPLOCK();
-    if (pyaffile->YAFFIL_iFileType == __YAFFS_FILE_TYPE_NODE) {
-        sstReadNum = (ssize_t)yaffs_pread(pyaffile->YAFFIL_iFd,
-                                          (PVOID)pcBuffer, (unsigned int)stMaxBytes, 
-                                          oftPos);
+    if (pyaffile->YAFFIL_iFileType != __YAFFS_FILE_TYPE_NODE) {
+        __YAFFS_OPUNLOCK();
+        _ErrorHandle(EISDIR);
+        return  (PX_ERROR);
     }
+    
+    sstReadNum = (ssize_t)yaffs_pread(pyaffile->YAFFIL_iFd,
+                                      (PVOID)pcBuffer, (unsigned int)stMaxBytes, 
+                                      oftPos);
     __YAFFS_OPUNLOCK();
     
     return  (sstReadNum);
@@ -872,16 +880,24 @@ static ssize_t  __yaffsWrite (PLW_FD_ENTRY  pfdentry,
     
     
     __YAFFS_OPLOCK();
-    if (pyaffile->YAFFIL_iFileType == __YAFFS_FILE_TYPE_NODE) {
-        sstWriteNum = (ssize_t)yaffs_pwrite(pyaffile->YAFFIL_iFd,
-                                            (CPVOID)pcBuffer, (unsigned int)stNBytes,
-                                            pfdentry->FDENTRY_oftPtr);
-        if (sstWriteNum > 0) {
-            struct yaffs_stat   yafstat;
-            pfdentry->FDENTRY_oftPtr += (off_t)sstWriteNum;             /*  更新文件指针                */
-            yaffs_fstat(pyaffile->YAFFIL_iFd, &yafstat);
-            pfdnode->FDNODE_oftSize = yafstat.st_size;                  /*  更新文件大小                */
-        }
+    if (pyaffile->YAFFIL_iFileType != __YAFFS_FILE_TYPE_NODE) {
+        __YAFFS_OPUNLOCK();
+        _ErrorHandle(EISDIR);
+        return  (PX_ERROR);
+    }
+    
+    if (pfdentry->FDENTRY_iFlag & O_APPEND) {                           /*  追加模式                    */
+        pfdentry->FDENTRY_oftPtr = pfdnode->FDNODE_oftSize;             /*  移动读写指针到末尾          */
+    }
+    
+    sstWriteNum = (ssize_t)yaffs_pwrite(pyaffile->YAFFIL_iFd,
+                                        (CPVOID)pcBuffer, (unsigned int)stNBytes,
+                                        pfdentry->FDENTRY_oftPtr);
+    if (sstWriteNum > 0) {
+        struct yaffs_stat   yafstat;
+        pfdentry->FDENTRY_oftPtr += (off_t)sstWriteNum;                 /*  更新文件指针                */
+        yaffs_fstat(pyaffile->YAFFIL_iFd, &yafstat);
+        pfdnode->FDNODE_oftSize = yafstat.st_size;                      /*  更新文件大小                */
     }
     __YAFFS_OPUNLOCK();
     
@@ -917,15 +933,19 @@ static ssize_t  __yaffsPWrite (PLW_FD_ENTRY  pfdentry,
     ssize_t       sstWriteNum = PX_ERROR;
     
     __YAFFS_OPLOCK();
-    if (pyaffile->YAFFIL_iFileType == __YAFFS_FILE_TYPE_NODE) {
-        sstWriteNum = (ssize_t)yaffs_pwrite(pyaffile->YAFFIL_iFd,
-                                            (CPVOID)pcBuffer, (unsigned int)stNBytes,
-                                            oftPos);
-        if (sstWriteNum > 0) {
-            struct yaffs_stat   yafstat;
-            yaffs_fstat(pyaffile->YAFFIL_iFd, &yafstat);
-            pfdnode->FDNODE_oftSize = yafstat.st_size;                  /*  更新文件大小                */
-        }
+    if (pyaffile->YAFFIL_iFileType != __YAFFS_FILE_TYPE_NODE) {
+        __YAFFS_OPUNLOCK();
+        _ErrorHandle(EISDIR);
+        return  (PX_ERROR);
+    }
+    
+    sstWriteNum = (ssize_t)yaffs_pwrite(pyaffile->YAFFIL_iFd,
+                                        (CPVOID)pcBuffer, (unsigned int)stNBytes,
+                                        oftPos);
+    if (sstWriteNum > 0) {
+        struct yaffs_stat   yafstat;
+        yaffs_fstat(pyaffile->YAFFIL_iFd, &yafstat);
+        pfdnode->FDNODE_oftSize = yafstat.st_size;                      /*  更新文件大小                */
     }
     __YAFFS_OPUNLOCK();
     

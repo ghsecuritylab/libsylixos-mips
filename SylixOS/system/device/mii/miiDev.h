@@ -267,11 +267,13 @@ extern "C" {
   PHY Operations
 *********************************************************************************************************/
 
-#define MII_READ(phyAddr, iRegAddr, pvRegVal)     \
-        ((*(pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncRead))((phyAddr), (iRegAddr), (pvRegVal)))
+#define MII_READ(phyAddr, iRegAddr, pvRegVal)           \
+        ((*(pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncRead))  \
+            ((phyAddr), (iRegAddr), (pvRegVal), pPhyDev->PHY_pPhyDrvFunc))
         
-#define MII_WRITE(phyAddr, iRegAddr, iRegVal)     \
-        ((*(pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncWrite))((phyAddr), (iRegAddr), (iRegVal)))
+#define MII_WRITE(phyAddr, iRegAddr, iRegVal)           \
+        ((*(pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncWrite)) \
+            ((phyAddr), (iRegAddr), (iRegVal), pPhyDev->PHY_pPhyDrvFunc))
 
 /*********************************************************************************************************
   Link check period
@@ -284,13 +286,16 @@ extern "C" {
 typedef struct phy_drv_func {
     FUNCPTR             PHYF_pfuncRead;                                 /* phy read function            */
     FUNCPTR             PHYF_pfuncWrite;                                /* phy write function           */
+    
     FUNCPTR             PHYF_pfuncLinkDown;                             /* phy status down function     */
+    FUNCPTR             PHYF_pfuncLinkSetHook;                          /* mii phy link set hook func   */
 } PHY_DRV_FUNC;
 
 typedef struct phy_dev {
     LW_LIST_LINE        PHY_node;                                       /*  Device Header               */
     PHY_DRV_FUNC       *PHY_pPhyDrvFunc;
     VOID               *PHY_pvMacDrv;                                   /*  Mother Mac Driver Control   */
+    
     UINT32              PHY_uiPhyFlags;                                 /*  PHY flag bits               */
     UINT32              PHY_uiPhyANFlags;                               /*  Auto Negotiation flags      */
     UINT32              PHY_uiPhyLinkMethod;                            /*  Whether to force link mode  */

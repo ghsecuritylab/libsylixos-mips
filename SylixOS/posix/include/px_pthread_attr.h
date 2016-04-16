@@ -51,6 +51,22 @@ typedef LW_OBJECT_HANDLE    pthread_t;
 #define PTHREAD_SCOPE_PROCESS               0
 #define PTHREAD_SCOPE_SYSTEM                1                           /*  default                     */
 
+#if (LW_CFG_GJB7714_EN > 0) && !defined(__SYLIXOS_POSIX)
+
+typedef struct {
+    char                   *name;                                       /*  名字                        */
+    void                   *stackaddr;                                  /*  指定堆栈地址                */
+    size_t                  stackguard;                                 /*  堆栈警戒区域大小            */
+    size_t                  stacksize;                                  /*  堆栈大小                    */
+    int                     schedpolicy;                                /*  调度策略                    */
+    int                     inheritsched;                               /*  是否继承调度参数            */
+    unsigned long           option;                                     /*  选项                        */
+    struct sched_param      schedparam;                                 /*  调度参数                    */
+    ULONG                   reservepad[8];                              /*  保留                        */
+} pthread_attr_t;
+
+#else
+
 typedef struct {
     char                   *PTHREADATTR_pcName;                         /*  名字                        */
     void                   *PTHREADATTR_pvStackAddr;                    /*  指定堆栈地址                */
@@ -62,6 +78,8 @@ typedef struct {
     struct sched_param      PTHREADATTR_schedparam;                     /*  调度参数                    */
     ULONG                   PTHREADATTR_ulPad[8];                       /*  保留                        */
 } pthread_attr_t;
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 
 #ifdef __cplusplus
 }

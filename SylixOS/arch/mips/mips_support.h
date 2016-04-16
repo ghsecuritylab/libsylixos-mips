@@ -121,7 +121,9 @@ VOID    archReboot(INT  iRebootType, addr_t  ulStartAddress);
 *********************************************************************************************************/
 
 #define MIPS_MACHINE_24KF   "24kf"
-#define MIPS_MACHINE_LS1B   "loongson1b"
+#define MIPS_MACHINE_LS1X   "loongson1x"
+#define MIPS_MACHINE_LS2X   "loongson2x"
+#define MIPS_MACHINE_JZ47XX "jz47xx"
 
 #if LW_CFG_CACHE_EN > 0
 VOID    archCacheReset(CPCHAR     pcMachineName);

@@ -29,6 +29,7 @@
 2013.03.31  加入 GCC 版本显示.
 2013.11.14  加入内核对象使用信息文件.
 2014.11.21  加入 SMP 调度亲和度信息显示.
+2016.04.07  加入 cmdline 文件.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -53,6 +54,10 @@ static ssize_t  __procFsKernelVersionRead(PLW_PROCFS_NODE  p_pfsn,
                                           PCHAR            pcBuffer, 
                                           size_t           stMaxBytes,
                                           off_t            oft);
+static ssize_t  __procFsKernelCmdlineRead(PLW_PROCFS_NODE  p_pfsn, 
+                                          PCHAR            pcBuffer, 
+                                          size_t           stMaxBytes,
+                                          off_t            oft);
 static ssize_t  __procFsKernelTickRead(PLW_PROCFS_NODE  p_pfsn, 
                                        PCHAR            pcBuffer, 
                                        size_t           stMaxBytes,
@@ -73,6 +78,9 @@ static ssize_t  __procFsKernelAffinityRead(PLW_PROCFS_NODE  p_pfsn,
 static LW_PROCFS_NODE_OP        _G_pfsnoKernelVersionFuncs = {
     __procFsKernelVersionRead, LW_NULL
 };
+static LW_PROCFS_NODE_OP        _G_pfsnoKernelCmdlineFuncs = {
+    __procFsKernelCmdlineRead, LW_NULL
+};
 static LW_PROCFS_NODE_OP        _G_pfsnoKernelTickFuncs = {
     __procFsKernelTickRead, LW_NULL
 };
@@ -88,6 +96,7 @@ static LW_PROCFS_NODE_OP        _G_pfsnoKernelAffinityFuncs = {
   内核 proc 文件目录树
 *********************************************************************************************************/
 #define __PROCFS_BUFFER_SIZE_VERSION    512
+#define __PROCFS_BUFFER_SIZE_CMDLINE    256
 #define __PROCFS_BUFFER_SIZE_TICK       64                              /*  tick 文件需要的缓冲大小     */
 #define __PROCFS_BUFFER_SIZE_OBJECTS    1024
 
@@ -103,6 +112,12 @@ static LW_PROCFS_NODE           _G_pfsnKernel[] =
                         (S_IFREG | S_IRUSR | S_IRGRP | S_IROTH), 
                         &_G_pfsnoKernelVersionFuncs, 
                         "V",
+                        __PROCFS_BUFFER_SIZE_VERSION),
+                        
+    LW_PROCFS_INIT_NODE("cmdline", 
+                        (S_IFREG | S_IRUSR | S_IRGRP | S_IROTH), 
+                        &_G_pfsnoKernelCmdlineFuncs, 
+                        "P",
                         __PROCFS_BUFFER_SIZE_VERSION),
                         
     LW_PROCFS_INIT_NODE("tick", 
@@ -168,6 +183,51 @@ static ssize_t  __procFsKernelVersionRead (PLW_PROCFS_NODE  p_pfsn,
                               "GCC:%d.%d.%d\n",
                               __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #endif                                                                  /*  __GNUC__                    */
+        API_ProcFsNodeSetRealFileSize(p_pfsn, stRealSize);
+    }
+    if (oft >= stRealSize) {
+        _ErrorHandle(ENOSPC);
+        return  (0);
+    }
+    
+    stCopeBytes  = __MIN(stMaxBytes, (size_t)(stRealSize - oft));       /*  计算实际拷贝的字节数        */
+    lib_memcpy(pcBuffer, (CPVOID)(pcFileBuffer + oft), (UINT)stCopeBytes);
+    
+    return  ((ssize_t)stCopeBytes);
+}
+/*********************************************************************************************************
+** 函数名称: __procFsKernelCmdlineRead
+** 功能描述: procfs 读一个内核 cmdline proc 文件
+** 输　入  : p_pfsn        节点控制块
+**           pcBuffer      缓冲区
+**           stMaxBytes    缓冲区大小
+**           oft           文件指针
+** 输　出  : 实际读取的数目
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+static ssize_t  __procFsKernelCmdlineRead (PLW_PROCFS_NODE  p_pfsn, 
+                                           PCHAR            pcBuffer, 
+                                           size_t           stMaxBytes,
+                                           off_t            oft)
+{
+    REGISTER PCHAR      pcFileBuffer;
+             size_t     stRealSize;                                     /*  实际的文件内容大小          */
+             size_t     stCopeBytes;
+
+    /*
+     *  程序运行到这里, 文件缓冲一定已经分配了预置的内存大小(创建节点时预置大小为 64 字节).
+     */
+    pcFileBuffer = (PCHAR)API_ProcFsNodeBuffer(p_pfsn);
+    if (pcFileBuffer == LW_NULL) {
+        _ErrorHandle(ENOMEM);
+        return  (0);
+    }
+    
+    stRealSize = API_ProcFsNodeGetRealFileSize(p_pfsn);
+    if (stRealSize == 0) {                                              /*  需要生成文件                */
+        stRealSize = (size_t)API_KernelStartParamGet(pcFileBuffer, 
+                                                     __PROCFS_BUFFER_SIZE_CMDLINE);
         API_ProcFsNodeSetRealFileSize(p_pfsn, stRealSize);
     }
     if (oft >= stRealSize) {
@@ -486,10 +546,11 @@ VOID  __procFsKernelInfoInit (VOID)
 {
     API_ProcFsMakeNode(&_G_pfsnKernel[0], "/");
     API_ProcFsMakeNode(&_G_pfsnKernel[1], "/");
-    API_ProcFsMakeNode(&_G_pfsnKernel[2], "/kernel");
+    API_ProcFsMakeNode(&_G_pfsnKernel[2], "/");
     API_ProcFsMakeNode(&_G_pfsnKernel[3], "/kernel");
-#if LW_CFG_SMP_EN > 0
     API_ProcFsMakeNode(&_G_pfsnKernel[4], "/kernel");
+#if LW_CFG_SMP_EN > 0
+    API_ProcFsMakeNode(&_G_pfsnKernel[5], "/kernel");
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
 }
 #endif                                                                  /*  LW_CFG_PROCFS_EN > 0        */

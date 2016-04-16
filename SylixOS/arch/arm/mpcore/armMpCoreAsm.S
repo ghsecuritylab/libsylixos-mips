@@ -51,14 +51,16 @@ FUNC_DEF(armSpinLock)
 1:
     LDREX   R2, [R0]
     CMP     R2, #0
-    STREXEQ R2, R1, [R0]
-    CMPEQ   R2, #0
 
 #if __SYLIXOS_ARM_ARCH__ >= 7
     WFENE
 #endif
 
+    STREXEQ R2, R1, [R0]
+    CMPEQ   R2, #0
     BNE     1b
+    ARM_DMB()
+
     BX      LR
     FUNC_END()
 
@@ -68,6 +70,8 @@ FUNC_DEF(armSpinTryLock)
     CMP     R2, #0
     STREXEQ R2, R1, [R0]
     MOV     R0, R2
+    ARM_DMB()
+
     BX      LR
     FUNC_END()
 

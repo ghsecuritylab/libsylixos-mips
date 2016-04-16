@@ -58,7 +58,7 @@ INT  API_TimerfdDrvInstall (VOID)
                                          _tmrfdRead,
                                          LW_NULL,
                                          _tmrfdIoctl);
-        DRIVER_LICENSE(_G_iTmrfdDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iTmrfdDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iTmrfdDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iTmrfdDrvNum, "timerfd driver.");
     }

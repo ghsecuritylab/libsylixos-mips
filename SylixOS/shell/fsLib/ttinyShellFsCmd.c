@@ -1286,10 +1286,10 @@ static INT  __tshellFsCmdDsize (INT  iArgC, PCHAR  ppcArgV[])
         lib_strlcpy(cDirName, ppcArgV[1], MAX_FILENAME_LENGTH);
         printf("scanning...\n");
         __getDsize(cDirName, lib_strlen(cDirName), &ulFiles, &oftSize);
-        printf("total file %lu size %llu\n", ulFiles, oftSize);
+        printf("total file %lu size %llu bytes.\n", ulFiles, oftSize);
         
     } else {
-        printf("total file 1 size %llu\n", statGet.st_size);
+        printf("total file 1 size %llu bytes.\n", statGet.st_size);
     }
     
     return  (ERROR_NONE);
@@ -1773,6 +1773,8 @@ static INT  __tshellFsCmdLn (INT  iArgC, PCHAR  ppcArgV[])
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_FATFS_EN > 0
+
 static INT  __tshellFsCmdDosfslabel (INT  iArgC, PCHAR  ppcArgV[])
 {
     INT  iFd;
@@ -1813,6 +1815,8 @@ static INT  __tshellFsCmdDosfslabel (INT  iArgC, PCHAR  ppcArgV[])
     
     return  (iError);
 }
+
+#endif                                                                  /*  LW_CFG_FATFS_EN > 0         */
 /*********************************************************************************************************
 ** 函数名称: __tshellFsCmdFdisk
 ** 功能描述: 系统命令 "fdisk"
@@ -1822,6 +1826,8 @@ static INT  __tshellFsCmdDosfslabel (INT  iArgC, PCHAR  ppcArgV[])
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
+#if LW_CFG_OEMDISK_EN > 0
+
 static INT  __tshellFsCmdFdisk (INT  iArgC, PCHAR  ppcArgV[])
 {
     LW_OEMFDISK_PART  fdpInfo[4];
@@ -1959,6 +1965,8 @@ __input_type:
 
     return  (ERROR_NONE);
 }
+
+#endif                                                                  /*  LW_CFG_OEMDISK_EN > 0       */
 /*********************************************************************************************************
 ** 函数名称: __tshellFsCmdInit
 ** 功能描述: 初始化文件系统命令集
@@ -2077,19 +2085,24 @@ VOID  __tshellFsCmdInit (VOID)
     API_TShellFormatAdd("ln", " [-s | -f] [actualpath] [sympath]");
     API_TShellHelpAdd("ln",   "create a symbol link file (must use -s).\n"
                               "eg. ln -s /tmp/dir /dir\n");
-                              
+
+#if LW_CFG_FATFS_EN > 0
     API_TShellKeywordAdd("dosfslabel", __tshellFsCmdDosfslabel);
     API_TShellFormatAdd("dosfslabel", " [[vol newlabel] [vol]]");
     API_TShellHelpAdd("dosfslabel",   "get or set volumn label.\n"
                                       "eg. dosfslabel /usb/ms0\n"
                                       "    dosfslabel /usb/ms1 newlabel\n");
+#endif                                                                  /*  LW_CFG_FATFS_EN > 0         */
 
+#if LW_CFG_OEMDISK_EN > 0
     API_TShellKeywordAdd("fdisk", __tshellFsCmdFdisk);
     API_TShellFormatAdd("fdisk", " [-f] [block I/O device]");
     API_TShellHelpAdd("fdisk",   "show or make disk partition table\n"
                                  "eg. fdisk /dev/blk/udisk0\n"
                                  "    fdisk -f /dev/blk/sata0\n");
+#endif                                                                  /*  LW_CFG_OEMDISK_EN > 0       */
 }
+
 #endif                                                                  /*  LW_CFG_SHELL_EN > 0         */
                                                                         /*  LW_CFG_MAX_VOLUMES > 0      */
 /*********************************************************************************************************

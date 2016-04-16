@@ -34,6 +34,12 @@
 #include "SylixOS.h"
 #include "string.h"                                                     /*  memcpy                      */
 
+/*********************************************************************************************************
+  prof config
+*********************************************************************************************************/
+
+#include "../SylixOS/config/net/net_perf_cfg.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif                                                                  /*  __cplusplus                 */
@@ -55,16 +61,14 @@ extern "C" {
 #define PBUF_POOL_SIZE                  LW_CFG_LWIP_NUM_POOLS           /*  pool num                    */
 #define PBUF_POOL_BUFSIZE               LW_CFG_LWIP_POOL_SIZE           /*  pool block size             */
 
-#if MEM_SIZE >= (32 * LW_CFG_MB_SIZE)
+#if MEM_SIZE >= (1 * LW_CFG_MB_SIZE)
 #define MEMP_NUM_REASSDATA              150                             /*  同时进行重组的 IP 数据包    */
-#elif MEM_SIZE >= (1 * LW_CFG_MB_SIZE)
-#define MEMP_NUM_REASSDATA              100
 #elif MEM_SIZE >= (512 * LW_CFG_KB_SIZE)
-#define MEMP_NUM_REASSDATA              80
+#define MEMP_NUM_REASSDATA              100
 #elif MEM_SIZE >= (256 * LW_CFG_KB_SIZE)
-#define MEMP_NUM_REASSDATA              40
+#define MEMP_NUM_REASSDATA              80
 #elif MEM_SIZE >= (128 * LW_CFG_KB_SIZE)
-#define MEMP_NUM_REASSDATA              20
+#define MEMP_NUM_REASSDATA              40
 #else
 #define MEMP_NUM_REASSDATA              5
 #endif                                                                  /*  MEM_SIZE >= ...             */
@@ -257,13 +261,11 @@ extern  UINT32  __inetHostTableGetItem(CPCHAR  pcHost);                 /*  本地
 
 #define TCP_CALCULATE_EFF_SEND_MSS      1                               /*  use effective send MSS      */
 
-#if MEM_SIZE >= (8 * LW_CFG_MB_SIZE)
+#if MEM_SIZE >= (1 * LW_CFG_MB_SIZE)
 #define TCP_WND                         ((64 * LW_CFG_KB_SIZE) - 1)     /*  MAX WINDOW                  */
-#elif MEM_SIZE >= (4 * LW_CFG_MB_SIZE)
-#define TCP_WND                         (32  * LW_CFG_KB_SIZE)
-#elif MEM_SIZE >= (1 * LW_CFG_MB_SIZE)
-#define TCP_WND                         (16  * LW_CFG_KB_SIZE)
 #elif MEM_SIZE >= (512 * LW_CFG_KB_SIZE)
+#define TCP_WND                         (32  * LW_CFG_KB_SIZE)
+#elif MEM_SIZE >= (128 * LW_CFG_KB_SIZE)
 #define TCP_WND                         ( 8  * LW_CFG_KB_SIZE)
 
 /*********************************************************************************************************
@@ -289,7 +291,7 @@ extern  UINT32  __inetHostTableGetItem(CPCHAR  pcHost);                 /*  本地
 #endif                                                                  /*  TCP_WND < (4  * TCP_MSS)    */
 
 #define LWIP_WND_SCALE                  1
-#define TCP_RCV_SCALE                   LW_CFG_LWIP_TCP_RCV_SCALE
+#define TCP_RCV_SCALE                   LW_CFG_LWIP_TCP_SCALE
 
 #if MEM_SIZE >= (512 * LW_CFG_KB_SIZE)
 #define TCP_SND_BUF                     ((64 * LW_CFG_KB_SIZE) - 1)     /*  tcp snd buf size (max size) */
@@ -300,6 +302,11 @@ extern  UINT32  __inetHostTableGetItem(CPCHAR  pcHost);                 /*  本地
 #else
 #define TCP_SND_BUF                     ((4 * LW_CFG_KB_SIZE) - 1)
 #endif
+
+#if LW_CFG_LWIP_TCP_SND > 0
+#undef  TCP_SND_BUF
+#define TCP_SND_BUF                     LW_CFG_LWIP_TCP_SND
+#endif                                                                  /*  LW_CFG_LWIP_TCP_SND         */
 
 #define MEMP_NUM_TCP_SEG                (8 * TCP_SND_QUEUELEN)
 

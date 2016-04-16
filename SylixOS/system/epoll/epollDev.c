@@ -56,7 +56,7 @@ INT  _epollDrvInstall (VOID)
                                          LW_NULL,
                                          LW_NULL,
                                          _epollIoctl);
-        DRIVER_LICENSE(_G_iEpollDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iEpollDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iEpollDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iEpollDrvNum, "epoll driver.");
     }

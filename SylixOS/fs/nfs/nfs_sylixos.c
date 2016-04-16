@@ -2153,6 +2153,10 @@ static ssize_t  __nfsWrite (PLW_FD_ENTRY  pfdentry,
         return  (PX_ERROR);
     }
     
+    if (pfdentry->FDENTRY_iFlag & O_APPEND) {                           /*  追加模式                    */
+        pfdentry->FDENTRY_oftPtr = pfdnode->FDNODE_oftSize;             /*  移动读写指针到末尾          */
+    }
+    
     while (stTotal < stNBytes) {                                        /*  没有写完全                  */
         countOnce = (count3)(stNBytes - stTotal);
         if (countOnce > __NFS_ONE_TRANS_SIZE(pnfsfile)) {

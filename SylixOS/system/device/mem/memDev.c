@@ -106,7 +106,7 @@ INT  API_MemDrvInstall (VOID)
 
     _G_iMemDrvNum =  iosDrvInstallEx(&fileop);
     
-    DRIVER_LICENSE(_G_iMemDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iMemDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iMemDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iMemDrvNum, "VxWorks memory device driver.");
     

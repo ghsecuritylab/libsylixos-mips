@@ -27,16 +27,17 @@
 2009.12.01  当无法分析分区表时, 将分区类型设置为 LW_DISK_PART_TYPE_EMPTY 标志.
 2011.11.21  升级文件系统, 这里自主定义 MBR_Table.
 2015.10.21  更新块设备操作接口.
+2016.03.23  ioctl, FIOTRIM 与 FIOSYNCMETA 命令需要转换为物理磁盘扇区号.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 #include "../SylixOS/system/include/s_system.h"
-#include "../fatFs/ff.h"
-#include "diskPartition.h"
+#include "../SylixOS/fs/include/fs_internal.h"
 /*********************************************************************************************************
   裁剪宏
 *********************************************************************************************************/
-#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_FATFS_EN > 0)
+#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_DISKPART_EN > 0)
+#include "diskPartition.h"
 /*********************************************************************************************************
   一个物理磁盘带有五个逻辑分区的 BLK_DEV 文件系统示例结构:
 
@@ -146,9 +147,27 @@ static INT  __logicDiskRd (LW_DISKPART_OPERAT    *pdpoLogic,
 *********************************************************************************************************/
 static INT  __logicDiskIoctl (LW_DISKPART_OPERAT    *pdpoLogic, INT  iCmd, LONG  lArg)
 {
-    return  (pdpoLogic->DPT_pblkdDisk->BLKD_pfuncBlkIoctl(pdpoLogic->DPT_pblkdDisk, 
-                                                          iCmd,
-                                                          lArg));
+    PLW_BLK_RANGE  pblkrLogic;
+    LW_BLK_RANGE   blkrPhy;
+
+    switch (iCmd) {
+    
+    case FIOTRIM:
+    case FIOSYNCMETA:
+        pblkrLogic = (PLW_BLK_RANGE)lArg;
+        blkrPhy.BLKR_ulStartSector = pblkrLogic->BLKR_ulStartSector 
+                                   + pdpoLogic->DPO_dpnEntry.DPN_ulStartSector;
+        blkrPhy.BLKR_ulEndSector   = pblkrLogic->BLKR_ulEndSector
+                                   + pdpoLogic->DPO_dpnEntry.DPN_ulStartSector;
+        return  (pdpoLogic->DPT_pblkdDisk->BLKD_pfuncBlkIoctl(pdpoLogic->DPT_pblkdDisk, 
+                                                              iCmd,
+                                                              &blkrPhy));
+                                                              
+    default:
+        return  (pdpoLogic->DPT_pblkdDisk->BLKD_pfuncBlkIoctl(pdpoLogic->DPT_pblkdDisk, 
+                                                              iCmd,
+                                                              lArg));
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: __logicDiskReset
@@ -273,9 +292,9 @@ static INT  __diskPartitionScan (PLW_BLK_DEV         pblkd,
             pdoLogic = &pdpt->DPT_dpoLogic[uiCounter];                  /*  逻辑分区信息                */
             
             pdoLogic->DPO_dpnEntry.DPN_ulStartSector = ulStartSector +
-                LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
+                BLK_LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
             pdoLogic->DPO_dpnEntry.DPN_ulNSector = 
-                LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_NSECTOR]);
+                BLK_LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_NSECTOR]);
             
             if (ucActiveFlag == __DISK_PART_ACTIVE) {                   /*  记录是否为活动分区          */
                 pdoLogic->DPO_dpnEntry.DPN_bIsActive = LW_TRUE;
@@ -294,10 +313,10 @@ static INT  __diskPartitionScan (PLW_BLK_DEV         pblkd,
 
         } else if (LW_DISK_PART_IS_EXTENDED(ucPartType)) {
             if (ulStartSector == 0ul) {                                 /*  是否位于主分区表            */
-                ulExtStartSector = LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
+                ulExtStartSector = BLK_LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
                 ulStartSector    = ulExtStartSector;
             } else {                                                    /*  位于扩展分区分区表          */
-                ulStartSector    = LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
+                ulStartSector    = BLK_LD_DWORD(&pucBuffer[iPartInfoStart + __DISK_PART_STARTSECTOR]);
                 ulStartSector   += ulExtStartSector;
             }
             
@@ -480,7 +499,7 @@ INT  API_DiskPartitionLinkNumGet (PLW_BLK_DEV  pblkdPhysical)
     return  ((INT)pblkdPhysical->BLKD_uiLinkCounter);
 }
 #endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
-                                                                        /*  (LW_CFG_FATFS_EN > 0)       */
+                                                                        /*  (LW_CFG_DISKPART_EN > 0)    */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

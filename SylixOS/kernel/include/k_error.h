@@ -169,6 +169,7 @@
 #define  ERROR_REGION_SIZE                  4002                        /*  分区大小太小                */
 #define  ERROR_REGION_USED                  4003                        /*  分区正在使用                */
 #define  ERROR_REGION_ALIGN                 4004                        /*  对齐关系错误                */
+#define  ERROR_REGION_NOMEM                 4005                        /*  没有内存可供分配            */
 
 /*********************************************************************************************************
   RMS 4500 - 5000

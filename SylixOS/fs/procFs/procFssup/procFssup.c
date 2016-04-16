@@ -140,6 +140,10 @@ static ssize_t  __procFssupRead (PLW_PROCFS_NODE  p_pfsn,
         lib_strlcat(pcFileBuffer, "yaffs ", __PROCFS_BUFFER_SIZE_FSSUP);
 #endif                                                                  /*  LW_CFG_YAFFS_EN             */
         
+#if LW_CFG_TPSFS_EN > 0
+        lib_strlcat(pcFileBuffer, "tpsfs ", __PROCFS_BUFFER_SIZE_FSSUP);
+#endif                                                                  /*  LW_CFG_TPSFS_EN             */
+
         stRealSize = lib_strlen(pcFileBuffer);
         
         API_ProcFsNodeSetRealFileSize(p_pfsn, stRealSize);

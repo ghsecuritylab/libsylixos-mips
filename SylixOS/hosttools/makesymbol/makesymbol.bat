@@ -13,6 +13,7 @@ findstr /C:" S "   < %srcfile%_nm   >> obj.txt
 findstr /C:" C "   < %srcfile%_nm   >> obj.txt
 findstr /C:" W "   < %srcfile%_nm   >> obj.txt
 findstr /C:" V "   < %srcfile%_nm   >> obj.txt
+findstr /C:" G "   < %srcfile%_nm   >> obj.txt
 
 del %srcfile%_nm
 

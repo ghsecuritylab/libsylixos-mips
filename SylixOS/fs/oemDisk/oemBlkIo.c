@@ -493,7 +493,7 @@ static INT  __blkIoFsDrv (VOID)
 
     _G_iBlkIoDrvNum = iosDrvInstallEx2(&fileop, LW_DRV_TYPE_ORIG);
 
-    DRIVER_LICENSE(_G_iBlkIoDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iBlkIoDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iBlkIoDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iBlkIoDrvNum, "blk io driver.");
 

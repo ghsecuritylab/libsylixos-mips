@@ -1240,6 +1240,10 @@ static ssize_t  __fatFsWrite (PLW_FD_ENTRY  pfdentry,
         return  (PX_ERROR);
     }
     
+    if (pfdentry->FDENTRY_iFlag & O_APPEND) {                           /*  追加模式                    */
+        pfdentry->FDENTRY_oftPtr = pfdnode->FDNODE_oftSize;             /*  移动读写指针到末尾          */
+    }
+    
     if (__fatFsSeekFile(pfatfile, pfdentry->FDENTRY_oftPtr)) {          /*  调整内部文件指针            */
         __FAT_FILE_UNLOCK(pfatfile);
         return  (PX_ERROR);
@@ -2207,6 +2211,7 @@ static INT  __fatFsIoctl (PLW_FD_ENTRY  pfdentry,
     
     case FIODISKFORMAT:                                                 /*  卷格式化                    */
         return  (__fatFsFormat(pfdentry, lArg));
+    
     case FIODISKINIT:                                                   /*  磁盘初始化                  */
         return  (__blockIoDevIoctl(pfatfile->FATFIL_pfatvol->FATVOL_iDrv,
                                    FIODISKINIT, lArg));
@@ -2244,11 +2249,13 @@ static INT  __fatFsIoctl (PLW_FD_ENTRY  pfdentry,
     
     case FIOLABELGET:                                                   /*  获取卷标                    */
         return  (__fatFsVolLabel(pfdentry, (PCHAR)lArg, LW_FALSE));
+    
     case FIOLABELSET:                                                   /*  设置卷标                    */
         return  (__fatFsVolLabel(pfdentry, (PCHAR)lArg, LW_TRUE));
     
     case FIOFSTATGET:                                                   /*  获得文件状态                */
         return  (__fatFsStatGet(pfdentry, (struct stat *)lArg));
+    
     case FIOFSTATFSGET:                                                 /*  获得文件系统状态            */
         return  (__fatFsStatfsGet(pfdentry, (struct statfs *)lArg));
         

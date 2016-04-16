@@ -82,8 +82,8 @@ static size_t  __procFsDiskCachePrint (PCHAR  pcBuffer, size_t  stMaxBytes)
     
     stRealSize = bnprintf(pcBuffer, stMaxBytes, 0, "DO NOT INCLUDE NAND READ CACHE INFO.\n\n");
     stRealSize = bnprintf(pcBuffer, stMaxBytes, stRealSize,
-                          "       NAME           SIZE     OPT  END-SECTOR  DIRTY-NODE BURST  HASH\n"
-                          "----------------- ------------ --- ------------ ---------- ----- ------\n");
+                          "       NAME           SIZE     OPT  END-SECTOR  DIRTY-NODE BURST-R BURST-W  HASH\n"
+                          "----------------- ------------ --- ------------ ---------- ------- ------- ------\n");
                            
     __LW_DISKCACHE_LIST_LOCK();
     for (plineTemp  = _G_plineDiskCacheHeader;
@@ -103,14 +103,15 @@ static size_t  __procFsDiskCachePrint (PCHAR  pcBuffer, size_t  stMaxBytes)
         }
                                       
         stRealSize = bnprintf(pcBuffer, stMaxBytes, stRealSize,
-                              "%-17s %12lu %3d %12lu %10lu %5d %6d\n",
+                              "%-17s %12lu %3d %12lu %10lu %7d %7d %6d\n",
                               pcName,
                               (pdiskcDiskCache->DISKC_ulNCacheNode * 
                                pdiskcDiskCache->DISKC_ulBytesPerSector),
                               pdiskcDiskCache->DISKC_iCacheOpt,
                               pdiskcDiskCache->DISKC_ulEndStector,
                               pdiskcDiskCache->DISKC_ulDirtyCounter,
-                              pdiskcDiskCache->DISKC_iMaxBurstSector,
+                              pdiskcDiskCache->DISKC_iMaxRBurstSector,
+                              pdiskcDiskCache->DISKC_iMaxWBurstSector,
                               pdiskcDiskCache->DISKC_iHashSize);
         
     }

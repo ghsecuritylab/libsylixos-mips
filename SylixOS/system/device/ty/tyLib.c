@@ -579,8 +579,10 @@ INT  _TyIoctl (TY_DEV_ID  ptyDev,
         }
         if ((iOldOption & OPT_TANDEM) && 
             !(ptyDev->TYDEV_iOpt & OPT_TANDEM)) {                       /*  启动软流控                  */
+            TYDEV_LOCK(ptyDev, return (PX_ERROR));                      /*  等待设备使用权              */
             _TyRdXoff(ptyDev, LW_FALSE);                                /*  XON                         */
             _TyWrtXoff(ptyDev, LW_FALSE);
+            TYDEV_UNLOCK(ptyDev);                                       /*  释放设备使用权              */
         }
         break;
         

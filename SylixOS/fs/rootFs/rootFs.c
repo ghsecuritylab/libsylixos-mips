@@ -129,7 +129,7 @@ INT  API_RootFsDrvInstall (VOID)
     
     _G_iRootDrvNum = iosDrvInstallEx(&fileop);
      
-    DRIVER_LICENSE(_G_iRootDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iRootDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iRootDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iRootDrvNum, "rootfs driver.");
     

@@ -844,6 +844,8 @@ LW_API PVOID            API_RegionReget(LW_OBJECT_HANDLE    ulId,
 LW_API PVOID            API_RegionPut(LW_OBJECT_HANDLE  ulId, 
                                       PVOID             pvSegmentData); /*  交还 REGION 一个分段        */
 
+LW_API ULONG            API_RegionGetMax(LW_OBJECT_HANDLE  ulId, size_t  *pstMaxFreeSize);
+                                                                        /*  获得最大空闲分段长度        */
 LW_API ULONG            API_RegionStatus(LW_OBJECT_HANDLE    ulId,
                                          size_t             *pstByteSize,
                                          ULONG              *pulSegmentCounter,
@@ -933,7 +935,12 @@ LW_API ULONG            API_InterVectorDisconnect(ULONG                 ulVector
                                                   PINT_SVR_ROUTINE      pfuncIsr,
                                                   PVOID                 pvArg);
                                                                         /*  删除指定向量的服务程序      */
-
+LW_API ULONG            API_InterVectorDisconnectEx(ULONG             ulVector,
+                                                    PINT_SVR_ROUTINE  pfuncIsr,
+                                                    PVOID             pvArg,
+                                                    ULONG             ulOption);
+                                                                        /*  删除指定向量的服务程序      */
+                                                                        
 LW_API ULONG            API_InterVectorEnable(ULONG  ulVector);         /*  使能指定向量中断            */
 
 LW_API ULONG            API_InterVectorDisable(ULONG  ulVector);        /*  禁能指定向量中断            */
@@ -1112,6 +1119,8 @@ LW_API VOID             API_KernelSmpCallAllOther(FUNCPTR  pfunc, PVOID  pvArg,
 
 #ifdef __SYLIXOS_KERNEL
 LW_API ULONG            API_KernelStartParam(CPCHAR  pcParam);          /*  设置内核启动参数            */
+
+LW_API ssize_t          API_KernelStartParamGet(PCHAR  pcParam, size_t  stLen);
 
 #if LW_CFG_MEMORY_HEAP_CONFIG_TYPE > 0
 LW_API VOID             API_KernelPrimaryStart(PKERNEL_START_ROUTINE  pStartHook,

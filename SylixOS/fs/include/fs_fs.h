@@ -60,7 +60,7 @@
   TPS FS
 *********************************************************************************************************/
 #if LW_CFG_TPSFS_EN > 0
-#include "../SylixOS/fs/tpsFs/tpsfs.h"
+#include "../SylixOS/fs/tpsFs/tpsfs_sylixos.h"
 #endif                                                                  /*  LW_CFG_TPSFS_EN > 0         */
 /*********************************************************************************************************
   NFS
@@ -77,8 +77,8 @@
 *********************************************************************************************************/
 #if LW_CFG_DISKCACHE_EN > 0
 #include "../SylixOS/fs/diskCache/diskCache.h"                          /*  ´ÅÅÌ¸ßËÙ»º³å                */
-#include "../SylixOS/fs/nandRCache/nandRCache.h"                        /*  nand flash read cache       */
 #endif                                                                  /*  LW_CFG_DISKCACHE_EN > 0     */
+#include "../SylixOS/fs/nandRCache/nandRCache.h"                        /*  nand flash read cache       */
 /*********************************************************************************************************
   DISK RAID
 *********************************************************************************************************/
@@ -106,6 +106,9 @@
 #include "../SylixOS/fs/yaffs2/yaffs_trace.h"
 #include "../SylixOS/fs/yaffs2/yaffs_guts.h"
 #include "../SylixOS/fs/yaffs2/yaffs_nand.h"
+#if LW_CFG_YAFFS_NOR_EN > 0
+#include "../SylixOS/fs/yaffs2/yaffs_nor.h"
+#endif                                                                  /*  LW_CFG_YAFFS_NOR_EN > 0     */
 #ifdef   __SYLIXOS_YAFFS_MTD
 #include "../SylixOS/fs/yaffs2/yaffs_mtdif.h"
 #endif                                                                  /*  __SYLIXOS_YAFFS_MTD         */

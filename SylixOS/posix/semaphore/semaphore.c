@@ -662,6 +662,106 @@ int  sem_getvalue (sem_t  *psem, int  *pivalue)
     
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: sem_flush
+** 功能描述: 释放掉所有阻塞在此信号量上的线程.
+** 输　入  : psem          信号量句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API 
+int  sem_flush (sem_t  *psem)
+{
+    __PX_SEM   *pxsem;
+    
+    __sem_init_invisible(psem);
+    
+    if ((psem == LW_NULL) || (psem->SEM_pvPxSem == LW_NULL)) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+    
+    pxsem = (__PX_SEM *)psem->SEM_pvPxSem;
+    
+    if (API_SemaphoreCFlush(pxsem->PSEM_ulSemaphore, LW_NULL)) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: sem_getinfo
+** 功能描述: 获得信号量信息.
+** 输　入  : psem          信号量句柄
+**           info          信号量信息
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  sem_getinfo (sem_t  *psem, sem_info_t  *info)
+{
+    __PX_SEM   *pxsem;
+    
+    __sem_init_invisible(psem);
+    
+    if ((psem == LW_NULL) || 
+        (psem->SEM_pvPxSem == LW_NULL) ||
+        (info == LW_NULL)) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+
+    pxsem = (__PX_SEM *)psem->SEM_pvPxSem;
+    
+    if (API_SemaphoreCStatus(pxsem->PSEM_ulSemaphore, 
+                             &info->SEMINFO_ulCounter,
+                             &info->SEMINFO_ulOption,
+                             &info->SEMINFO_ulBlockNum)) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: sem_show
+** 功能描述: 显示信号量信息.
+** 输　入  : psem          信号量句柄
+**           level         显示等级
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  sem_show (sem_t  *psem, int  level)
+{
+    __PX_SEM   *pxsem;
+    
+    (VOID)level;
+    
+    __sem_init_invisible(psem);
+    
+    if ((psem == LW_NULL) || (psem->SEM_pvPxSem == LW_NULL)) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+    
+    pxsem = (__PX_SEM *)psem->SEM_pvPxSem;
+    
+    API_SemaphoreShow(pxsem->PSEM_ulSemaphore);
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

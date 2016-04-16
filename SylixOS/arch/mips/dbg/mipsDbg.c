@@ -148,10 +148,10 @@ UINT  archDbgTrapType (addr_t  ulAddr, PVOID   pvArch)
 VOID  archDbgBpAdjust (PVOID  pvDtrace, PVOID  pvtm)
 {
     ARCH_REG_CTX    regctx;
-    ARCH_REG_T      regPs;
+    ARCH_REG_T      regSp;
     PLW_DTRACE_MSG  pdtm = (PLW_DTRACE_MSG)pvtm;
 
-    API_DtraceGetRegs(pvDtrace, pdtm->DTM_ulThread, &regctx, &regPs);
+    API_DtraceGetRegs(pvDtrace, pdtm->DTM_ulThread, &regctx, &regSp);
     /*
      * 如果 Cause 寄存器 BD 位置为 1，则说明引发中断的为分支延时槽指令，PC 寄存器值需调整
      */

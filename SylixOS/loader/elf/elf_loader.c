@@ -1168,8 +1168,8 @@ static INT dynPhdrParse (LW_LD_EXEC_MODULE *pmodule,
     /*
      *  TODO: 目前认为JMPREL跟在REL或RELA表之后，如果没有找到REL表和RELA表，则使用JMPREL表。
      */
+#ifndef  LW_CFG_CPU_ARCH_PPC
     if (pdyndir->pvJmpRTable) {
-
         if (DT_REL == pdyndir->ulPltRel) {
             if (!pdyndir->prelTable) {
                 pdyndir->prelTable = (Elf_Rel*)(pdyndir->pvJmpRTable);
@@ -1184,6 +1184,7 @@ static INT dynPhdrParse (LW_LD_EXEC_MODULE *pmodule,
             pdyndir->ulRelaCount += pdyndir->ulJmpRSize/sizeof(Elf_Rela);
         }
     }
+#endif
 
     return  (ERROR_NONE);
 }

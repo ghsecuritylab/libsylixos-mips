@@ -226,6 +226,19 @@ extern errno_t *__errno(VOID);                                          /* get e
 #define EMEDIUMTYPE     136                                             /* Wrong medium type            */
 #define EILSEQ          138
 
+/*********************************************************************************************************
+   GJB7714 extern
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+#define ECALLEDINISR    ERROR_KERNEL_IN_ISR                             /*  called in isr routine       */
+#define EMNOTINITED     ERROR_KERNEL_NOT_RUNNING                        /*  module not inited           */
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
+/*********************************************************************************************************
+   system errno max
+*********************************************************************************************************/
+
 #define	ERRMAX			200000
 
 #endif                                                                  /*  __K_PERROR_H                */

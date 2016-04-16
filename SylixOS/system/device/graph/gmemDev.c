@@ -255,7 +255,7 @@ INT   API_GMemDevAdd (CPCHAR  cpcName, PLW_GM_DEVICE  pgmdev)
     if (iGMemDrvNum <= 0) {
         iGMemDrvNum  = iosDrvInstallEx(&_G_foGMemDrv);                  /*  °²×°Çý¶¯                    */
         if (iGMemDrvNum > 0) {
-            DRIVER_LICENSE(iGMemDrvNum,     "Dual BSD/GPL->Ver 1.0");
+            DRIVER_LICENSE(iGMemDrvNum,     "GPL->Ver 2.0");
             DRIVER_AUTHOR(iGMemDrvNum,      "Han.hui");
             DRIVER_DESCRIPTION(iGMemDrvNum, "graph frame buffer driver.");
         }

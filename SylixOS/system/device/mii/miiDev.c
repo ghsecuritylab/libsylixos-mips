@@ -20,6 +20,7 @@
 **
 ** BUG:
 2015.09.22  修正未主动上报首次状态的错误, 避免首次状态的丢失.
+2016.03.15  API_MiiPhyLinkSet() 加入 hook.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -54,7 +55,7 @@ static LW_OBJECT_HANDLE     _G_hMiiMSem;
 /*********************************************************************************************************
   debug info
 *********************************************************************************************************/
-#define MII_DEBUG_ADDR(fmt, var)                                \
+#define MII_DEBUG_ADDR(fmt, var)    \
         _DebugFormat(__LOGMESSAGE_LEVEL, fmt, var)
 /*********************************************************************************************************
 ** 函数名称: __miiAbilFlagUpdate
@@ -328,7 +329,7 @@ static INT __miiPhyUpdate (PHY_DEV *pPhyDev)
         }
     }
 
-    usNegAbility = usPhyPrtn & usPhyAds & MII_ADS_TECH_MASK;
+    usNegAbility = (UINT16)(usPhyPrtn & usPhyAds & MII_ADS_TECH_MASK);
 
     if (usNegAbility & MII_TECH_100BASE_TX_FD) {
     
@@ -376,7 +377,7 @@ static INT __miiAnCheck (PHY_DEV *pPhyDev)
      * The sysClkRate could have changed since  the link was lost.
      * Ensure that pPhyInfo->phyMaxDelay is at lease 5 seconds.
      */
-    if((pPhyDev->PHY_uiTryMax * pPhyDev->PHY_uiLinkDelay) < 5000) {
+    if ((pPhyDev->PHY_uiTryMax * pPhyDev->PHY_uiLinkDelay) < 5000) {
         pPhyDev->PHY_uiTryMax = 5000 / pPhyDev->PHY_uiLinkDelay;
     }
 
@@ -536,7 +537,7 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
         return  (MII_ERROR);
     }
 
-    MII_FROM_ANSR_TO_ANAR ((usPhyStat), (usPhyAds));
+    MII_FROM_ANSR_TO_ANAR((usPhyStat), (usPhyAds));
 
     usPhyAds &= (~MII_NP_NP);                                           /*Disable the next page function*/
 
@@ -545,10 +546,10 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
      */
     if ((MII_PHY_FLAGS_ARE_SET (MII_PHY_TX_FLOW_CTRL)) &&
            (MII_PHY_FLAGS_ARE_SET (MII_PHY_RX_FLOW_CTRL))) {
-       usPhyAds |= MII_ANAR_PAUSE;
+        usPhyAds |= MII_ANAR_PAUSE;
     
     } else {
-       usPhyAds &= ~MII_ANAR_PAUSE;
+        usPhyAds &= ~MII_ANAR_PAUSE;
     }
 
     if (pPhyDev->PHY_uiPhyFlags & MII_PHY_GMII_TYPE) {
@@ -557,17 +558,15 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
          */
         if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_TX_FLOW_CTRL)) &&
                !(MII_PHY_FLAGS_ARE_SET (MII_PHY_RX_FLOW_CTRL))) {       /* not flow control             */
-
             usPhyAds &= ~MII_ANAR_ASM_PAUSE;
             usPhyAds &= ~MII_ANAR_PAUSE;
+            
         } else if ((MII_PHY_FLAGS_ARE_SET (MII_PHY_TX_FLOW_CTRL)) &&
                   !(MII_PHY_FLAGS_ARE_SET (MII_PHY_RX_FLOW_CTRL))) {    /* TX flow control              */
-
             usPhyAds |= MII_ANAR_ASM_PAUSE;
             usPhyAds &= ~MII_ANAR_PAUSE;
         
         } else {                                                        /* RX flow control              */
-
             usPhyAds |= MII_ANAR_ASM_PAUSE;
             usPhyAds |= MII_ANAR_PAUSE;
         }
@@ -575,7 +574,7 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
 
     ucRegAddr = MII_AN_ADS_REG;                                         /* write ANAR                   */
     if (MII_WRITE(pPhyDev->PHY_ucPhyAddr, ucRegAddr, usPhyAds) == MII_ERROR) {
-       return   (MII_ERROR);
+        return   (MII_ERROR);
     }
 
     if (pPhyDev->PHY_uiPhyFlags & MII_PHY_GMII_TYPE) {
@@ -584,7 +583,7 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
          */
         ucRegAddr =  MII_MASSLA_CTRL_REG;
         if (MII_READ(pPhyDev->PHY_ucPhyAddr, ucRegAddr, &usPhyMstSlaCtrl) == MII_ERROR) {
-           return   (MII_ERROR);
+            return   (MII_ERROR);
         }
 
         /*
@@ -592,7 +591,7 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
          */
         ucRegAddr = MII_EXT_STAT_REG;
         if (MII_READ(pPhyDev->PHY_ucPhyAddr, ucRegAddr, &usPhyExtStat) == MII_ERROR) {
-           return   (MII_ERROR);
+            return   (MII_ERROR);
         }
 
         /*
@@ -619,35 +618,37 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
      * check the PHY flags and possibly mask some abilities off
      */
     if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_FD))) {
-       usPhyAds &= ~(MII_TECH_10BASE_FD | MII_TECH_100BASE_TX_FD);
+        usPhyAds &= ~(MII_TECH_10BASE_FD | MII_TECH_100BASE_TX_FD);
     }
 
     if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_HD))) {
-       usPhyAds &= ~(MII_TECH_10BASE_T | MII_TECH_100BASE_TX
+        usPhyAds &= ~(MII_TECH_10BASE_T | MII_TECH_100BASE_TX
                    | MII_TECH_100BASE_T4);
     }
 
     if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_100))) {
-       usPhyAds &= ~(MII_TECH_100BASE_TX | MII_TECH_100BASE_TX_FD
+        usPhyAds &= ~(MII_TECH_100BASE_TX | MII_TECH_100BASE_TX_FD
                    | MII_TECH_100BASE_T4);
     }
 
     if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_10))) {
-       usPhyAds &= ~(MII_TECH_10BASE_T | MII_TECH_10BASE_FD);
+        usPhyAds &= ~(MII_TECH_10BASE_T | MII_TECH_10BASE_FD);
     }
 
     if (pPhyDev->PHY_uiPhyFlags & MII_PHY_GMII_TYPE) {
-       /*
-        * check phyFlags with 1000T FD mode
-        */
-       if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_1000T_FD)))
-           usPhyMstSlaCtrl &= ~MII_MASSLA_CTRL_1000T_FD;
+        /*
+         * check phyFlags with 1000T FD mode
+         */
+        if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_1000T_FD))) {
+            usPhyMstSlaCtrl &= ~MII_MASSLA_CTRL_1000T_FD;
+        }
 
-       /*
-        * check phyFlags with 1000T HD mode
-        */
-       if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_1000T_HD)))
-           usPhyMstSlaCtrl &= ~MII_MASSLA_CTRL_1000T_HD;
+        /*
+         * check phyFlags with 1000T HD mode
+         */
+        if (!(MII_PHY_FLAGS_ARE_SET (MII_PHY_1000T_HD))) {
+            usPhyMstSlaCtrl &= ~MII_MASSLA_CTRL_1000T_HD;
+        }
     }
 
     /*
@@ -655,17 +656,17 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
      */
     ucRegAddr = MII_AN_ADS_REG;
     if (MII_WRITE(pPhyDev->PHY_ucPhyAddr, ucRegAddr, usPhyAds) == MII_ERROR) {
-       return   (MII_ERROR);
+        return   (MII_ERROR);
     }
 
     /*
      * set MSC register accordingly
      */
     if (pPhyDev->PHY_uiPhyFlags & MII_PHY_GMII_TYPE) {
-       ucRegAddr = MII_MASSLA_CTRL_REG;
-       if (MII_WRITE(pPhyDev->PHY_ucPhyAddr, ucRegAddr, usPhyMstSlaCtrl) == MII_ERROR) {
-           return   (MII_ERROR);
-       }
+        ucRegAddr = MII_MASSLA_CTRL_REG;
+        if (MII_WRITE(pPhyDev->PHY_ucPhyAddr, ucRegAddr, usPhyMstSlaCtrl) == MII_ERROR) {
+            return   (MII_ERROR);
+        }
     }
 
     /*
@@ -685,7 +686,7 @@ static INT __miiAutoNegotiate (PHY_DEV *pPhyDev)
 
     /* check the negotiation was successful */
     if (__miiAnCheck(pPhyDev) == MII_OK) {
-       return   (MII_OK);
+        return  (MII_OK);
     }
     
     return  (MII_ERROR);
@@ -778,12 +779,16 @@ INT API_MiiPhyLinkSet (PHY_DEV *pPhyDev)
 {
     INT iRet;
 
-    if(__miiAbilFlagUpdate(pPhyDev) == MII_ERROR) {
+    if (__miiAbilFlagUpdate(pPhyDev) == MII_ERROR) {
         return  (MII_ERROR);
     }
 
+    if (pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncLinkSetHook) {
+        pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncLinkSetHook(pPhyDev);
+    }
+
     iRet = API_MiiPhyModeSet(pPhyDev);
-    if(iRet != MII_OK) {
+    if (iRet != MII_OK) {
         return  (iRet);
     }
 
@@ -809,8 +814,7 @@ INT API_MiiPhyDiagnostic (PHY_DEV *pPhyDev)
     ucRegAddr = MII_CTRL_REG;
     usData    = MII_CTRL_RESET;
 
-    iRet = MII_WRITE(pPhyDev->PHY_ucPhyAddr, ucRegAddr, usData);       /* Reset the PHY                */
-
+    iRet = MII_WRITE(pPhyDev->PHY_ucPhyAddr, ucRegAddr, usData);        /* Reset the PHY                */
     if (iRet != MII_OK) {
         return  (MII_ERROR);
     }
@@ -843,12 +847,12 @@ INT API_MiiPhyDiagnostic (PHY_DEV *pPhyDev)
     /*
      * Check isolate bit. Deasserted?
      */
-    for (i=0; i < pPhyDev->PHY_uiTryMax; i++) {
+    for (i = 0; i < pPhyDev->PHY_uiTryMax; i++) {
         API_TimeMSleep(pPhyDev->PHY_uiLinkDelay);
 
         if (MII_READ(pPhyDev->PHY_ucPhyAddr, ucRegAddr, &usData) == MII_ERROR) {
             MII_DEBUG_ADDR("mii: read phy fail. phy addr[%02x].\r\n",
-                            pPhyDev->PHY_ucPhyAddr);
+                           pPhyDev->PHY_ucPhyAddr);
             return  (MII_ERROR);
         }
 
@@ -859,7 +863,7 @@ INT API_MiiPhyDiagnostic (PHY_DEV *pPhyDev)
 
     if (i >= pPhyDev->PHY_uiTryMax) {
         MII_DEBUG_ADDR("mii: isolated phy fail. phy addr[%02x].\r\n",
-                        pPhyDev->PHY_ucPhyAddr);
+                       pPhyDev->PHY_ucPhyAddr);
         return  (MII_ERROR);
     }
     
@@ -888,19 +892,19 @@ INT API_MiiPhyLinkStatGet (PHY_DEV *pPhyDev)
     }
 
     if (!(usPhyStatus & (MII_SR_TX_HALF_DPX | MII_SR_TX_FULL_DPX | MII_SR_T4))) {
-        MII_PHY_FLAGS_CLEAR (MII_PHY_100);
+        MII_PHY_FLAGS_CLEAR(MII_PHY_100);
     }
 
     if (!(usPhyStatus & (MII_SR_10T_FULL_DPX | MII_SR_TX_FULL_DPX))) {
-        MII_PHY_FLAGS_CLEAR (MII_PHY_FD);
+        MII_PHY_FLAGS_CLEAR(MII_PHY_FD);
     }
 
     if (!(usPhyStatus & (MII_SR_10T_HALF_DPX | MII_SR_10T_FULL_DPX))) {
-        MII_PHY_FLAGS_CLEAR (MII_PHY_10);
+        MII_PHY_FLAGS_CLEAR(MII_PHY_10);
     }
 
     if (!(usPhyStatus & (MII_SR_TX_HALF_DPX | MII_SR_10T_HALF_DPX))) {
-        MII_PHY_FLAGS_CLEAR (MII_PHY_HD);
+        MII_PHY_FLAGS_CLEAR(MII_PHY_HD);
     }
 
     if (!(usPhyStatus & MII_SR_AUTO_SEL)) {
@@ -919,14 +923,14 @@ INT API_MiiPhyLinkStatGet (PHY_DEV *pPhyDev)
          * mask off 1000T FD if PHY not supported
          */
         if (!(usPhyStatus & MII_EXT_STAT_1000T_HD)) {
-             MII_PHY_FLAGS_CLEAR(MII_PHY_1000T_HD);
+            MII_PHY_FLAGS_CLEAR(MII_PHY_1000T_HD);
         }
 
         /*
          * mask off 1000T HD if PHY not supported
          */
         if (!(usPhyStatus & MII_EXT_STAT_1000T_FD)) {
-             MII_PHY_FLAGS_CLEAR(MII_PHY_1000T_FD);
+            MII_PHY_FLAGS_CLEAR(MII_PHY_1000T_FD);
         }
     }
     
@@ -1004,12 +1008,12 @@ INT API_MiiPhyProbe (PHY_DEV *pPhyDev)
     }
 
     uiPhyID = usID1 | ((usID2 & 0xFC00) << 16);
-    if(pPhyDev->PHY_uiPhyID != uiPhyID) {
+    if (pPhyDev->PHY_uiPhyID != uiPhyID) {
         return  (MII_PHY_NULL);
     }
 
     MII_DEBUG_ADDR("mii: found phy. addr[%02x].\r\n",
-                    pPhyDev->PHY_ucPhyAddr);
+                   pPhyDev->PHY_ucPhyAddr);
 
     return  (MII_OK);
 }
@@ -1030,17 +1034,15 @@ INT API_MiiPhyScan (PHY_DEV *pPhyDev)
 
     for (i = 0; i < MII_MAX_PHY_NUM; i++, pPhyDev->PHY_ucPhyAddr++) {
         iRet = API_MiiPhyProbe(pPhyDev);
-        if(iRet != MII_OK) {
+        if (iRet != MII_OK) {
             continue;
         }
 
-        if(API_MiiPhyDiagnostic(pPhyDev) != MII_OK) {
+        if (API_MiiPhyDiagnostic(pPhyDev) != MII_OK) {
             return  (MII_ERROR);
         }
-        /*
-         * Found a Valid PHY
-         */
-        return  (MII_OK);
+        
+        return  (MII_OK);                                               /* Found a Valid PHY            */
     }
     
     return  (MII_PHY_NULL);
@@ -1108,7 +1110,11 @@ static INT __miiPhyMonitor (VOID)
      * Loop the MII PHY list
      * Check all Status of PHYs
      */
-    for (plineNode = _G_plineMiiList; plineNode != LW_NULL; /* NOP */) {
+    MII_LOCK();                                                         /* Get MII Mutex Lock           */
+    for (plineNode = _G_plineMiiList; 
+        plineNode != LW_NULL; 
+        plineNode  = _list_line_get_next(plineNode)) {
+        
         pPhyDev = (PHY_DEV *)plineNode;
 
         if ((MII_PHY_FLAGS_ARE_SET (MII_PHY_INIT)) &&
@@ -1130,7 +1136,7 @@ static INT __miiPhyMonitor (VOID)
             if ((pPhyDev->PHY_usPhyStatus & MII_SR_LINK_STATUS) !=
                 (usPhyStatus & MII_SR_LINK_STATUS)) {
                 MII_DEBUG_ADDR("mii: link change stat=0x%02x.\r\n",
-                                usPhyStatus);
+                               usPhyStatus);
                 /*
                  * Tell the Mac Driver
                  */
@@ -1141,13 +1147,11 @@ static INT __miiPhyMonitor (VOID)
                 }
             }
         }
-        
-        MII_LOCK();                                                     /* Get MII Mutex Lock           */
-        _list_line_next(&plineNode);
-        MII_UNLOCK();
     }
     
 __mii_monitor_exit:
+    MII_UNLOCK();                                                       /* Release MII Mutex Lock       */
+    
     return  (iRet);
 }
 /*********************************************************************************************************
@@ -1162,9 +1166,7 @@ __mii_monitor_exit:
 LW_API
 INT API_MiiPhyMonitorStop (VOID)
 {
-    if (API_TimerCancel(_G_hMiiTimer) == MII_ERROR) {
-        return  (MII_ERROR);
-    }
+    API_TimerCancel(_G_hMiiTimer);
     
     return  (MII_OK);
 }
@@ -1180,11 +1182,11 @@ INT API_MiiPhyMonitorStop (VOID)
 LW_API  
 INT API_MiiPhyMonitorStart (VOID)
 {
-    if ((API_TimerStart(_G_hMiiTimer,                                   /* Start Phy Monitor            */
-                        (MII_LINK_CHK_DELAY * LW_TICK_HZ),
-                        LW_OPTION_AUTO_RESTART,
-                        (PTIMER_CALLBACK_ROUTINE)__miiPhyMonitor,
-                        LW_NULL)) == MII_ERROR) {
+    if (API_TimerStart(_G_hMiiTimer,                                    /* Start Phy Monitor            */
+                       (MII_LINK_CHK_DELAY * LW_TICK_HZ),
+                       LW_OPTION_AUTO_RESTART,
+                       (PTIMER_CALLBACK_ROUTINE)__miiPhyMonitor,
+                       LW_NULL)) {
         return  (MII_ERROR);
     }
     
@@ -1242,7 +1244,7 @@ INT API_MiiPhyInit (PHY_DEV *pPhyDev)
 	if ((pPhyDev->PHY_usPhyStatus & MII_SR_LINK_STATUS) !=
 		(usPhyStatus & MII_SR_LINK_STATUS)) {							/* Check Whether Status Changes */
 		MII_DEBUG_ADDR("mii: link change stat=0x%02x.\r\n",
-						pPhyDev->PHY_usPhyStatus);
+                       pPhyDev->PHY_usPhyStatus);
 		/*
 		 * Tell the Mac Driver
 		 */
@@ -1286,11 +1288,11 @@ INT API_MiiLibInit (VOID)
 
     _G_plineMiiList = LW_NULL;                                          /* Initialize mii List          */
 
-    if ((API_TimerStart(_G_hMiiTimer,                                   /* Start Phy Monitor            */
-                        (MII_LINK_CHK_DELAY * LW_TICK_HZ),
-                        LW_OPTION_AUTO_RESTART,
-                        (PTIMER_CALLBACK_ROUTINE)__miiPhyMonitor,
-                        LW_NULL)) != ERROR_NONE) {
+    if (API_TimerStart(_G_hMiiTimer,                                    /* Start Phy Monitor            */
+                       (MII_LINK_CHK_DELAY * LW_TICK_HZ),
+                       LW_OPTION_AUTO_RESTART,
+                       (PTIMER_CALLBACK_ROUTINE)__miiPhyMonitor,
+                       LW_NULL)) {
         API_SemaphoreMDelete(&_G_hMiiMSem);
         return  (MII_ERROR);
     }
@@ -1299,6 +1301,7 @@ INT API_MiiLibInit (VOID)
     
     return  (MII_OK);
 }
+
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0)      */
                                                                         /*  (LW_CFG_NET_EN > 0)         */
 /*********************************************************************************************************

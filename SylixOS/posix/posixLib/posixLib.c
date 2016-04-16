@@ -159,9 +159,9 @@ VOID  API_PosixInit (VOID)
     __procFsPosixInfoInit();
 #endif                                                                  /*  LW_CFG_PROCFS_EN > 0        */
 
-#if LW_CFG_SIGNAL_EN > 0
+#if LW_CFG_POSIX_AIO_EN > 0
     _posixAioInit();
-#endif                                                                  /*  LW_CFG_SIGNAL_EN > 0        */
+#endif                                                                  /*  LW_CFG_POSIX_AIO_EN > 0     */
 
     _posixSyslogInit();
     

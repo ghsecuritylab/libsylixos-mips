@@ -492,7 +492,7 @@ INT  _IosInit (VOID)
                                  _IosNullWrite,
                                  _IosNullIoctl);                        /*  首先创建 NULL 设备驱动      */
     
-    DRIVER_LICENSE(iNullDrv,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(iNullDrv,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(iNullDrv,      "Han.hui");
     DRIVER_DESCRIPTION(iNullDrv, "null device driver.");
     
@@ -504,7 +504,7 @@ INT  _IosInit (VOID)
                                  LW_NULL,
                                  _IosNullIoctl);                        /*  创建 ZERO 设备驱动          */
                                  
-    DRIVER_LICENSE(iZeroDrv,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(iZeroDrv,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(iZeroDrv,      "Han.hui");
     DRIVER_DESCRIPTION(iZeroDrv, "zero device driver.");
                                  

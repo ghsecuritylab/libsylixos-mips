@@ -27,6 +27,7 @@
 2014.04.21  中断被处理后不在遍历后面的中断服务函数.
 2014.05.09  加入对中断计数器的处理.
 2014.05.09  提高 SMP 中断处理速度.
+2016.04.14  支持 GJB7714 无返回值中断.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -73,7 +74,16 @@ irqreturn_t  API_InterVectorIsr (ULONG  ulVector)
              plineTemp  = _list_line_get_next(plineTemp)) {
             
             piaction = _LIST_ENTRY(plineTemp, LW_CLASS_INTACT, IACT_plineManage);
-            irqret = piaction->IACT_pfuncIsr(piaction->IACT_pvArg, ulVector);
+#if LW_CFG_GJB7714_EN > 0
+            if (pidesc->IDESC_ulFlag & LW_IRQ_FLAG_GJB7714) {
+                piaction->IACT_pfuncIsr(piaction->IACT_pvArg, ulVector);
+                irqret = LW_IRQ_NONE;
+            } else
+#endif
+            {
+                irqret = piaction->IACT_pfuncIsr(piaction->IACT_pvArg, ulVector);
+            }
+            
             if (LW_IRQ_RETVAL(irqret)) {                                /*  中断是否已经被处理          */
                 piaction->IACT_iIntCnt[pcpu->CPU_ulCPUId]++;
                 if (piaction->IACT_pfuncClear) {

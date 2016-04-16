@@ -23,6 +23,7 @@
 2013.09.11  加入 /proc/net/netfilter 文件.
             UDP/TCP 滤波加入端口范围.
 2013.09.12  使用 bnprintf 专用缓冲区打印函数.
+2016.04.13  __npfInput() 自己释放数据包缓存.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -502,9 +503,7 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
             iOffset += sizeof(struct eth_hdr);                          /*  允许通过                    */
         
         } else {
-            __NPF_PACKET_DROP_INC();
-            __NPF_UNLOCK();                                             /*  解锁 NPF 表                 */
-            return  (ERR_IF);                                           /*  不允许输入                  */
+            goto    __drop_input;
         }
     }
 
@@ -529,20 +528,21 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
             goto    __allow_input;                                      /*  不是 ip 数据包, 放行        */
         }
     }
+    
     if (pbuf_copy_partial(p, (void *)&iphdrChk,
                           sizeof(struct ip_hdr), (u16_t)iOffset) != sizeof(struct ip_hdr)) {
         goto    __allow_input;                                          /*  无法获取 ip hdr 放行        */
     }
+    
     if (IPH_V((&iphdrChk)) != 4) {                                      /*  非 ipv4 数据包              */
         goto    __allow_input;                                          /*  放行                        */
     }
 
     if (__npfIpRuleCheck(pnpfni, &iphdrChk)) {                          /*  开始检查相应的 ip 过滤规则  */
         iOffset += (IPH_HL((&iphdrChk)) * 4);                           /*  允许通过                    */
+    
     } else {
-        __NPF_PACKET_DROP_INC();
-        __NPF_UNLOCK();                                                 /*  解锁 NPF 表                 */
-        return  (ERR_IF);                                               /*  不允许输入                  */
+        goto    __drop_input;
     }
 
     switch (IPH_PROTO((&iphdrChk))) {                                   /*  检查 ip 数据报类型          */
@@ -554,9 +554,7 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
             goto    __allow_input;                                      /*  无法获取 udp hdr 放行       */
         }
         if (__npfUdpRuleCheck(pnpfni, &iphdrChk, &udphdrChk) == LW_FALSE) {
-            __NPF_PACKET_DROP_INC();
-            __NPF_UNLOCK();                                             /*  解锁 NPF 表                 */
-            return  (ERR_IF);                                           /*  不允许                      */
+            goto    __drop_input;
         }
         break;
 
@@ -566,9 +564,7 @@ static err_t  __npfInput (struct pbuf *p, struct netif *inp)
             goto    __allow_input;                                      /*  无法获取 tcp hdr 放行       */
         }
         if (__npfTcpRuleCheck(pnpfni, &iphdrChk, &tcphdrChk) == LW_FALSE) {
-            __NPF_PACKET_DROP_INC();
-            __NPF_UNLOCK();                                             /*  解锁 NPF 表                 */
-            return  (ERR_IF);                                           /*  不允许                      */
+            goto    __drop_input;
         }
         break;
 
@@ -583,6 +579,12 @@ __allow_input:
     __NPF_PACKET_ALLOW_INC();
     __NPF_UNLOCK();                                                     /*  解锁 NPF 表                 */
     return  (pnpfni->NPFNI_pfuncOrgInput(p, inp));                      /*  允许输入                    */
+    
+__drop_input:
+    __NPF_PACKET_DROP_INC();
+    __NPF_UNLOCK();                                                     /*  解锁 NPF 表                 */
+    pbuf_free(p);                                                       /*  释放数据包                  */
+    return  (ERR_OK);                                                   /*  正确返回                    */
 }
 /*********************************************************************************************************
 ** 函数名称: API_INetNpfRuleAdd

@@ -446,6 +446,7 @@
 #define Lw_Region_StatusEx                      API_RegionStatusEx
 #define Lw_Region_InfoEx                        API_RegionStatusEx
 
+#define Lw_Region_GetMax                        API_RegionGetMax
 #define Lw_Region_GetName                       API_RegionGetName
 
 /*********************************************************************************************************

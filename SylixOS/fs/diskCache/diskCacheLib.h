@@ -83,7 +83,8 @@ typedef struct {
     ULONG                   DISKC_ulDirtyCounter;                       /*  需要回写的扇区数量          */
     ULONG                   DISKC_ulBytesPerSector;                     /*  每一扇区字节数量            */
     
-    INT                     DISKC_iMaxBurstSector;                      /*  最大猝发读写扇区数量        */
+    INT                     DISKC_iMaxRBurstSector;                     /*  最大猝发读写扇区数量        */
+    INT                     DISKC_iMaxWBurstSector;
     caddr_t                 DISKC_pcBurstBuffer;                        /*  猝发读写缓冲区              */
     
     PLW_LIST_RING           DISKC_pringLruHeader;                       /*  LRU 表头                    */

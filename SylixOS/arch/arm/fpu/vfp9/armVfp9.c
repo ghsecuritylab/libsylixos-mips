@@ -53,6 +53,7 @@ extern VOID  armVfp9Restore32(PVOID pvFpuCtx);
 *********************************************************************************************************/
 static VOID  armVfp9CtxShow (INT iFd, PVOID pvFpuCtx)
 {
+#if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_FIO_LIB_EN > 0)
     INT i;
     
     LW_FPU_CONTEXT  *pfpuCtx    = (LW_FPU_CONTEXT *)pvFpuCtx;
@@ -70,6 +71,7 @@ static VOID  armVfp9CtxShow (INT iFd, PVOID pvFpuCtx)
         fdprintf(iFd, "FPS[%02d] = 0x%08x  ", i,     pcpufpuCtx->FPUCTX_uiDreg[i]);
         fdprintf(iFd, "FPS[%02d] = 0x%08x\n", i + 1, pcpufpuCtx->FPUCTX_uiDreg[i + 1]);
     }
+#endif
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: armVfp9PrimaryInit

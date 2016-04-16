@@ -43,8 +43,9 @@
 /*
  * ipc version
  * 0.0.4    2013.11.28 add thread test point in msgrcv() and msgsnd()
+ * 0.0.5    2016.04.13 fixed semctl() va_arg() bug.
  */
-#define IPC_VER         "0.0.4"
+#define IPC_VER         "0.0.5"
 
 /*
  * ipc config

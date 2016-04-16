@@ -133,7 +133,7 @@ INT  API_RomFsDrvInstall (VOID)
     
     _G_iRomfsDrvNum = iosDrvInstallEx2(&fileop, LW_DRV_TYPE_NEW_1);     /*  使用 NEW_1 型设备驱动程序   */
 
-    DRIVER_LICENSE(_G_iRomfsDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iRomfsDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iRomfsDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iRomfsDrvNum, "romfs driver.");
 
@@ -306,11 +306,6 @@ static LONG __romFsOpen (PROM_VOLUME     promfs,
         return  (PX_ERROR);
     
     } else {
-        if (iFlags & O_CREAT) {
-            _ErrorHandle(EROFS);
-            return  (PX_ERROR);
-        }
-        
         stSize   = sizeof(ROM_FILE) + lib_strlen(pcName);
         promfile = (PROM_FILE)__SHEAP_ALLOC(stSize);
         if (promfile == LW_NULL) {
@@ -1140,7 +1135,7 @@ static INT  __romFsIoctl (PLW_FD_ENTRY  pfdentry,
         return  (ERROR_NONE);
 
     case FIOFSTYPE:                                                     /*  获得文件系统类型            */
-        *(PCHAR *)lArg = "rom FileSystem";
+        *(PCHAR *)lArg = "ROM FileSystem";
         return  (ERROR_NONE);
     
     case FIOGETFORCEDEL:                                                /*  强制卸载设备是否被允许      */

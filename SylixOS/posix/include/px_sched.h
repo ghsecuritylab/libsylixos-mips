@@ -80,6 +80,15 @@ typedef LW_CLASS_CPUSET cpu_set_t;
 LW_API int              sched_setaffinity(pid_t pid, size_t setsize, const cpu_set_t *set);
 LW_API int              sched_getaffinity(pid_t pid, size_t setsize, cpu_set_t *set);
 
+/*********************************************************************************************************
+  sched GJB7714 extern api
+*********************************************************************************************************/
+
+#if LW_CFG_GJB7714_EN > 0
+LW_API int              sched_settimeslice(UINT32  ticks);
+LW_API unsigned int     sched_gettimeslice(void);
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
+
 #ifdef __cplusplus
 }
 #endif                                                                  /*  __cplusplus                 */

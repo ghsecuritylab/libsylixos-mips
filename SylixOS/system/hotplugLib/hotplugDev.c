@@ -88,7 +88,7 @@ INT  _hotplugDrvInstall (VOID)
                                            _hotplugRead,
                                            _hotplugWrite,
                                            _hotplugIoctl);
-        DRIVER_LICENSE(_G_iHotplugDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iHotplugDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iHotplugDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iHotplugDrvNum, "hotplug message driver.");
     }

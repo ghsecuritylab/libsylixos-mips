@@ -61,7 +61,7 @@ INT  API_PipeDrvInstall (VOID)
                                          _PipeWrite,                    /*  WRITE                       */
                                          _PipeIoctl);                   /*  IOCTL                       */
                                           
-        DRIVER_LICENSE(_G_iPipeDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iPipeDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iPipeDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iPipeDrvNum, "VxWorks pipe driver.");
     }

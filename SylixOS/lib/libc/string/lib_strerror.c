@@ -317,6 +317,7 @@ PCHAR  lib_strerror (INT  iNum)
     case ERROR_REGION_SIZE:             return  ("Invalid region size");
     case ERROR_REGION_USED:             return  ("Pegion used");
     case ERROR_REGION_ALIGN:            return  ("Miss align");
+    case ERROR_REGION_NOMEM:            return  ("No enough memory");
 
     /*
      *  rms

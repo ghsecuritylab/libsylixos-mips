@@ -61,7 +61,7 @@
 /*********************************************************************************************************
   ²Ã¼ôºê
 *********************************************************************************************************/
-#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_DISKCACHE_EN > 0)
+#if LW_CFG_OEMDISK_EN > 0
 /*********************************************************************************************************
   OEM ´ÅÅÌ¿ØÖÆ¿é
 *********************************************************************************************************/
@@ -84,6 +84,12 @@ LW_API PLW_OEMDISK_CB    API_OemDiskMount(CPCHAR        pcVolName,
                                           PVOID         pvDiskCacheMem, 
                                           size_t        stMemSize, 
                                           INT           iMaxBurstSector);
+LW_API PLW_OEMDISK_CB   API_OemDiskMount2(CPCHAR        pcVolName,
+                                          PLW_BLK_DEV   pblkdDisk,
+                                          PVOID         pvDiskCacheMem, 
+                                          size_t        stMemSize, 
+                                          INT           iMaxRBurstSector,
+                                          INT           iMaxWBurstSector);
                                           
 LW_API PLW_OEMDISK_CB    API_OemDiskMountEx(CPCHAR        pcVolName,
                                             PLW_BLK_DEV   pblkdDisk,
@@ -92,6 +98,14 @@ LW_API PLW_OEMDISK_CB    API_OemDiskMountEx(CPCHAR        pcVolName,
                                             INT           iMaxBurstSector,
                                             CPCHAR        pcFsName,
                                             BOOL          bForceFsType);
+LW_API PLW_OEMDISK_CB    API_OemDiskMountEx2(CPCHAR        pcVolName,
+                                             PLW_BLK_DEV   pblkdDisk,
+                                             PVOID         pvDiskCacheMem, 
+                                             size_t        stMemSize, 
+                                             INT           iMaxRBurstSector,
+                                             INT           iMaxWBurstSector,
+                                             CPCHAR        pcFsName,
+                                             BOOL          bForceFsType);
                                             
 LW_API INT               API_OemDiskUnmount(PLW_OEMDISK_CB  poemd);
 LW_API INT               API_OemDiskUnmountEx(PLW_OEMDISK_CB  poemd, BOOL  bForce);
@@ -110,7 +124,9 @@ LW_API INT               API_OemDiskHotplugEventMessage(PLW_OEMDISK_CB  poemd,
 #endif                                                                  /*  LW_CFG_HOTPLUG_EN > 0       */
 
 #define oemDiskMount                API_OemDiskMount
+#define oemDiskMount2               API_OemDiskMount2
 #define oemDiskMountEx              API_OemDiskMountEx
+#define oemDiskMountEx2             API_OemDiskMountEx2
 
 #define oemDiskUnmount              API_OemDiskUnmount
 #define oemDiskUnmountEx            API_OemDiskUnmountEx
@@ -118,8 +134,7 @@ LW_API INT               API_OemDiskHotplugEventMessage(PLW_OEMDISK_CB  poemd,
 #define oemDiskGetPath              API_OemDiskGetPath
 #define oemDiskHotplugEventMessage  API_OemDiskHotplugEventMessage
 
-#endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
-                                                                        /*  (LW_CFG_DISKCACHE_EN > 0)   */
+#endif                                                                  /*  LW_CFG_OEMDISK_EN > 0       */
 #endif                                                                  /*  __OEMDISK_H                 */
 /*********************************************************************************************************
   END

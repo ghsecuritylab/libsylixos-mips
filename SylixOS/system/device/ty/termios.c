@@ -166,6 +166,7 @@ int cfsetispeed (struct termios *tp, speed_t speed)
         return  (PX_ERROR);
     }
     
+    tp->c_cflag &= ~CBAUD;
     tp->c_cflag |= speed;
     
     return  (ERROR_NONE);
@@ -188,6 +189,7 @@ int cfsetospeed (struct termios *tp, speed_t speed)
         return  (PX_ERROR);
     }
     
+    tp->c_cflag &= ~CBAUD;
     tp->c_cflag |= speed;
     
     return  (ERROR_NONE);

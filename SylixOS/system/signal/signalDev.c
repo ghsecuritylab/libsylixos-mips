@@ -65,7 +65,7 @@ INT  API_SignalfdDrvInstall (VOID)
                                          _sigfdRead,
                                          LW_NULL,
                                          _sigfdIoctl);
-        DRIVER_LICENSE(_G_iSigfdDrvNum,     "Dual BSD/GPL->Ver 1.0");
+        DRIVER_LICENSE(_G_iSigfdDrvNum,     "GPL->Ver 2.0");
         DRIVER_AUTHOR(_G_iSigfdDrvNum,      "Han.hui");
         DRIVER_DESCRIPTION(_G_iSigfdDrvNum, "signalfd driver.");
     }

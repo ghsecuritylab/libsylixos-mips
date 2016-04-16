@@ -128,7 +128,7 @@ INT  API_RamFsDrvInstall (VOID)
     
     _G_iRamfsDrvNum = iosDrvInstallEx2(&fileop, LW_DRV_TYPE_NEW_1);     /*  使用 NEW_1 型设备驱动程序   */
 
-    DRIVER_LICENSE(_G_iRamfsDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iRamfsDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iRamfsDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iRamfsDrvNum, "ramfs driver.");
 
@@ -652,6 +652,10 @@ static ssize_t  __ramFsWrite (PLW_FD_ENTRY  pfdentry,
         __RAMFS_FILE_UNLOCK(pramn);
         _ErrorHandle(EISDIR);
         return  (PX_ERROR);
+    }
+    
+    if (pfdentry->FDENTRY_iFlag & O_APPEND) {                           /*  追加模式                    */
+        pfdentry->FDENTRY_oftPtr = pfdnode->FDNODE_oftSize;             /*  移动读写指针到末尾          */
     }
     
     sstWriteNum = __ram_write(pramn, pcBuffer, stNBytes, (size_t)pfdentry->FDENTRY_oftPtr);
@@ -1446,7 +1450,7 @@ static INT  __ramFsIoctl (PLW_FD_ENTRY  pfdentry,
         return  (__ramFsChown(pfdentry, (LW_IO_USR *)lArg));
     
     case FIOFSTYPE:                                                     /*  获得文件系统类型            */
-        *(PCHAR *)lArg = "ram FileSystem";
+        *(PCHAR *)lArg = "RAM FileSystem";
         return  (ERROR_NONE);
     
     case FIOGETFORCEDEL:                                                /*  强制卸载设备是否被允许      */

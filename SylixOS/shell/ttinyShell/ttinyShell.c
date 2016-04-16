@@ -41,6 +41,7 @@
 2014.07.10  shell 系统加入对新的颜色系统的初始化.
             shell 去除老式色彩控制函数.
 2014.11.22  加入选项设置函数.
+2016.03.25  修正 API_TShellExecBg() 调用 shell 背景任务创建函数参数错误.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -756,8 +757,8 @@ INT  API_TShellExecBg (CPCHAR  pcCommandExec, INT  iFd[3], BOOL  bClosed[3],
         }
     }
     
-    iError = __tshellBgCreateEx(iFd, bClosed, pcCommandExec, 0ul,
-                                lib_strlen(pcCommandExec), bIsJoin, 0, pulSh, &iRet);
+    iError = __tshellBgCreateEx(iFd, bClosed, pcCommandExec, lib_strlen(pcCommandExec), 
+                                0ul, bIsJoin, 0, pulSh, &iRet);
     if (iError < 0) {                                                   /*  背景创建失败                */
         /*
          *  运行失败, 则关闭内核中需要关闭的文件

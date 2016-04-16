@@ -54,7 +54,7 @@
 *********************************************************************************************************/
 #define __LW_XMODEM_DATA_LEN        128                                 /*  数据块大小                  */
 #define __LW_XMODEM_PACKET_LEN      (__LW_XMODEM_DATA_LEN + 4)          /*  数据包大小                  */
-#define __LW_XMODEM_TIMEOUT         1                                   /*  以秒作为超时时间的单位      */
+#define __LW_XMODEM_TIMEOUT         60                                  /*  以秒作为超时时间的单位      */
 /*********************************************************************************************************
 ** 函数名称: __tshellXmodemCleanup
 ** 功能描述: Xmodem 操作遇到 control-C 时的清除动作
@@ -65,8 +65,22 @@
 *********************************************************************************************************/
 static VOID  __tshellXmodemCleanup (INT  iFile)
 {
+    struct timeval  tmval = {2, 0};
+           CHAR     cTemp[16];
+    
     if (iFile >= 0) {
         close(iFile);
+    }
+    
+    /*
+     *  由于一些终端软件结束文件传输时, 会连续发送 __LW_XMODEM_CAN 0x18 命令, 
+     *  所以会造成系统转换为 OPT_TERMINAL 模式时与 ctrl+x 命令冲突, 造成系统重启,
+     *  所以这里需要等待 2s 的平静时间.
+     */
+    while (waitread(STD_IN, &tmval) == 1) {
+        if (read(STD_IN, cTemp, sizeof(cTemp)) <= 0) {
+            break;
+        }
     }
     
     ioctl(STD_IN, FIOSETOPTIONS, OPT_TERMINAL);
@@ -181,6 +195,10 @@ static INT  __tshellFsCmdXmodems (INT  iArgC, PCHAR  ppcArgV[])
             bStart = LW_TRUE;
         
         } else if (ucRead == __LW_XMODEM_ACK) {
+            ucSeq++;
+            if (ucSeq > 255) {
+                ucSeq = 1;
+            }
             bStart = LW_TRUE;
             
             if (bIsEot) {

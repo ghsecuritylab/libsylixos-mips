@@ -43,7 +43,7 @@
 /*********************************************************************************************************
   裁剪宏
 *********************************************************************************************************/
-#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_DISKCACHE_EN > 0)
+#if LW_CFG_OEMDISK_EN > 0
 #include "oemBlkIo.h"
 /*********************************************************************************************************
   blk io 前缀
@@ -112,13 +112,14 @@ static VOID __oemDiskForceDeleteDis (CPCHAR  pcVolName)
     }
 }
 /*********************************************************************************************************
-** 函数名称: API_OemDiskMountEx
+** 函数名称: API_OemDiskMountEx2
 ** 功能描述: 自动挂载一个磁盘的所有分区. 可以使用指定的文件系统类型挂载
 ** 输　入  : pcVolName          根节点名字 (当前 API 将根据分区情况在末尾加入数字)
 **           pblkdDisk          物理磁盘控制块 (必须是直接操作物理磁盘)
 **           pvDiskCacheMem     磁盘 CACHE 缓冲区的内存起始地址  (为零表示动态分配磁盘缓冲)
 **           stMemSize          磁盘 CACHE 缓冲区大小            (为零表示不需要 DISK CACHE)
-**           iMaxBurstSector    磁盘猝发读写的最大扇区数
+**           iMaxRBurstSector   磁盘猝发读的最大扇区数
+**           iMaxWBurstSector   磁盘猝发写的最大扇区数
 **           pcFsName           文件系统类型, 例如: "vfat" "tpsfs" "iso9660" "ntfs" ...
 **           bForceFsType       是否强制使用指定的文件系统类型
 ** 输　出  : OEM 磁盘控制块
@@ -128,13 +129,14 @@ static VOID __oemDiskForceDeleteDis (CPCHAR  pcVolName)
                                            API 函数
 *********************************************************************************************************/
 LW_API 
-PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
-                                    PLW_BLK_DEV   pblkdDisk,
-                                    PVOID         pvDiskCacheMem, 
-                                    size_t        stMemSize, 
-                                    INT           iMaxBurstSector,
-                                    CPCHAR        pcFsName,
-                                    BOOL          bForceFsType)
+PLW_OEMDISK_CB  API_OemDiskMountEx2 (CPCHAR        pcVolName,
+                                     PLW_BLK_DEV   pblkdDisk,
+                                     PVOID         pvDiskCacheMem, 
+                                     size_t        stMemSize, 
+                                     INT           iMaxRBurstSector,
+                                     INT           iMaxWBurstSector,
+                                     CPCHAR        pcFsName,
+                                     BOOL          bForceFsType)
 {
              INT            i;
              INT            iErrLevel = 0;
@@ -195,11 +197,12 @@ PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
      *  创建物理磁盘缓冲, 同时会初始化磁盘
      */
     if (stMemSize) {
-        ulError = API_DiskCacheCreate(pblkdDisk, 
-                                      pvDiskCacheMem, 
-                                      stMemSize,
-                                      iMaxBurstSector, 
-                                      &poemd->OEMDISK_pblkdCache);
+        ulError = API_DiskCacheCreateEx(pblkdDisk, 
+                                        pvDiskCacheMem, 
+                                        stMemSize,
+                                        iMaxRBurstSector, 
+                                        iMaxWBurstSector, 
+                                        &poemd->OEMDISK_pblkdCache);
         if (ulError) {
             iErrLevel = 1;
             goto    __error_handle;
@@ -347,24 +350,62 @@ __error_handle:
     return  (LW_NULL);
 }
 /*********************************************************************************************************
-** 函数名称: API_OemDiskMount
-** 功能描述: 自动挂载一个磁盘的所有分区. 当无法识别分区时, 使用 FAT 格式挂载.
+** 函数名称: API_OemDiskMountEx
+** 功能描述: 自动挂载一个磁盘的所有分区. 可以使用指定的文件系统类型挂载
 ** 输　入  : pcVolName          根节点名字 (当前 API 将根据分区情况在末尾加入数字)
 **           pblkdDisk          物理磁盘控制块 (必须是直接操作物理磁盘)
 **           pvDiskCacheMem     磁盘 CACHE 缓冲区的内存起始地址  (为零表示动态分配磁盘缓冲)
 **           stMemSize          磁盘 CACHE 缓冲区大小            (为零表示不需要 DISK CACHE)
 **           iMaxBurstSector    磁盘猝发读写的最大扇区数
+**           pcFsName           文件系统类型, 例如: "vfat" "tpsfs" "iso9660" "ntfs" ...
+**           bForceFsType       是否强制使用指定的文件系统类型
+** 输　出  : OEM 磁盘控制块
+** 全局变量: 
+** 调用模块: 
+** 注  意  : 挂载的文件系统不包含 yaffs 文件系统, yaffs 属于静态文件系统.
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+PLW_OEMDISK_CB  API_OemDiskMountEx (CPCHAR        pcVolName,
+                                    PLW_BLK_DEV   pblkdDisk,
+                                    PVOID         pvDiskCacheMem, 
+                                    size_t        stMemSize, 
+                                    INT           iMaxBurstSector,
+                                    CPCHAR        pcFsName,
+                                    BOOL          bForceFsType)
+{
+    INT   iMaxRBurstSector;
+    
+    if (iMaxBurstSector > 2) {
+        iMaxRBurstSector = iMaxBurstSector >> 1;                        /*  读猝发长度默认被写少一半    */
+    }
+    
+    return  (API_OemDiskMountEx2(pcVolName, pblkdDisk,
+                                 pvDiskCacheMem, stMemSize, 
+                                 iMaxRBurstSector, iMaxBurstSector,
+                                 pcFsName, bForceFsType));
+}
+/*********************************************************************************************************
+** 函数名称: API_OemDiskMount2
+** 功能描述: 自动挂载一个磁盘的所有分区. 当无法识别分区时, 使用 FAT 格式挂载.
+** 输　入  : pcVolName          根节点名字 (当前 API 将根据分区情况在末尾加入数字)
+**           pblkdDisk          物理磁盘控制块 (必须是直接操作物理磁盘)
+**           pvDiskCacheMem     磁盘 CACHE 缓冲区的内存起始地址  (为零表示动态分配磁盘缓冲)
+**           stMemSize          磁盘 CACHE 缓冲区大小            (为零表示不需要 DISK CACHE)
+**           iMaxRBurstSector   磁盘猝发读的最大扇区数
+**           iMaxWBurstSector   磁盘猝发写的最大扇区数
 ** 输　出  : OEM 磁盘控制块
 ** 全局变量: 
 ** 调用模块: 
                                            API 函数
 *********************************************************************************************************/
 LW_API 
-PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
-                                  PLW_BLK_DEV   pblkdDisk,
-                                  PVOID         pvDiskCacheMem, 
-                                  size_t        stMemSize, 
-                                  INT           iMaxBurstSector)
+PLW_OEMDISK_CB  API_OemDiskMount2 (CPCHAR        pcVolName,
+                                   PLW_BLK_DEV   pblkdDisk,
+                                   PVOID         pvDiskCacheMem, 
+                                   size_t        stMemSize, 
+                                   INT           iMaxRBurstSector,
+                                   INT           iMaxWBurstSector)
 {
              INT            i;
              INT            iErrLevel = 0;
@@ -425,11 +466,12 @@ PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
      *  创建物理磁盘缓冲, 同时会初始化磁盘
      */
     if (stMemSize) {
-        ulError = API_DiskCacheCreate(pblkdDisk, 
-                                      pvDiskCacheMem, 
-                                      stMemSize,
-                                      iMaxBurstSector, 
-                                      &poemd->OEMDISK_pblkdCache);
+        ulError = API_DiskCacheCreateEx(pblkdDisk, 
+                                        pvDiskCacheMem, 
+                                        stMemSize,
+                                        iMaxRBurstSector, 
+                                        iMaxWBurstSector, 
+                                        &poemd->OEMDISK_pblkdCache);
         if (ulError) {
             iErrLevel = 1;
             goto    __error_handle;
@@ -564,6 +606,36 @@ __error_handle:
     __SHEAP_FREE(poemd);
     
     return  (LW_NULL);
+}
+/*********************************************************************************************************
+** 函数名称: API_OemDiskMount2
+** 功能描述: 自动挂载一个磁盘的所有分区. 当无法识别分区时, 使用 FAT 格式挂载.
+** 输　入  : pcVolName          根节点名字 (当前 API 将根据分区情况在末尾加入数字)
+**           pblkdDisk          物理磁盘控制块 (必须是直接操作物理磁盘)
+**           pvDiskCacheMem     磁盘 CACHE 缓冲区的内存起始地址  (为零表示动态分配磁盘缓冲)
+**           stMemSize          磁盘 CACHE 缓冲区大小            (为零表示不需要 DISK CACHE)
+**           iMaxBurstSector    磁盘猝发读写的最大扇区数
+** 输　出  : OEM 磁盘控制块
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+PLW_OEMDISK_CB  API_OemDiskMount (CPCHAR        pcVolName,
+                                  PLW_BLK_DEV   pblkdDisk,
+                                  PVOID         pvDiskCacheMem, 
+                                  size_t        stMemSize, 
+                                  INT           iMaxBurstSector)
+{
+    INT   iMaxRBurstSector;
+    
+    if (iMaxBurstSector > 2) {
+        iMaxRBurstSector = iMaxBurstSector >> 1;                        /*  读猝发长度默认被写少一半    */
+    }
+    
+    return  (API_OemDiskMount2(pcVolName, pblkdDisk,
+                               pvDiskCacheMem, stMemSize, 
+                               iMaxRBurstSector, iMaxBurstSector));
 }
 /*********************************************************************************************************
 ** 函数名称: API_OemDiskUnmountEx
@@ -739,8 +811,7 @@ INT  API_OemDiskHotplugEventMessage (PLW_OEMDISK_CB  poemd,
 }
 
 #endif                                                                  /*  LW_CFG_HOTPLUG_EN > 0       */
-#endif                                                                  /*  (LW_CFG_MAX_VOLUMES > 0)    */
-                                                                        /*  (LW_CFG_DISKCACHE_EN > 0)   */
+#endif                                                                  /*  LW_CFG_OEMDISK_EN > 0       */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

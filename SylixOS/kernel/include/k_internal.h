@@ -614,6 +614,7 @@ PVOID          _HeapZallocate(PLW_CLASS_HEAP  pheap, size_t  stByteSize, CPCHAR 
 PVOID          _HeapFree(PLW_CLASS_HEAP       pheap, PVOID pvStartAddress, 
                          BOOL bIsNeedVerify, CPCHAR  pcPurpose);
 ULONG          _HeapGetInfo(PLW_CLASS_HEAP    pheap, PLW_CLASS_SEGMENT  psegmentList[], INT iMaxCounter);
+size_t         _HeapGetMax(PLW_CLASS_HEAP  pheap);
 PVOID          _HeapRealloc(PLW_CLASS_HEAP    pheap, 
                             PVOID             pvStartAddress, 
                             size_t            stNewByteSize,

@@ -25,11 +25,11 @@
 #include "../SylixOS/kernel/include/k_kernel.h"
 #include "../SylixOS/system/include/s_system.h"
 #include "../SylixOS/fs/include/fs_fs.h"
-#include "../fatFs/ff.h"
+#include "../SylixOS/fs/include/fs_internal.h"
 /*********************************************************************************************************
   裁剪宏
 *********************************************************************************************************/
-#if (LW_CFG_MAX_VOLUMES > 0) && (LW_CFG_FATFS_EN > 0)
+#if LW_CFG_OEMDISK_EN > 0
 /*********************************************************************************************************
   分区表中重要信息地点
 *********************************************************************************************************/
@@ -138,8 +138,8 @@ static INT  __oemFdisk (INT                     iBlkFd,
         pucPartEntry[6] = (BYTE)((uiECyl >> 2) + 63);                   /*  End sector                  */
         pucPartEntry[7] = (BYTE)uiECyl;                                 /*  End cylinder                */
 
-        ST_DWORD(pucPartEntry + 8, uiPStartSec);                        /*  Start sector in LBA         */
-        ST_DWORD(pucPartEntry + 12, uiPNSec);                           /*  Partition size              */
+        BLK_ST_DWORD(pucPartEntry + 8, uiPStartSec);                    /*  Start sector in LBA         */
+        BLK_ST_DWORD(pucPartEntry + 12, uiPNSec);                       /*  Partition size              */
 
         uiBCyl += uiPCyl;                                               /*  Next partition              */
         if (uiBCyl > uiTotCyl) {
@@ -295,8 +295,8 @@ static INT  __oemFdiskGet (INT                  iBlkFd,
 
         if (LW_DISK_PART_IS_VALID(ucPartType)) {
             pfdpInfo = &fdpInfo[uiNCnt];                                /*  逻辑分区信息                */
-            ulSSec   = LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_STARTSECTOR]);
-            ulNSec   = LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_NSECTOR]);
+            ulSSec   = BLK_LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_STARTSECTOR]);
+            ulNSec   = BLK_LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_NSECTOR]);
 
             if (ucActiveFlag == 0x80) {
                 pfdpInfo->FDP_bIsActive = LW_TRUE;
@@ -312,10 +312,10 @@ static INT  __oemFdiskGet (INT                  iBlkFd,
 
         } else if (LW_DISK_PART_IS_EXTENDED(ucPartType)) {
             if (ulSecStart == 0ul) {                                    /*  是否位于主分区表            */
-                ulSecExtStart = LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_STARTSECTOR]);
+                ulSecExtStart = BLK_LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_STARTSECTOR]);
                 ulSecStart    = ulSecExtStart;
             } else {                                                    /*  位于扩展分区分区表          */
-                ulSecStart  = LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_STARTSECTOR]);
+                ulSecStart  = BLK_LD_DWORD(&pucSecBuf[iPartInfoStart + __DISK_PART_STARTSECTOR]);
                 ulSecStart += ulSecExtStart;
             }
 
@@ -551,8 +551,7 @@ INT  API_OemFdiskShow (CPCHAR  pcBlkDev)
     return  (ERROR_NONE);
 }
 
-#endif                                                                  /*  LW_CFG_MAX_VOLUMES > 0      */
-                                                                        /*  LW_CFG_FATFS_EN > 0         */
+#endif                                                                  /*  LW_CFG_OEMDISK_EN > 0       */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

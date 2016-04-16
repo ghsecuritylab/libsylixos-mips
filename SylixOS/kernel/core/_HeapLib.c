@@ -59,6 +59,7 @@
             free 操作确保最右侧分段应该在 freelist 的最后, 为最不推荐分配的段.
 2014.08.15  采用新的判断对齐内存释放算法.
 2014.10.27  加入多操作系统通信接口.
+2016.04.13  加入 _HeapGetMax() 获取最大内存空闲段大小.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -491,6 +492,7 @@ ULONG  _HeapGetInfo (PLW_CLASS_HEAP  pheap, PLW_CLASS_SEGMENT  psegmentList[], I
     if (ulLockErr) {                                                    /*  出现锁错误                  */
         return  (0);
     }
+    
     for (plineSegmentList   = &psegmentFrist->SEGMENT_lineManage;
          (plineSegmentList != LW_NULL) && (iMaxCounter > 0);
          plineSegmentList   = _list_line_get_next(plineSegmentList)) {  /*  查询所有的分段              */
@@ -503,6 +505,43 @@ ULONG  _HeapGetInfo (PLW_CLASS_HEAP  pheap, PLW_CLASS_SEGMENT  psegmentList[], I
     __heap_unlock(pheap);
     
     return  (ulI);
+}
+/*********************************************************************************************************
+** 函数名称: _HeapGetMax
+** 功能描述: 获得最大连续内存大小
+** 输　入  : pheap                 堆控制块
+** 输　出  : 最大空闲内存分段大小
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+size_t  _HeapGetMax (PLW_CLASS_HEAP  pheap)
+{
+             PLW_LIST_RING      pringFreeSegment;
+    REGISTER PLW_CLASS_SEGMENT  psegment;
+    REGISTER ULONG              ulLockErr;
+             size_t             stMax = 0;
+    
+    ulLockErr = __heap_lock(pheap);
+    if (ulLockErr) {                                                    /*  出现锁错误                  */
+        return  (0);
+    }
+    
+    pringFreeSegment = pheap->HEAP_pringFreeSegment;
+    if (pringFreeSegment) {
+        do {
+            psegment = _LIST_ENTRY(pringFreeSegment, 
+                                   LW_CLASS_SEGMENT, 
+                                   SEGMENT_ringFreeList);
+            if (stMax < psegment->SEGMENT_stByteSize) {
+                stMax = psegment->SEGMENT_stByteSize;
+            }
+            
+            pringFreeSegment = _list_ring_get_next(pringFreeSegment);
+        } while (pringFreeSegment != pheap->HEAP_pringFreeSegment);
+    }
+    __heap_unlock(pheap);
+    
+    return  (stMax);
 }
 /*********************************************************************************************************
 ** 函数名称: _HeapVerify

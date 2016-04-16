@@ -23,7 +23,9 @@
 2013.05.01  If successful, the pthread_cond_*() functions shall return zero; 
             otherwise, an error number shall be returned to indicate the error.
 2014.07.04  加入时钟类型设置与获取.
+2016.04.13  加入 GJB7714 相关 API 支持.
 *********************************************************************************************************/
+#define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
 #include "../include/px_pthread.h"                                      /*  已包含操作系统头文件        */
 /*********************************************************************************************************
@@ -44,9 +46,7 @@ extern void  __pthread_mutex_init_invisible(pthread_mutex_t  *pmutex);
 *********************************************************************************************************/
 static void  __pthread_cond_init_invisible (pthread_cond_t  *pcond)
 {
-    if (pcond && 
-        !pcond->TCD_ulSignal &&
-        !pcond->TCD_ulMutxe) {
+    if (pcond && !pcond->TCD_ulSignal) {
         pthread_cond_init(pcond, LW_NULL);
     }
 }
@@ -409,6 +409,69 @@ int  pthread_cond_reltimedwait_np (pthread_cond_t         *pcond,
 }
 
 #endif                                                                  /*  LW_CFG_POSIXEX_EN > 0       */
+/*********************************************************************************************************
+** 函数名称: pthread_cond_getinfo
+** 功能描述: 获得条件变量信息
+** 输　入  : pcond         条件变量控制块
+**           info          条件变量信息
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API 
+int  pthread_cond_getinfo (pthread_cond_t  *pcond, pthread_cond_info_t  *info)
+{
+    if (!pcond || !info) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    info->signal = pcond->TCD_ulSignal;
+    info->mutex  = pcond->TCD_ulMutex;
+    info->cnt    = pcond->TCD_ulCounter;
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_cond_show
+** 功能描述: 显示条件变量信息
+** 输　入  : pcond         条件变量控制块
+**           level         显示等级
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_cond_show (pthread_cond_t  *pcond, int  level)
+{
+    if (!pcond) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    printf("cond show >>\n\n");
+    printf("cond signal handle : %lx\n", pcond->TCD_ulSignal);
+    printf("cond mutex  handle : %lx\n", pcond->TCD_ulMutex);
+    printf("cond counter       : %lu\n", pcond->TCD_ulCounter);
+    
+    if (level == 1) {
+        printf("cond signel show >>\n\n");
+        API_SemaphoreShow(pcond->TCD_ulSignal);
+        
+        if (pcond->TCD_ulMutex) {
+            printf("cond mutex show >>\n\n");
+            API_SemaphoreShow(pcond->TCD_ulMutex);
+        }
+    }
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

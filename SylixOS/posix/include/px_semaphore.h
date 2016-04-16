@@ -53,6 +53,7 @@ typedef struct {
 /*********************************************************************************************************
   sem api
 *********************************************************************************************************/
+
 LW_API int          sem_init(sem_t  *psem, int  pshared, unsigned int  value);
 LW_API int          sem_destroy(sem_t  *psem);
 LW_API sem_t       *sem_open(const char  *name, int  flag, ...);
@@ -66,6 +67,23 @@ LW_API int          sem_reltimedwait_np(sem_t  *psem, const struct timespec *rel
 #endif                                                                  /*  LW_CFG_POSIXEX_EN > 0       */
 LW_API int          sem_post(sem_t  *psem);
 LW_API int          sem_getvalue(sem_t  *psem, int  *pivalue);
+
+/*********************************************************************************************************
+  sem GJB7714 extern api
+*********************************************************************************************************/
+
+#if LW_CFG_GJB7714_EN > 0
+typedef struct {
+    ULONG                   SEMINFO_ulCounter;
+    ULONG                   SEMINFO_ulOption;
+    ULONG                   SEMINFO_ulBlockNum;
+    ULONG                   SEMINFO_ulPad[6];
+} sem_info_t;
+
+LW_API int          sem_flush(sem_t  *psem);
+LW_API int          sem_getinfo(sem_t  *psem, sem_info_t  *info);
+LW_API int          sem_show(sem_t  *psem, int  level);
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 
 #ifdef __cplusplus
 }

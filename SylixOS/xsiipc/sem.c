@@ -668,7 +668,7 @@ int semctl (int semid, int semnum, int cmd, ...)
     switch (cmd) {
 
     case IPC_STAT:
-        arg.buf = va_arg(varlist, struct semid_ds *);
+        arg = va_arg(varlist, union semun);
         if (!arg.buf) {
             errno = EINVAL;
         } else {
@@ -679,7 +679,7 @@ int semctl (int semid, int semnum, int cmd, ...)
         break;
 
     case IPC_SET:
-        arg.buf = va_arg(varlist, struct semid_ds *);
+        arg = va_arg(varlist, union semun);
         if (!arg.buf) {
             errno = EINVAL;
         } else {
@@ -702,7 +702,7 @@ int semctl (int semid, int semnum, int cmd, ...)
         break;
 
     case SETVAL:
-        arg.val = va_arg(varlist, int);
+        arg = va_arg(varlist, union semun);
         ipc_lock();
         ret = do_semsetval(semid, semnum, arg.val);
         ipc_unlock();
@@ -727,7 +727,7 @@ int semctl (int semid, int semnum, int cmd, ...)
         break;
 
     case GETALL:
-        arg.array = va_arg(varlist, unsigned short *);
+        arg = va_arg(varlist, union semun);
         if (!arg.array) {
             errno = EINVAL;
         } else {
@@ -738,7 +738,7 @@ int semctl (int semid, int semnum, int cmd, ...)
         break;
 
     case SETALL:
-        arg.array = va_arg(varlist, unsigned short *);
+        arg = va_arg(varlist, union semun);
         if (!arg.array) {
             errno = EINVAL;
         } else {

@@ -40,13 +40,13 @@ LW_API
 int  sched_rms_init (sched_rms_t  *prms, pthread_t  thread)
 {
     if (!prms) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (PX_ERROR);
     }
     
     if (API_ThreadSetSchedParam(thread, LW_OPTION_SCHED_FIFO, 
                                 LW_OPTION_RESPOND_IMMIEDIA)) {
-        _ErrorHandle(ESRCH);
+        errno = ESRCH;
         return  (PX_ERROR);
     }
     
@@ -67,7 +67,7 @@ LW_API
 int  sched_rms_destroy (sched_rms_t  *prms)
 {
     if (!prms) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (PX_ERROR);
     }
     
@@ -93,7 +93,7 @@ int  sched_rms_period (sched_rms_t  *prms, const struct timespec *period)
     struct timespec etime;
     
     if (!prms || !period) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (PX_ERROR);
     }
     
@@ -111,7 +111,7 @@ int  sched_rms_period (sched_rms_t  *prms, const struct timespec *period)
         __timespecSub(&etime, &prms->PRMS_tsSave);
         if (__timespecLeftTime(period, &etime)) {                       /*  执行时间超过周期            */
             lib_clock_gettime(CLOCK_MONOTONIC, &prms->PRMS_tsSave);     /*  获得当前时间                */
-            _ErrorHandle(EOVERFLOW);
+            errno = EOVERFLOW;
             return  (PX_ERROR);
         }
         
@@ -126,7 +126,7 @@ int  sched_rms_period (sched_rms_t  *prms, const struct timespec *period)
         return  (nanosleep(&temp, LW_NULL));
         
     default:
-        _ErrorHandle(ENOTSUP);
+        errno = ENOTSUP;
         return  (PX_ERROR);
     }
 }

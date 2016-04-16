@@ -54,7 +54,7 @@ __KERNEL_EXT  VOIDFUNCPTR             _K_pfuncKernelDebugError;         /*  内核
   HOOK TABLE
 *********************************************************************************************************/
 #ifdef __KERNEL_MAIN_FILE
-              LW_CLASS_TIMING         _K_timingKernel = {100, 10000000, 100, 5, 1};
+              LW_CLASS_TIMING         _K_timingKernel = {100, 10000000, 100, 5, 1, LW_CFG_SLICE_DEFAULT};
 #else
 __KERNEL_EXT  LW_CLASS_TIMING         _K_timingKernel;                  /*  内核时间参数集合            */
 #endif                                                                  /*  __KERNEL_MAIN_FILE          */

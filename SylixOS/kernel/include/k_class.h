@@ -69,6 +69,7 @@ typedef struct {
     ULONG                TIMING_ulHTimerHz;                             /*  高速定时器频率              */
     ULONG                TIMING_ulITimerRate;                           /*  应用定时器分辨率            */
     ULONG                TIMING_ulHotplugSec;                           /*  热插拔检测时间              */
+    UINT16               TIMING_usSlice;                                /*  默认时间片 tick 数          */
 } LW_CLASS_TIMING;
 
 /*********************************************************************************************************
@@ -370,7 +371,7 @@ typedef __LW_THREAD_EXT  *__PLW_THREAD_EXT;
 
 typedef struct {
     LW_OBJECT_HANDLE      TCD_ulSignal;                                 /*  等待信号量句柄              */
-    LW_OBJECT_HANDLE      TCD_ulMutxe;                                  /*  互斥信号量                  */
+    LW_OBJECT_HANDLE      TCD_ulMutex;                                  /*  互斥信号量                  */
     ULONG                 TCD_ulCounter;                                /*  引用计数器                  */
 } LW_THREAD_COND;
 typedef LW_THREAD_COND   *PLW_THREAD_COND;

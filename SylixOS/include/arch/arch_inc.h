@@ -51,6 +51,7 @@
 
 #elif (defined LW_CFG_CPU_ARCH_PPC)
 #include "ppc/arch_types.h"
+#include "ppc/arch_def.h"
 #include "ppc/arch_compiler.h"
 #include "ppc/arch_float.h"
 #include "ppc/arch_limits.h"

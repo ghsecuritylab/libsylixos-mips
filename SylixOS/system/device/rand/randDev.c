@@ -55,7 +55,7 @@ INT  API_RandDrvInstall (VOID)
     _G_iRandDrvNum = iosDrvInstall(__randOpen, LW_NULL, __randOpen, __randClose,
                                    __randRead, __randWrite, __randIoctl);
                                    
-    DRIVER_LICENSE(_G_iRandDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iRandDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iRandDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iRandDrvNum, "random number generator.");
 

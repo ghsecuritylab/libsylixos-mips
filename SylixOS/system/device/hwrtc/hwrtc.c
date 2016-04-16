@@ -79,7 +79,7 @@ INT  API_RtcDrvInstall (VOID)
                                   LW_NULL,
                                   LW_NULL,
                                   __rtcIoctl);
-    DRIVER_LICENSE(_G_iRtcDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iRtcDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iRtcDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iRtcDrvNum, "hardware rtc.");
     

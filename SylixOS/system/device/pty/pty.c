@@ -111,11 +111,11 @@ INT  API_PtyDrvInstall (VOID)
         return  (PX_ERROR);
     }
     
-    DRIVER_LICENSE(_G_iPtyDeviceDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iPtyDeviceDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iPtyDeviceDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iPtyDeviceDrvNum, "pty driver (device node).");
     
-    DRIVER_LICENSE(_G_iPtyHostDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iPtyHostDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iPtyHostDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iPtyHostDrvNum, "pty driver (host node).");
     

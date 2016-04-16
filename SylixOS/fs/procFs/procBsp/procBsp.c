@@ -50,6 +50,13 @@ static ssize_t  __procFsBspAuxvRead(PLW_PROCFS_NODE  p_pfsn,
                                     PCHAR            pcBuffer, 
                                     size_t           stMaxBytes,
                                     off_t            oft);
+                                    
+#if LW_CFG_DMA_EN > 0
+static ssize_t  __procFsBspDmaRead(PLW_PROCFS_NODE  p_pfsn, 
+                                   PCHAR            pcBuffer, 
+                                   size_t           stMaxBytes,
+                                   off_t            oft);
+#endif                                                                  /*  LW_CFG_DMA_EN > 0           */
 /*********************************************************************************************************
   bsp proc 文件操作函数组
 *********************************************************************************************************/
@@ -62,12 +69,19 @@ static LW_PROCFS_NODE_OP        _G_pfsnoBspCpuFuncs = {
 static LW_PROCFS_NODE_OP        _G_pfsnoBspAuxvFuncs = {
     __procFsBspAuxvRead, LW_NULL
 };
+
+#if LW_CFG_DMA_EN > 0
+static LW_PROCFS_NODE_OP        _G_pfsnoBspDmaFuncs = {
+    __procFsBspDmaRead, LW_NULL
+};
+#endif                                                                  /*  LW_CFG_DMA_EN > 0           */
 /*********************************************************************************************************
   bsp proc 文件目录树
 *********************************************************************************************************/
 #define __PROCFS_BUFFER_SIZE_BSPMEM     1024
 #define __PROCFS_BUFFER_SIZE_CPUINFO    1024
 #define __PROCFS_BUFFER_SIZE_AUXV       1024
+#define __PROCFS_BUFFER_SIZE_DMA        (48 * (LW_CFG_MAX_DMA_CHANNELS + 2))
 
 static LW_PROCFS_NODE           _G_pfsnBsp[] = 
 {
@@ -82,6 +96,11 @@ static LW_PROCFS_NODE           _G_pfsnBsp[] =
                         
     LW_PROCFS_INIT_NODE("auxv", (S_IRUSR | S_IRGRP | S_IROTH | S_IFREG), 
                         &_G_pfsnoBspAuxvFuncs, "A", __PROCFS_BUFFER_SIZE_AUXV),
+
+#if LW_CFG_DMA_EN > 0
+    LW_PROCFS_INIT_NODE("dma", (S_IFREG | S_IRUSR | S_IRGRP | S_IROTH), 
+                        &_G_pfsnoBspDmaFuncs, "D", __PROCFS_BUFFER_SIZE_DMA),
+#endif                                                                  /*  LW_CFG_DMA_EN > 0           */
 };
 /*********************************************************************************************************
 ** 函数名称: __procFsBspMemRead
@@ -308,6 +327,71 @@ static ssize_t  __procFsBspAuxvRead (PLW_PROCFS_NODE  p_pfsn,
     return  ((ssize_t)stCopeBytes);
 }
 /*********************************************************************************************************
+** 函数名称: __procFsBspDmaRead
+** 功能描述: procfs 读一个内核 dma proc 文件
+** 输　入  : p_pfsn        节点控制块
+**           pcBuffer      缓冲区
+**           stMaxBytes    缓冲区大小
+**           oft           文件指针
+** 输　出  : 实际读取的数目
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+static ssize_t  __procFsBspDmaRead (PLW_PROCFS_NODE  p_pfsn, 
+                                    PCHAR            pcBuffer, 
+                                    size_t           stMaxBytes,
+                                    off_t            oft)
+{
+    const CHAR      cDmaInfoHdr[] = 
+    "DMA   MAX DATA   MAX NODE CUR NODE\n"
+    "--- ------------ -------- --------\n";
+          PCHAR     pcFileBuffer;
+          size_t    stRealSize;                                         /*  实际的文件内容大小          */
+          size_t    stCopeBytes;
+          
+    /*
+     *  程序运行到这里, 文件缓冲一定已经分配了预置的内存大小.
+     */
+    pcFileBuffer = (PCHAR)API_ProcFsNodeBuffer(p_pfsn);
+    if (pcFileBuffer == LW_NULL) {
+        _ErrorHandle(ENOMEM);
+        return  (0);
+    }
+    
+    stRealSize = API_ProcFsNodeGetRealFileSize(p_pfsn);
+    if (stRealSize == 0) {                                              /*  需要生成文件                */
+        UINT    i;
+        size_t  stTotal = __PROCFS_BUFFER_SIZE_DMA;
+        
+        stRealSize = bnprintf(pcFileBuffer, stTotal, 0, cDmaInfoHdr); 
+                                                                        /*  打印头信息                  */
+        for (i = 0; i < LW_CFG_MAX_DMA_CHANNELS; i++) {
+            size_t  stMaxData;
+            INT     iMaxNode = 0;
+            INT     iCurNode = 0;
+            
+            stMaxData = (size_t)API_DmaGetMaxDataBytes(i);
+            API_DmaMaxNodeNumGet(i, &iMaxNode);
+            API_DmaJobNodeNum(i, &iCurNode);
+            
+            stRealSize = bnprintf(pcFileBuffer, stTotal, stRealSize,
+                                  "%3d %12zd %8d %8d\n", 
+                                  i, stMaxData, iMaxNode, iCurNode);
+        }
+        
+        API_ProcFsNodeSetRealFileSize(p_pfsn, stRealSize);
+    }
+    if (oft >= stRealSize) {
+        _ErrorHandle(ENOSPC);
+        return  (0);
+    }
+    
+    stCopeBytes  = __MIN(stMaxBytes, (size_t)(stRealSize - oft));       /*  计算实际读取的数量          */
+    lib_memcpy(pcBuffer, (CPVOID)(pcFileBuffer + oft), (UINT)stCopeBytes);
+    
+    return  ((ssize_t)stCopeBytes);
+}
+/*********************************************************************************************************
 ** 函数名称: __procFsBspInfoInit
 ** 功能描述: procfs 初始化 Bsp proc 文件
 ** 输　入  : NONE
@@ -321,6 +405,10 @@ VOID  __procFsBspInfoInit (VOID)
     API_ProcFsMakeNode(&_G_pfsnBsp[1], "/");
     API_ProcFsMakeNode(&_G_pfsnBsp[2], "/");
     API_ProcFsMakeNode(&_G_pfsnBsp[3], "/self");
+    
+#if LW_CFG_DMA_EN > 0
+    API_ProcFsMakeNode(&_G_pfsnBsp[4], "/");
+#endif                                                                  /*  LW_CFG_DMA_EN > 0           */
 }
 #endif                                                                  /*  LW_CFG_PROCFS_EN > 0        */
                                                                         /*  LW_CFG_PROCFS_BSP_INFO      */

@@ -891,6 +891,7 @@ INT    __tshellBgCreateEx (INT               iFd[3],
              PLW_CLASS_TCB              ptcbCur;
     REGISTER ULONG                      ulOption;
              ULONG                      ulTaskOpt = LW_CFG_SHELL_THREAD_OPTION | LW_OPTION_OBJECT_GLOBAL;
+             size_t                     stSize;
     
     LW_TCB_GET_CUR_SAFE(ptcbCur);
     
@@ -902,14 +903,16 @@ INT    __tshellBgCreateEx (INT               iFd[3],
         _ErrorHandle(ERROR_SYSTEM_LOW_MEMORY);
         return  (PX_ERROR);
     }
-    tsbg->TSBG_pcDefPath = (PCHAR)__SHEAP_ALLOC(lib_strlen(_PathGetDef()) + 1);
+    
+    stSize = lib_strlen(_PathGetDef()) + 1;
+    tsbg->TSBG_pcDefPath = (PCHAR)__SHEAP_ALLOC(stSize);
     if (!tsbg->TSBG_pcDefPath) {
         __SHEAP_FREE(tsbg);
         fprintf(stderr, "system low memory, can not create background thread.\n");
         _ErrorHandle(ERROR_SYSTEM_LOW_MEMORY);
         return  (PX_ERROR);
     }
-    lib_strcpy(tsbg->TSBG_pcDefPath, _PathGetDef());                    /*  拷贝父系当前目录            */
+    lib_strlcpy(tsbg->TSBG_pcDefPath, _PathGetDef(), stSize);           /*  拷贝父系当前目录            */
     
     tsbg->TSBG_iFd[0] = iFd[0];
     tsbg->TSBG_iFd[1] = iFd[1];
@@ -921,7 +924,7 @@ INT    __tshellBgCreateEx (INT               iFd[3],
     
     tsbg->TSBG_bIsJoin = bIsJoin;
     
-    lib_strcpy(tsbg->TSBG_cCommand, pcCommand);
+    lib_strlcpy(tsbg->TSBG_cCommand, pcCommand, stCommandLen + 1);
     
 #if LW_CFG_VMM_EN > 0
     if (ulKeywordOpt & LW_OPTION_KEYWORD_STK_MAIN) {

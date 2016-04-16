@@ -318,12 +318,15 @@ INT  __resPidReclaim (pid_t  pid)
     API_VmmMmapReclaim(pid);
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
     
+#if (LW_CFG_THREAD_POOL_EN > 0) && (LW_CFG_MAX_THREAD_POOLS > 0)
     for (i = 0; i < LW_CFG_MAX_THREAD_POOLS; i++) {
         presh = &_G_reshThreadPoolBuffer[i];
         if ((presh->RESH_pid == pid) && !presh->RESH_bIsGlobal) {
             API_ThreadPoolDelete(&presh->RESH_ulHandle);
         }
     }
+#endif                                                                  /*  LW_CFG_THREAD_POOL_EN > 0   */
+                                                                        /*  LW_CFG_MAX_THREAD_POOLS > 0 */
     
     for (i = 0; i < LW_CFG_MAX_EVENTS; i++) {                           /*  处理事件                    */
         presh = &_G_reshEventBuffer[i];

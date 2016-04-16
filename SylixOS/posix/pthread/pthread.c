@@ -35,14 +35,20 @@
 2013.12.02  加入 pthread_yield().
 2014.01.01  加入 pthread_safe_np() 与 pthread_unsafe_np().
 2014.07.04  加入 pthread_setaffinity_np 与 pthread_getaffinity_np();
+2016.04.12  加入 GJB7714 相关 API 支持.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
+#define  __SYLIXOS_POSIX
 #include "../include/px_pthread.h"                                      /*  已包含操作系统头文件        */
 #include "../include/posixLib.h"                                        /*  posix 内部公共库            */
 /*********************************************************************************************************
   裁剪支持
 *********************************************************************************************************/
 #if LW_CFG_POSIX_EN > 0
+#if (LW_CFG_GJB7714_EN > 0) && (LW_CFG_MODULELOADER_EN > 0)
+#include "unistd.h"
+#include "../SylixOS/loader/include/loader_vppatch.h"
+#endif
 /*********************************************************************************************************
 ** 函数名称: pthread_atfork
 ** 功能描述: 设置线程在 fork() 时需要执行的函数.
@@ -636,7 +642,7 @@ LW_API
 int  pthread_getcpuclockid (pthread_t thread, clockid_t *clock_id)
 {
     if (!clock_id) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (EINVAL);
     }
     
@@ -791,11 +797,12 @@ int  pthread_setaffinity_np (pthread_t  thread, size_t setsize, const cpu_set_t 
 {
 #if LW_CFG_SMP_EN > 0
     if (!setsize || !set) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (EINVAL);
     }
+    
     if (API_ThreadSetAffinity(thread, setsize, (PLW_CLASS_CPUSET)set)) {
-        _ErrorHandle(ESRCH);
+        errno = ESRCH;
         return  (ESRCH);
     }
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
@@ -818,11 +825,12 @@ int  pthread_getaffinity_np (pthread_t  thread, size_t setsize, cpu_set_t *set)
 {
 #if LW_CFG_SMP_EN > 0
     if ((setsize < sizeof(cpu_set_t)) || !set) {
-        _ErrorHandle(EINVAL);
+        errno = EINVAL;
         return  (EINVAL);
     }
+    
     if (API_ThreadGetAffinity(thread, setsize, set)) {
-        _ErrorHandle(ESRCH);
+        errno = ESRCH;
         return  (ESRCH);
     }
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */
@@ -831,6 +839,735 @@ int  pthread_getaffinity_np (pthread_t  thread, size_t setsize, cpu_set_t *set)
 }
 
 #endif                                                                  /*  LW_CFG_POSIXEX_EN > 0       */
+/*********************************************************************************************************
+** 函数名称: pthread_getid
+** 功能描述: 通过线程名获得线程句柄
+** 输　入  : name          线程名
+**           pthread       线程句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API 
+int  pthread_getid (const char *name, pthread_t *pthread)
+{
+    INT     i;
+
+#if LW_CFG_MODULELOADER_EN > 0
+    pid_t   pid = getpid();
+#else
+    pid_t   pid = 0;
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+
+    PLW_CLASS_TCB      ptcb;
+    LW_CLASS_TCB_DESC  tcbdesc;
+
+    if (!name || !pthread) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    for (i = 0; i < LW_CFG_MAX_THREADS; i++) {
+        ptcb = _K_ptcbTCBIdTable[i];                                    /*  获得 TCB 控制块             */
+        if (ptcb == LW_NULL) {                                          /*  线程不存在                  */
+            continue;
+        }
+        
+        if (API_ThreadDesc(ptcb->TCB_ulId, &tcbdesc)) {
+            continue;
+        }
+        
+#if LW_CFG_MODULELOADER_EN > 0
+        if (pid != vprocGetPidByTcbdesc(&tcbdesc)) {
+            continue;
+        }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+        if (lib_strcmp(name, tcbdesc.TCBD_cThreadName)) {
+            continue;
+        }
+        
+        break;
+    }
+    
+    if (i < LW_CFG_MAX_THREADS) {
+        *pthread = tcbdesc.TCBD_ulId;
+        return  (ERROR_NONE);
+        
+    } else {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+}
+/*********************************************************************************************************
+** 函数名称: pthread_getname
+** 功能描述: 获得线程名
+** 输　入  : pthread       线程句柄
+**           name          线程名
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_getname (pthread_t thread, char *name)
+{
+    CHAR    cNameBuffer[LW_CFG_OBJECT_NAME_SIZE];
+    
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadGetName(thread, cNameBuffer)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+
+    lib_strcpy(name, cNameBuffer);
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_suspend
+** 功能描述: 线程挂起
+** 输　入  : pthread       线程句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_suspend (pthread_t thread)
+{
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadSuspend(thread)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_resume
+** 功能描述: 线程解除挂起
+** 输　入  : pthread       线程句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_resume (pthread_t thread)
+{
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadResume(thread)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_delay
+** 功能描述: 线程等待
+** 输　入  : ticks       延迟时钟数
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_delay (int  ticks)
+{
+    ULONG   ulTick;
+    
+    if (ticks <= 0) {
+        return  (ERROR_NONE);
+    }
+    
+    if (LW_CPU_GET_CUR_NESTING()) {                                     /*  不能在中断中调用            */
+        errno = ENOTSUP;
+        return  (ENOTSUP);
+    }
+    
+    ulTick = (ULONG)ticks;
+    
+    return  ((int)API_TimeSleepEx(ulTick, LW_TRUE));
+}
+/*********************************************************************************************************
+** 函数名称: pthread_lock
+** 功能描述: 线程锁定当前 CPU 调度
+** 输　入  : NONE
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_lock (void)
+{
+    if (LW_CPU_GET_CUR_NESTING()) {                                     /*  不能在中断中调用            */
+        errno = ECALLEDINISR;
+        return  (ECALLEDINISR);
+    }
+
+    API_ThreadLock();
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_unlock
+** 功能描述: 线程解锁当前 CPU 调度
+** 输　入  : NONE
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_unlock (void)
+{
+    if (LW_CPU_GET_CUR_NESTING()) {                                     /*  不能在中断中调用            */
+        errno = ECALLEDINISR;
+        return  (ECALLEDINISR);
+    }
+    
+    API_ThreadUnlock();
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_is_ready
+** 功能描述: 线程是否就绪
+** 输　入  : pthread       线程句柄
+** 输　出  : 是否就绪
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+boolean  pthread_is_ready (pthread_t thread)
+{
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    return  (API_ThreadIsReady(thread));
+}
+/*********************************************************************************************************
+** 函数名称: pthread_is_suspend
+** 功能描述: 线程是否挂起
+** 输　入  : pthread       线程句柄
+** 输　出  : 是否挂起
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+boolean  pthread_is_suspend (pthread_t thread)
+{
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadIsSuspend(thread)) {
+        return  (LW_TRUE);
+    
+    } else {
+        return  (LW_FALSE);
+    }
+}
+/*********************************************************************************************************
+** 函数名称: pthread_verifyid
+** 功能描述: 检查指定线程是否存在
+** 输　入  : pthread       线程句柄
+** 输　出  : 0: 任务存在 -1: 任务不存在
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_verifyid (pthread_t thread)
+{
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadVerify(thread)) {
+        return  (0);
+    
+    } else {
+        return  (-1);
+    }
+}
+/*********************************************************************************************************
+** 函数名称: pthread_cancelforce
+** 功能描述: 强制线程删除
+** 输　入  : pthread       线程句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_cancelforce (pthread_t thread)
+{
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadForceDelete(&thread, LW_NULL)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_getinfo
+** 功能描述: 获得线程信息
+** 输　入  : pthread       线程句柄
+**           info          线程信息
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_getinfo (pthread_t thread, pthread_info_t *info)
+{
+    if (!info) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (API_ThreadDesc(thread, info)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_getregs
+** 功能描述: 获得线程寄存器表
+** 输　入  : pthread       线程句柄
+**           pregs         线程寄存器表
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_getregs (pthread_t thread, REG_SET *pregs)
+{
+    UINT16         usIndex;
+    PLW_CLASS_TCB  ptcb;
+    ARCH_REG_CTX  *pregctxGet;
+    ARCH_REG_T     regSp;
+
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    if (thread == API_ThreadIdSelf()) {
+        errno = ENOTSUP;
+        return  (ENOTSUP);
+    }
+    
+    usIndex = _ObjectGetIndex(thread);
+    
+    if (!_ObjectClassOK(thread, _OBJECT_THREAD)) {                      /*  检查 ID 类型有效性          */
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    if (_Thread_Index_Invalid(usIndex)) {                               /*  检查线程有效性              */
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    if (_Thread_Invalid(usIndex)) {
+        __KERNEL_EXIT();                                                /*  退出内核                    */
+        errno = ESRCH;
+        return  (ERROR_THREAD_NULL);
+    }
+    
+    ptcb = _K_ptcbTCBIdTable[usIndex];
+    
+    pregctxGet = archTaskRegsGet(ptcb->TCB_pstkStackNow, &regSp);
+    *pregs     = *pregctxGet;
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_show
+** 功能描述: 显示线程信息
+** 输　入  : pthread       线程句柄
+**           level         显示等级 (未使用)
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_show (pthread_t thread, int level)
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    pid_t   pid = getpid();
+#else
+    pid_t   pid = 0;
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+
+    (VOID)thread;
+
+    API_ThreadShowEx(pid);
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_showstack
+** 功能描述: 显示线程堆栈信息
+** 输　入  : pthread       线程句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_showstack (pthread_t thread)
+{
+    (VOID)thread;
+    
+    API_StackShow();
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_showstackframe
+** 功能描述: 显示线程调用栈信息
+** 输　入  : pthread       线程句柄
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_showstackframe (pthread_t thread)
+{
+    printf("pthread_showstackframe() not support now, you can use <execinfo.h> backtrace instead.\n");
+
+    errno = ENOTSUP;
+    return  (ENOTSUP);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_addvar
+** 功能描述: 线程加入私有变量
+** 输　入  : pthread       线程句柄
+**           pvar          私有变量地址
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if (LW_CFG_SMP_EN == 0) && (LW_CFG_CPU_WORD_LENGHT == 32)
+
+LW_API 
+int  pthread_addvar (pthread_t thread, int *pvar)
+{
+    ULONG   ulError;
+
+    if (!pvar) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    PX_ID_VERIFY(thread, pthread_t);
+    
+    ulError = API_ThreadVarAdd(thread, (ULONG *)pvar);
+    if (ulError == ERROR_THREAD_VAR_FULL) {
+        errno = ENOSPC;
+        return  (ENOSPC);
+    
+    } else if (ulError) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_delvar
+** 功能描述: 线程删除私有变量
+** 输　入  : pthread       线程句柄
+**           pvar          私有变量地址
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_delvar (pthread_t thread, int *pvar)
+{
+    if (!pvar) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    PX_ID_VERIFY(thread, pthread_t);
+
+    if (API_ThreadVarDelete(thread, (ULONG *)pvar)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_setvar
+** 功能描述: 设置线程私有变量
+** 输　入  : pthread       线程句柄
+**           pvar          私有变量地址
+**           value         变量值
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_setvar (pthread_t thread, int *pvar, int value)
+{
+    if (!pvar) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    PX_ID_VERIFY(thread, pthread_t);
+
+    if (API_ThreadVarSet(thread, (ULONG *)pvar, (ULONG)value)) {
+        errno = ESRCH;
+        return  (ESRCH);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_getvar
+** 功能描述: 获得线程私有变量
+** 输　入  : pthread       线程句柄
+**           pvar          私有变量地址
+**           value         变量值
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_getvar (pthread_t thread, int *pvar, int *value)
+{
+    if (!pvar || !value) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    PX_ID_VERIFY(thread, pthread_t);
+
+    *value = (int)API_ThreadVarGet(thread, (ULONG *)pvar);
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_SMP_EN == 0          */
+/*********************************************************************************************************
+** 函数名称: pthread_create_hook_add
+** 功能描述: 添加一个任务创建 HOOK
+** 输　入  : create_hook   任务创建 HOOK
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_create_hook_add (OS_STATUS (*create_hook)(pthread_t))
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    if (getpid()) {
+        errno = EACCES;
+        return  (EACCES);
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+    
+    if (!create_hook) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (API_SystemHookAdd((LW_HOOK_FUNC)create_hook, 
+                          LW_OPTION_THREAD_CREATE_HOOK)) {
+        errno = ENOMEM;
+        return  (ENOMEM);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_create_hook_delete
+** 功能描述: 删除一个任务创建 HOOK
+** 输　入  : create_hook   任务创建 HOOK
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_create_hook_delete (OS_STATUS (*create_hook)(pthread_t))
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    if (getpid()) {
+        errno = EACCES;
+        return  (EACCES);
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+    
+    if (!create_hook) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (API_SystemHookDelete((LW_HOOK_FUNC)create_hook, 
+                             LW_OPTION_THREAD_CREATE_HOOK)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_switch_hook_add
+** 功能描述: 添加一个任务切换 HOOK
+** 输　入  : switch_hook   任务切换 HOOK
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_switch_hook_add (OS_STATUS (*switch_hook)(pthread_t, pthread_t))
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    if (getpid()) {
+        errno = EACCES;
+        return  (EACCES);
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+    
+    if (!switch_hook) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (API_SystemHookAdd((LW_HOOK_FUNC)switch_hook, 
+                          LW_OPTION_THREAD_SWAP_HOOK)) {
+        errno = ENOMEM;
+        return  (ENOMEM);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_switch_hook_delete
+** 功能描述: 删除一个任务切换 HOOK
+** 输　入  : switch_hook   任务切换 HOOK
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_switch_hook_delete (OS_STATUS (*switch_hook)(pthread_t, pthread_t))
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    if (getpid()) {
+        errno = EACCES;
+        return  (EACCES);
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+    
+    if (!switch_hook) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (API_SystemHookDelete((LW_HOOK_FUNC)switch_hook, 
+                             LW_OPTION_THREAD_SWAP_HOOK)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_close_hook_add
+** 功能描述: 添加一个任务删除 HOOK
+** 输　入  : close_hook    任务删除 HOOK
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_close_hook_add (OS_STATUS (*close_hook)(pthread_t))
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    if (getpid()) {
+        errno = EACCES;
+        return  (EACCES);
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+    
+    if (!close_hook) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (API_SystemHookAdd((LW_HOOK_FUNC)close_hook, 
+                          LW_OPTION_THREAD_DELETE_HOOK)) {
+        errno = ENOMEM;
+        return  (ENOMEM);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_close_hook_delete
+** 功能描述: 删除一个任务删除 HOOK
+** 输　入  : close_hook   任务删除 HOOK
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_close_hook_delete (OS_STATUS (*close_hook)(pthread_t))
+{
+#if LW_CFG_MODULELOADER_EN > 0
+    if (getpid()) {
+        errno = EACCES;
+        return  (EACCES);
+    }
+#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+    
+    if (!close_hook) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (API_SystemHookDelete((LW_HOOK_FUNC)close_hook, 
+                             LW_OPTION_THREAD_DELETE_HOOK)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

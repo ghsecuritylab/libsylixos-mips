@@ -111,7 +111,7 @@ static INT  __sdmemDevCreate (SD_DRV *psddrv, PLW_SDCORE_DEVICE psdcoredev, VOID
     API_SdmHostExtOptGet(psdcoredev, SDHOST_EXTOPT_CACHE_SIZE_GET, (LONG)&lCacheSize);
     API_SdmHostExtOptGet(psdcoredev, SDHOST_EXTOPT_MAXBURST_SECTOR_GET, (LONG)&lSectorBurst);
 
-    if (lCacheSize <= 0) {
+    if (lCacheSize < 0) {
         lCacheSize = __SDMEM_CACHE_SIZE;
     }
 

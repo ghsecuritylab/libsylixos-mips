@@ -39,7 +39,7 @@ PVOID  vprocStackAlloc (PLW_CLASS_TCB  ptcbNew, ULONG  ulOption, size_t  stSize)
 {
     PVOID         pvRet;
 
-#if LW_CFG_VMM_EN > 0
+#if ((LW_CFG_VMM_EN > 0) && (!defined(LW_CFG_CPU_ARCH_PPC)))
     PLW_CLASS_TCB    ptcbCur;
     LW_LD_VPROC     *pvproc;
     
@@ -78,7 +78,7 @@ PVOID  vprocStackAlloc (PLW_CLASS_TCB  ptcbNew, ULONG  ulOption, size_t  stSize)
 *********************************************************************************************************/
 VOID  vprocStackFree (PLW_CLASS_TCB  ptcbDel, PVOID  pvStack, BOOL  bImmed)
 {
-#if LW_CFG_VMM_EN > 0
+#if ((LW_CFG_VMM_EN > 0) && (!defined(LW_CFG_CPU_ARCH_PPC)))
     LW_LD_VPROC     *pvproc;
 
     switch (ptcbDel->TCB_iStkLocation) {

@@ -25,8 +25,10 @@
 2013.05.03  pthread_attr_init() 堆栈大小设置为 0, 表示继承线程创建者堆栈大小.
 2013.05.04  加入一些常用的 UNIX 扩展接口.
 2013.09.17  加入对堆栈警戒区的支持.
+2016.04.12  加入 GJB7714 相关 API 支持.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
+#define  __SYLIXOS_POSIX
 #include "../include/px_pthread.h"                                      /*  已包含操作系统头文件        */
 #include "../include/posixLib.h"                                        /*  posix 内部公共库            */
 /*********************************************************************************************************
@@ -633,6 +635,151 @@ int  pthread_getattr_np (pthread_t thread, pthread_attr_t *pattr)
 {
     return  (pthread_attr_get_np(thread, pattr));
 }
+/*********************************************************************************************************
+** 函数名称: pthread_attr_getstackfilled
+** 功能描述: 获得线程属性块栈填充特性
+** 输　入  : pattr         线程属性
+**           stackfilled   堆栈填充设置
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+#if LW_CFG_GJB7714_EN > 0
+
+LW_API 
+int  pthread_attr_getstackfilled (const pthread_attr_t *pattr, int *stackfilled)
+{
+    if (!pattr || !stackfilled) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    *stackfilled = PTHREAD_STACK_FILLED;
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_attr_setstackfilled
+** 功能描述: 设置线程属性块栈填充特性
+** 输　入  : pattr         线程属性
+**           stackfilled   堆栈填充设置
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+int  pthread_attr_setstackfilled (pthread_attr_t *pattr, int stackfilled)
+{
+    if (!pattr) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (stackfilled == PTHREAD_NO_STACK_FILLED) {
+        errno = ENOTSUP;
+        return  (ENOTSUP);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_attr_getbreakallowed
+** 功能描述: 获得线程属性块是否允许断点
+** 输　入  : pattr         线程属性
+**           breakallowed  是否允许断点
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+int  pthread_attr_getbreakallowed (const pthread_attr_t *pattr, int *breakallowed)
+{
+    if (!pattr || !breakallowed) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    *breakallowed = PTHREAD_BREAK_ALLOWED;
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_attr_setbreakallowed
+** 功能描述: 设置线程属性块是否允许断点
+** 输　入  : pattr         线程属性
+**           breakallowed  是否允许断点
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+int  pthread_attr_setbreakallowed (pthread_attr_t *pattr, int breakallowed)
+{
+    if (!pattr) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (breakallowed == PTHREAD_BREAK_DISALLOWED) {
+        errno = ENOTSUP;
+        return  (ENOTSUP);
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_attr_getfpallowed
+** 功能描述: 获得线程属性块是否允许浮点
+** 输　入  : pattr         线程属性
+**           fpallowed     是否允许浮点
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+int  pthread_attr_getfpallowed (const pthread_attr_t *pattr, int *fpallowed)
+{
+    if (!pattr || !fpallowed) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    *fpallowed = PTHREAD_FP_ALLOWED;
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: pthread_attr_setfpallowed
+** 功能描述: 设置线程属性块是否允许浮点
+** 输　入  : pattr         线程属性
+**           fpallowed     是否允许浮点
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+int  pthread_attr_setfpallowed (pthread_attr_t *pattr, int fpallowed)
+{
+    if (!pattr) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (fpallowed == PTHREAD_FP_DISALLOWED) {
+        errno = ENOTSUP;
+        return  (ENOTSUP);
+    }
+    
+    return  (ERROR_NONE);
+}
+
+#endif                                                                  /*  LW_CFG_GJB7714_EN > 0       */
 #endif                                                                  /*  LW_CFG_POSIX_EN > 0         */
 /*********************************************************************************************************
   END

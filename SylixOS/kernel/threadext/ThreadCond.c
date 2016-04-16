@@ -58,7 +58,7 @@ static ULONG  __threadCondInit (PLW_THREAD_COND  ptcd, ULONG  ulAttr)
         return  (API_GetLastError());
     }
     
-    ptcd->TCD_ulMutxe   = 0ul;
+    ptcd->TCD_ulMutex   = 0ul;
     ptcd->TCD_ulCounter = 0ul;
     
     return  (ERROR_NONE);
@@ -336,13 +336,13 @@ ULONG  API_ThreadCondWait (PLW_THREAD_COND  ptcd, LW_OBJECT_HANDLE  ulMutex, ULO
         return  (ulError);
     }
     
-    if (((ptcd->TCD_ulMutxe) && (ptcd->TCD_ulMutxe != ulMutex)) ||
+    if (((ptcd->TCD_ulMutex) && (ptcd->TCD_ulMutex != ulMutex)) ||
         (ulOwerThread != API_ThreadIdSelf())) {
         _ErrorHandle(EINVAL);
         return (EINVAL);
     
     } else {
-        ptcd->TCD_ulMutxe = ulMutex;
+        ptcd->TCD_ulMutex = ulMutex;
     }
     
     ptcd->TCD_ulCounter++;
@@ -357,7 +357,7 @@ ULONG  API_ThreadCondWait (PLW_THREAD_COND  ptcd, LW_OBJECT_HANDLE  ulMutex, ULO
         if (ulError != ERROR_EVENT_WAS_DELETED) {
             ptcd->TCD_ulCounter--;
             if (ptcd->TCD_ulCounter == 0) {
-                ptcd->TCD_ulMutxe = 0ul;
+                ptcd->TCD_ulMutex = 0ul;
             }
         }
         return  (ulError);
@@ -370,7 +370,7 @@ ULONG  API_ThreadCondWait (PLW_THREAD_COND  ptcd, LW_OBJECT_HANDLE  ulMutex, ULO
     
     ptcd->TCD_ulCounter--;
     if (ptcd->TCD_ulCounter == 0) {
-        ptcd->TCD_ulMutxe = 0ul;
+        ptcd->TCD_ulMutex = 0ul;
     }
     
     return  (ERROR_NONE);

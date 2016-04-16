@@ -1220,7 +1220,7 @@ INT  API_ShmDrvInstall (VOID)
     
     _G_iShmDrvNum = iosDrvInstallEx(&fileop);
      
-    DRIVER_LICENSE(_G_iShmDrvNum,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(_G_iShmDrvNum,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(_G_iShmDrvNum,      "Han.hui");
     DRIVER_DESCRIPTION(_G_iShmDrvNum, "share memory driver.");
     

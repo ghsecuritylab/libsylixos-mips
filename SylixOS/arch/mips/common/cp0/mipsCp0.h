@@ -73,6 +73,8 @@ mipsCp0RegReadWrite(Config3, CP0_CONFIG3)
 mipsCp0RegReadWrite(EBase, CP0_EBASE)
 mipsCp0RegReadWrite(IntCtl, CP0_INTCTL)
 mipsCp0RegReadWrite(LLAddr, CP0_LLADDR)
+mipsCp0RegReadWrite(Diag, CP0_DIAG)
+mipsCp0RegReadWrite(ECC, CP0_ECC)
 mipsCp0RegReadWrite(CacheErr, CP0_CACHEERR)
 mipsCp0RegReadWrite(ERRPC, CP0_ERRPC)
 

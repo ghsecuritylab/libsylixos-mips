@@ -293,7 +293,7 @@ static int xinput_drv (void)
 
     xinput_drv_num = iosDrvInstallEx2(&fileop, LW_DRV_TYPE_NEW_1);
 
-    DRIVER_LICENSE(xinput_drv_num,     "Dual BSD/GPL->Ver 1.0");
+    DRIVER_LICENSE(xinput_drv_num,     "GPL->Ver 2.0");
     DRIVER_AUTHOR(xinput_drv_num,      "Han.hui");
     DRIVER_DESCRIPTION(xinput_drv_num, "xinput driver.");
 

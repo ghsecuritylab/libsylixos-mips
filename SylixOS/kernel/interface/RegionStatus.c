@@ -98,6 +98,54 @@ ULONG  API_RegionStatus (LW_OBJECT_HANDLE    ulId,
     
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: API_RegionGetMax
+** 功能描述: 获得一个内存堆最大空闲区域大小
+** 输　入  : 
+**           ulId                         REGION 句柄
+**           pstMaxFreeSize               最大内存区域大小
+** 输　出  : 
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API  
+ULONG  API_RegionGetMax (LW_OBJECT_HANDLE  ulId, size_t  *pstMaxFreeSize)
+{
+    REGISTER PLW_CLASS_HEAP            pheap;
+    REGISTER UINT16                    usIndex;
+    
+    usIndex = _ObjectGetIndex(ulId);
+    
+#if LW_CFG_ARG_CHK_EN > 0
+    if (!_ObjectClassOK(ulId, _OBJECT_REGION)) {                        /*  对象类型检查                */
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "region handle invalidate.\r\n");
+        _ErrorHandle(ERROR_KERNEL_HANDLE_NULL);
+        return  (ERROR_KERNEL_HANDLE_NULL);
+    }
+    
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+    if (_Heap_Index_Invalid(usIndex)) {                                 /*  缓冲区索引检查              */
+        __KERNEL_EXIT();                                                /*  退出内核                    */
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "region handle invalidate.\r\n");
+        _ErrorHandle(ERROR_KERNEL_HANDLE_NULL);
+        return  (ERROR_KERNEL_HANDLE_NULL);
+    }
+#else
+    __KERNEL_ENTER();                                                   /*  进入内核                    */
+#endif
+
+    pheap = &_K_heapBuffer[usIndex];
+    
+    if (pstMaxFreeSize) {
+        *pstMaxFreeSize = _HeapGetMax(pheap);
+    }
+    
+    __KERNEL_EXIT();                                                    /*  退出内核                    */
+    
+    return  (ERROR_NONE);
+}
+
 #endif                                                                  /*  (LW_CFG_REGION_EN > 0)      */
                                                                         /*  (LW_CFG_MAX_REGIONS > 0)    */
 /*********************************************************************************************************

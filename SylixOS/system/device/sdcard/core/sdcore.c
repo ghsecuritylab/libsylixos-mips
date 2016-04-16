@@ -28,6 +28,7 @@
 2011.03.25  修改 API_SdCoreDevCreate(), 用于底层驱动安装上层的回调.
 2011.04.02  全面修改 SPI 模式下的相关函数,使用新的 SPI 模型.
 2014.11.05  设备的状态增加自旋锁保护.
+2016.01.21  修正 SPI 模式下的总线控制操作以及协议相关的错误.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -51,11 +52,11 @@
 #define __SD_SPI_TMOD_WR      __SD_SPI_CLKMOD_FLG | LW_SPI_M_RDBUF_FIX  /*  写操作控制标记              */
 
 #define __SD_SPI_RSP_TIMEOUT  0x3fffff                                  /*  SPI应答超时最大计数         */
-#define __SD_SPI_RSP_WAITSEC  2                                         /*  SPI应答超时最大物理时间     */
-#define __SD_SPI_DAT_WAITSEC  2                                         /*  SPI数据编程超时最大物理时间 */
+#define __SD_SPI_RSP_WAITSEC  4                                         /*  SPI应答超时最大物理时间     */
+#define __SD_SPI_DAT_WAITSEC  4                                         /*  SPI数据编程超时最大物理时间 */
 
-#define __SD_SPI_CLK_NORMAL   300000                                    /*  一般时钟, 300k              */
-#define __SD_SPI_CLK_MAX      20000000                                  /*  高速时钟, 20m               */
+#define __SD_SPI_CLK_LOW      400000                                    /*  一般时钟, 400k              */
+#define __SD_SPI_CLK_MAX      25000000                                  /*  高速时钟, 25m               */
 /*********************************************************************************************************
   SPI 总线请求\释放
 *********************************************************************************************************/
@@ -131,7 +132,7 @@ static INT  __sdCoreSpiByteWrt(__PCORE_SPI_DEV pcspidevice,
                                UINT32          uiLen,
                                UINT8          *pucWrtBuff);
 static INT  __sdCoreSpiWaitBusy(__PCORE_SPI_DEV pcspidevice);
-
+static VOID __sdCoreSpiMulWrtStop(__PCORE_SPI_DEV pcspidevice);
 /*********************************************************************************************************
   SPI 工具函数
 *********************************************************************************************************/
@@ -854,10 +855,37 @@ LW_API VOID API_SdCoreSpiCxdFormat (UINT32 *puiCxdOut, UINT8 *pucRawCxd)
 *********************************************************************************************************/
 LW_API VOID  API_SdCoreSpiMulWrtStop (PLW_SDCORE_DEVICE psdcoredevice)
 {
-    UINT8   pucWrtTmp[3] = {0xff, SD_SPITOKEN_STOP_MULBLK, 0xff};
+    UINT8           pucWrtTmp[3] = {0xff, SD_SPITOKEN_STOP_MULBLK, 0xff};
+    INT             iError;
+    __PCORE_SPI_DEV pcspidevice;
 
-    __sdCoreSpiByteWrt((__PCORE_SPI_DEV)psdcoredevice->COREDEV_pvDevHandle, 3, pucWrtTmp);
+    if (!psdcoredevice) {
+        _ErrorHandle(EINVAL);
+        return;
+    }
 
+    pcspidevice = (__PCORE_SPI_DEV)psdcoredevice->COREDEV_pvDevHandle;
+    if (!pcspidevice) {
+        SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "no core spi device.\r\n");
+        return;
+    }
+
+    iError = API_SpiDeviceBusRequest(pcspidevice->CSPIDEV_pspiDev); 
+    if (iError == PX_ERROR) {
+        SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "bus request error.\r\n");
+        return;
+    }
+    __SD_SPI_CSEN(pcspidevice);                                    
+
+    __sdCoreSpiByteWrt(pcspidevice, 3, pucWrtTmp);
+
+    iError = __sdCoreSpiWaitBusy(pcspidevice);
+    if (iError != ERROR_NONE) {
+        SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "wait data program timeout.\r\n");
+    }
+
+    __SD_SPI_CSDIS(pcspidevice);
+    API_SpiDeviceBusRelease(pcspidevice->CSPIDEV_pspiDev);
 }
 /*********************************************************************************************************
 ** 函数名称: API_SdCoreSpiSendIfCond
@@ -1400,30 +1428,45 @@ static INT __sdCoreSpiDevCtl (PVOID  pvDevHandle, INT  iCmd, LONG lArg)
         break;
 
     case SDBUS_CTRL_SETCLK:                                             /*  时钟频率设置                */
-        if (lArg == SDARG_SETCLK_NORMAL) {
-            iError = API_SpiDeviceCtl(pcspidevice->CSPIDEV_pspiDev,
-                                      LW_SPI_CTL_BAUDRATE,
-                                      __SD_SPI_CLK_NORMAL);
-
-        } else if (lArg == SDARG_SETCLK_MAX) {
-            iError = API_SpiDeviceCtl(pcspidevice->CSPIDEV_pspiDev,
-                                      LW_SPI_CTL_BAUDRATE,
-                                      __SD_SPI_CLK_MAX);
-        } else {
-            SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "\"SETCLK\" is not supported.\r\n");
-            iError = PX_ERROR;
+        iError = API_SpiDeviceBusRequest(pcspidevice->CSPIDEV_pspiDev); 
+        if (iError == PX_ERROR) {
+            SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "bus request error.\r\n");
+            break;
         }
+        __SD_SPI_CSEN(pcspidevice);                                    
+
+        if (lArg >= __SD_SPI_CLK_MAX) {
+            lArg = __SD_SPI_CLK_MAX;
+        }
+
+        iError = API_SpiDeviceCtl(pcspidevice->CSPIDEV_pspiDev,
+                                  LW_SPI_CTL_BAUDRATE,
+                                  lArg);
+
+
+        __SD_SPI_CSDIS(pcspidevice);                                    
+        API_SpiDeviceBusRelease(pcspidevice->CSPIDEV_pspiDev);         
         break;
 
     case SDBUS_CTRL_DELAYCLK:                                           /*  总线时钟延时设置            */
+        iError = API_SpiDeviceBusRequest(pcspidevice->CSPIDEV_pspiDev); 
+        if (iError == PX_ERROR) {
+            SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "bus request error.\r\n");
+            break;
+        }
+        __SD_SPI_CSEN(pcspidevice);                                   
+
         while (lArg--) {
             ucWrtBuf = 0xff;
             iError = __sdCoreSpiByteWrt(pcspidevice, 1, &ucWrtBuf);     /*  延时n*8个时钟               */
             if (iError != ERROR_NONE) {
                 SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "delay clock error.\r\n");
-                return  (PX_ERROR);
+                break;
             }
         }
+
+        __SD_SPI_CSDIS(pcspidevice);                                    
+        API_SpiDeviceBusRelease(pcspidevice->CSPIDEV_pspiDev);        
         break;
 
 
@@ -1799,16 +1842,12 @@ static INT __sdCoreSpiDataWrt (__PCORE_SPI_DEV pcspidevice,
             SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "write a block error.\r\n");
 
             /*
-             * 如果是多块,则要发送cmd12终止传输.
+             * 如果是多块,则终止SPI多块传输状态
              */
             if (bIsMul) {
-                LW_SD_COMMAND   sdcmdStop;
-                lib_bzero(&sdcmdStop, sizeof(sdcmdStop));
-                
-                sdcmdStop.SDCMD_uiOpcode = SD_STOP_TRANSMISSION;
-                sdcmdStop.SDCMD_uiFlag   = SD_RSP_SPI_R1B | SD_RSP_R1B | SD_CMD_AC;
-                __sdCoreSpiCmd(pcspidevice, &sdcmdStop);
+                __sdCoreSpiMulWrtStop(pcspidevice);
             }
+
             return  (PX_ERROR);
         }
         pucWrtBuff += uiBlkLen;
@@ -2103,6 +2142,26 @@ static INT __sdCoreSpiWaitBusy (__PCORE_SPI_DEV pcspidevice)
      */
     SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "programing data timeout.\r\n");
     return  (PX_ERROR);
+}
+/*********************************************************************************************************
+** 函数名称: __sdCoreSpiMulWrtStop
+** 功能描述: spi多块写停止
+** 输    入: pcspidevice  spi核心设备结构指针
+** 输    出: NONE
+** 返    回: ERROR CODE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static VOID __sdCoreSpiMulWrtStop (__PCORE_SPI_DEV pcspidevice)
+{
+    UINT8   pucWrtTmp[3] = {0xff, SD_SPITOKEN_STOP_MULBLK, 0xff};
+    INT     iError;
+
+    __sdCoreSpiByteWrt(pcspidevice, 3, pucWrtTmp);
+    iError = __sdCoreSpiWaitBusy(pcspidevice);
+    if (iError != ERROR_NONE) {
+        SDCARD_DEBUG_MSG(__ERRORMESSAGE_LEVEL, "stop to wait data program timeout.\r\n");
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: __sdCoreSpiParamConvert

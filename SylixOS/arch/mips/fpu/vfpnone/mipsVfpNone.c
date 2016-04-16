@@ -97,7 +97,9 @@ static VOID  mipsVfpNoneRestore (PVOID pvFpuCtx)
 *********************************************************************************************************/
 static VOID  mipsVfpNoneCtxShow (INT iFd, PVOID pvFpuCtx)
 {
+#if (LW_CFG_DEVICE_EN > 0) && (LW_CFG_FIO_LIB_EN > 0)
     fdprintf(iFd, "no vfp\n");
+#endif
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: mipsVfpNonePrimaryInit

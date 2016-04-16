@@ -29,7 +29,11 @@
 *********************************************************************************************************/
 #if LW_CFG_VMM_EN > 0
 #include "../SylixOS/kernel/vmm/virPage.h"
-#endif
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
+/*********************************************************************************************************
+  内核参数
+*********************************************************************************************************/
+static CHAR     _K_cKernelStartParam[256];
 /*********************************************************************************************************
 ** 函数名称: API_KernelStartParam
 ** 功能描述: 系统内核启动参数
@@ -54,7 +58,7 @@
 LW_API
 ULONG  API_KernelStartParam (CPCHAR  pcParam)
 {
-    CHAR        cParamBuffer[512];                                      /*  参数长度不得超过 512 字节   */
+    CHAR        cParamBuffer[256];                                      /*  参数长度不得超过 256 字节   */
     PCHAR       pcDelim = " ";
     PCHAR       pcLast;
     PCHAR       pcTok;
@@ -69,7 +73,8 @@ ULONG  API_KernelStartParam (CPCHAR  pcParam)
         return  (ERROR_KERNEL_RUNNING);
     }
     
-    lib_strlcpy(cParamBuffer, pcParam, 512);
+    lib_strlcpy(cParamBuffer,         pcParam, sizeof(cParamBuffer));
+    lib_strlcpy(_K_cKernelStartParam, pcParam, sizeof(_K_cKernelStartParam));
 
     pcTok = lib_strtok_r(cParamBuffer, pcDelim, &pcLast);
     while (pcTok) {
@@ -159,6 +164,26 @@ ULONG  API_KernelStartParam (CPCHAR  pcParam)
     }
     
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_KernelStartParamGet
+** 功能描述: 获得系统内核启动参数
+** 输　入  : pcParam       启动参数
+**           stLen         缓冲区长度
+** 输　出  : 实际长度
+** 全局变量: 
+** 调用模块: 
+                                       API 函数
+*********************************************************************************************************/
+LW_API
+ssize_t  API_KernelStartParamGet (PCHAR  pcParam, size_t  stLen)
+{
+    if (!pcParam || !stLen) {
+        _ErrorHandle(ERROR_KERNEL_BUFFER_NULL);
+        return  (0);
+    }
+
+    return  ((ssize_t)lib_strlcpy(pcParam, _K_cKernelStartParam, stLen));
 }
 /*********************************************************************************************************
   END
