@@ -279,7 +279,7 @@ pid_t tcgetsid (int fd)
              它至少传输 0.25 秒，不会超过 0.5 秒。如果 duration 非零，它发送的时间长度由实现定义。
 ** 输　入  : fd      文件描述符
 **           duration
-** 输　出  : 进程描述符
+** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
                                            API 函数
@@ -292,11 +292,10 @@ int tcsendbreak (int  fd, int  duration)
 }
 /*********************************************************************************************************
 ** 函数名称: tcgetattr
-** 功能描述: 传送连续的 0 值比特流，持续一段时间，如果终端使用异步串行数据传输的话。如果 duration 是 0，
-             它至少传输 0.25 秒，不会超过 0.5 秒。如果 duration 非零，它发送的时间长度由实现定义。
+** 功能描述: 获得串口属性.
 ** 输　入  : fd      文件描述符
 **           tp      termios 结构
-** 输　出  : 进程描述符
+** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
                                            API 函数
@@ -378,13 +377,12 @@ int  tcgetattr (int  fd, struct termios *tp)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: tcgetattr
-** 功能描述: 传送连续的 0 值比特流，持续一段时间，如果终端使用异步串行数据传输的话。如果 duration 是 0，
-             它至少传输 0.25 秒，不会超过 0.5 秒。如果 duration 非零，它发送的时间长度由实现定义。
+** 函数名称: tcsetattr
+** 功能描述: 设置串口属性
 ** 输　入  : fd      文件描述符
 **           opt     选项 TCSANOW, TCSADRAIN, TCSAFLUSH
 **           tp      termios 结构
-** 输　出  : 进程描述符
+** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
                                            API 函数
@@ -507,12 +505,14 @@ void  cfmakeraw (struct termios *tp)
         return;
     }
     
-    tp->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
-                 | INLCR | IGNCR | ICRNL | IXON);
+    tp->c_iflag &= ~(IMAXBEL | IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
     tp->c_oflag &= ~OPOST;
     tp->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
     tp->c_cflag &= ~(CSIZE | PARENB);
     tp->c_cflag |= CS8;
+    
+    tp->c_cc[VMIN]  = 1;
+    tp->c_cc[VTIME] = 0;
 }
 
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */

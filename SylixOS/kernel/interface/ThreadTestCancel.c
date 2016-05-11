@@ -55,6 +55,9 @@ VOID  API_ThreadTestCancel (VOID)
         (ptcbCur->TCB_bCancelRequest)) {
         LW_OBJECT_HANDLE    ulId = ptcbCur->TCB_ulId;
         
+        if (ptcbCur->TCB_iDeleteProcStatus) {                           /*  已经在删除过程中            */
+            return;
+        }
 #if LW_CFG_THREAD_DEL_EN > 0
         API_ThreadDelete(&ulId, LW_THREAD_CANCELED);
 #endif                                                                  /*  LW_CFG_THREAD_DEL_EN > 0    */

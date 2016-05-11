@@ -88,6 +88,8 @@ INT  sio16c550Init (SIO16C550_CHAN *psiochan)
      */
     psiochan->pdrvFuncs = &sio16c550_drv_funcs;
     
+    LW_SPIN_INIT(&psiochan->slock);
+    
     psiochan->channel_mode = SIO_MODE_INT;
     psiochan->switch_en    = 0;
     psiochan->hw_option    = (CLOCAL | CREAD | CS8 | HUPCL);
@@ -129,7 +131,7 @@ static INT sio16c550SetBaud (SIO16C550_CHAN *psiochan, ULONG  baud)
     /*
      * disable interrupts during chip access
      */
-    intreg = KN_INT_DISABLE();
+    LW_SPIN_LOCK_QUICK(&psiochan->slock, &intreg);
 
     /*
      * Enable access to the divisor latches by setting DLAB in LCR.
@@ -149,7 +151,7 @@ static INT sio16c550SetBaud (SIO16C550_CHAN *psiochan, ULONG  baud)
 
     psiochan->baud = baud;
 
-    KN_INT_ENABLE(intreg);
+    LW_SPIN_UNLOCK_QUICK(&psiochan->slock, intreg);
 
     return  (ERROR_NONE);
 }
@@ -235,7 +237,7 @@ static INT sio16c550SetHwOption (SIO16C550_CHAN *psiochan, ULONG  hw_option)
         psiochan->ier &= ~IER_EMSI;                                     /* dis modem status interrupt   */
     }
 
-    intreg = KN_INT_DISABLE();
+    LW_SPIN_LOCK_QUICK(&psiochan->slock, &intreg);
 
     SET_REG(psiochan, LCR, psiochan->lcr);
     SET_REG(psiochan, MCR, psiochan->mcr);
@@ -255,7 +257,7 @@ static INT sio16c550SetHwOption (SIO16C550_CHAN *psiochan, ULONG  hw_option)
         SET_REG(psiochan, IER, psiochan->ier);                          /* enable interrupt             */
     }
 
-    KN_INT_ENABLE(intreg);
+    LW_SPIN_UNLOCK_QUICK(&psiochan->slock, intreg);
 
     psiochan->hw_option = hw_option;
 
@@ -273,13 +275,13 @@ static INT sio16c550Hup (SIO16C550_CHAN *psiochan)
 {
     INTREG  intreg;
 
-    intreg = KN_INT_DISABLE();
+    LW_SPIN_LOCK_QUICK(&psiochan->slock, &intreg);
 
     psiochan->mcr &= (~(MCR_RTS | MCR_DTR));
     SET_REG(psiochan, MCR, psiochan->mcr);
     SET_REG(psiochan, FCR, (RxCLEAR | TxCLEAR));
 
-    KN_INT_ENABLE(intreg);
+    LW_SPIN_UNLOCK_QUICK(&psiochan->slock, intreg);
 
     return  (ERROR_NONE);
 }
@@ -302,7 +304,7 @@ static INT sio16c550Open (SIO16C550_CHAN *psiochan)
         /*
          * RTS and DTR not set yet
          */
-        intreg = KN_INT_DISABLE();
+        LW_SPIN_LOCK_QUICK(&psiochan->slock, &intreg);
 
         /*
          * set RTS and DTR TRUE
@@ -317,7 +319,7 @@ static INT sio16c550Open (SIO16C550_CHAN *psiochan)
                 ((psiochan->rx_trigger_level << 6) | 
                  RxCLEAR | TxCLEAR | FIFO_ENABLE));
 
-        KN_INT_ENABLE(intreg);
+        LW_SPIN_UNLOCK_QUICK(&psiochan->slock, intreg);
     }
 
     return  (ERROR_NONE);
@@ -345,7 +347,7 @@ static INT sio16c550SetMode (SIO16C550_CHAN *psiochan, INT newmode)
         return  (ERROR_NONE);
     }
 
-    intreg = KN_INT_DISABLE();
+    LW_SPIN_LOCK_QUICK(&psiochan->slock, &intreg);
 
     if (newmode == SIO_MODE_INT) {
         /*
@@ -377,7 +379,7 @@ static INT sio16c550SetMode (SIO16C550_CHAN *psiochan, INT newmode)
 
     psiochan->channel_mode = newmode;
 
-    KN_INT_ENABLE(intreg);
+    LW_SPIN_UNLOCK_QUICK(&psiochan->slock, intreg);
 
     return  (ERROR_NONE);
 }
@@ -494,7 +496,7 @@ static INT sio16c550TxStartup (SIO16C550_CHAN *psiochan)
 
     if (psiochan->channel_mode == SIO_MODE_INT) {
         
-        intreg = KN_INT_DISABLE();
+        LW_SPIN_LOCK_QUICK(&psiochan->slock, &intreg);
         
         if (psiochan->hw_option & CLOCAL) {                             /* No modem control             */
             psiochan->ier |= TxFIFO_BIT;
@@ -515,7 +517,7 @@ static INT sio16c550TxStartup (SIO16C550_CHAN *psiochan)
             SET_REG(psiochan, IER, psiochan->ier);
         }
         
-        KN_INT_ENABLE(intreg);
+        LW_SPIN_UNLOCK_QUICK(&psiochan->slock, intreg);
 
         return  (ERROR_NONE);
 

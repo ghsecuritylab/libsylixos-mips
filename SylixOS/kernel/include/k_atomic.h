@@ -26,8 +26,8 @@
   根据系统配置, 选择锁类型
 *********************************************************************************************************/
 
-#define __LW_ATOMIC_LOCK(iregInterLevel)    { LW_SPIN_LOCK_QUICK(&_K_slAtomic, &iregInterLevel); }
-#define __LW_ATOMIC_UNLOCK(iregInterLevel)  { LW_SPIN_UNLOCK_QUICK(&_K_slAtomic, iregInterLevel); }
+#define __LW_ATOMIC_LOCK(iregInterLevel)    { LW_SPIN_LOCK_RAW(&_K_slAtomic, &iregInterLevel); }
+#define __LW_ATOMIC_UNLOCK(iregInterLevel)  { LW_SPIN_UNLOCK_RAW(&_K_slAtomic, iregInterLevel); }
 
 /*********************************************************************************************************
   基础操作

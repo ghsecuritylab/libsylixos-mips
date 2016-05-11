@@ -79,7 +79,7 @@ ULONG  __threadDelete (PLW_CLASS_TCB  ptcbDel, BOOL  bIsInSafe,
     REGISTER UINT16                usIndex;
     REGISTER PLW_CLASS_PCB         ppcbDel;
     REGISTER LW_OBJECT_HANDLE      ulId;
-    REGISTER PVOID                 pvFreeLowAddr;                       /*  要释放的内存地址            */
+    REGISTER PLW_STACK             pstkFree;                            /*  要释放的内存地址            */
              PVOID                 pvVProc;
              
 #if (LW_CFG_EVENTSET_EN > 0) && (LW_CFG_MAX_EVENTSETS > 0)
@@ -143,7 +143,7 @@ ULONG  __threadDelete (PLW_CLASS_TCB  ptcbDel, BOOL  bIsInSafe,
 #endif
     KN_INT_ENABLE(iregInterLevel);
     
-    pvFreeLowAddr = (PVOID)ptcbDel->TCB_pstkStackLowAddr;               /*  记录地址                    */
+    pstkFree = ptcbDel->TCB_pstkStackLowAddr;                           /*  记录地址                    */
     
 #if (LW_CFG_THREAD_PRIVATE_VARS_EN > 0) && (LW_CFG_MAX_THREAD_GLB_VARS > 0)
     _ThreadVarDelete(ptcbDel);                                          /*  删除并恢复私有化的全局变量  */
@@ -183,11 +183,7 @@ ULONG  __threadDelete (PLW_CLASS_TCB  ptcbDel, BOOL  bIsInSafe,
     pvVProc = ptcbDel->TCB_pvVProcessContext;                           /*  进程信息                    */
     
     if (ptcbDel->TCB_ucStackAutoAllocFlag) {                            /*  是否是内核堆开辟堆栈        */
-#if LW_CFG_MODULELOADER_EN > 0
-        vprocStackFree(ptcbDel, pvFreeLowAddr, LW_FALSE);
-#else
-        __KHEAP_FREE(pvFreeLowAddr);                                    /*  释放堆栈空间                */
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+        _StackFree(ptcbDel, pstkFree, LW_FALSE);                        /*  释放堆栈空间                */
     }
     
     _TCBDestroy(ptcbDel);                                               /*  销毁 TCB                    */

@@ -40,7 +40,7 @@ UINT32  armScuFeatureGet(VOID);
 UINT32  armScuTagRamSize(VOID);
 UINT32  armScuCpuMpStatus(VOID);
 UINT32  armScuCpuNumber(VOID);
-VOID    armScuSecureInvalidateAll(UINT32  uiCpuId,  UINT32  uiWays);
+VOID    armScuSecureInvalidateAll(UINT32  uiCPUId,  UINT32  uiWays);
 VOID    armScuFilteringSet(UINT32  uiStart,  UINT32  uiEnd);
 VOID    armScuAccessCtrlSet(UINT32  uiCpuBits);
 VOID    armScuNonAccessCtrlSet(UINT32  uiValue);

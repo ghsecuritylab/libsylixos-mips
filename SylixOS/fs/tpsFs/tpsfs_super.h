@@ -53,6 +53,7 @@
 
 #define TPS_MIN_LOG_SIZE        (1 * 1024 * 1024)                       /* 最小日志大小                 */
 #define TPS_SUPER_BLOCK_SECTOR  0                                       /* 超级快扇区号                 */
+#define TPS_SUPER_BLOCK_NUM     0                                       /* 超级块号                     */
 #define TPS_SPACE_MNG_INUM      1                                       /* 空间管理inode号              */
 #define TPS_ROOT_INUM           2                                       /* 根inode号                    */
 #define TPS_BPSTART_BLK         3                                       /* 块缓冲起始                   */
@@ -97,10 +98,12 @@ typedef struct tps_super_block {
     
     TPS_INUM                SB_inumSpaceMng;                            /* 空间管理inode号              */
     TPS_INUM                SB_inumRoot;                                /* 文件系统根inode号            */
+    TPS_INUM                SB_inumDeleted;                             /* 已删除文件列表               */
 
     PTPS_DEV                SB_dev;                                     /* 设备对象指针                 */
     struct tps_inode       *SB_pinodeSpaceMng;                          /* 空间管理inode                */
     struct tps_inode       *SB_pinodeRoot;                              /* 文件系统根inode              */
+    struct tps_inode       *SB_pinodeDeleted;                           /* 已经删除的文件               */
     struct tps_inode       *SB_pinodeOpenList;                          /* 以打开文件链表               */
     UINT                    SB_uiInodeOpenCnt;                          /* 当前打开文件数               */
 

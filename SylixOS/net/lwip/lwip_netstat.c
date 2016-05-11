@@ -58,7 +58,7 @@ extern struct raw_pcb *raw_pcbs;
 #include "lwip/igmp.h"
 #include "lwip/mld6.h"
 extern struct igmp_group *igmp_group_list;
-static struct mld_group  *mld_group_list;
+extern struct mld_group  *mld_group_list;
 /*********************************************************************************************************
   宏操作
 *********************************************************************************************************/
@@ -105,6 +105,8 @@ VOID  __tshellNetstatIf (VOID)
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_LWIP_IGMP > 0
+
 static VOID  __GroupPrint (struct igmp_group *group, PCHAR  pcBuffer, 
                            size_t  stTotalSize, size_t *pstOft)
 {
@@ -205,8 +207,10 @@ VOID  __tshellNetstatGroup (INT  iNetType)
     
     __SHEAP_FREE(pcPrintBuf);
 }
+
+#endif                                                                  /*  LW_CFG_LWIP_IGMP > 0        */
 /*********************************************************************************************************
-** 函数名称: __tshellNetstatGroup
+** 函数名称: __tshellNetstatStat
 ** 功能描述: 系统命令 "netstat -s"
 ** 输　入  : NONE
 ** 输　出  : ERROR_NONE

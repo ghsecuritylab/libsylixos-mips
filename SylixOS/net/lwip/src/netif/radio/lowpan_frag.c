@@ -38,6 +38,8 @@
 #include "lwip/timers.h"
 #include "lwip/tcpip.h"
 
+#if LWIP_SUPPORT_CUSTOM_PBUF
+
 #include "lowpan_if.h"
 #include "lowpan_compress.h"
 #include "lowpan_frag.h"
@@ -860,4 +862,6 @@ lowpan_frag (struct lowpanif *lowpanif, struct pbuf *p)
   return ERR_OK;
 #endif /* !LOWPAN_FRAG_USES_STATIC_BUF */
 }
+
+#endif /* LWIP_SUPPORT_CUSTOM_PBUF */
 /* end */

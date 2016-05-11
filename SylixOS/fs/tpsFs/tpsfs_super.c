@@ -66,6 +66,7 @@ static VOID  __tpsFsSBUnserial (PTPS_SUPER_BLOCK psb,
     TPS_LE64_TO_CPU(pucPos, psb->SB_ui64BPBlkCnt);
     TPS_LE64_TO_CPU(pucPos, psb->SB_inumSpaceMng);
     TPS_LE64_TO_CPU(pucPos, psb->SB_inumRoot);
+    TPS_LE64_TO_CPU(pucPos, psb->SB_inumDeleted);
 }
 /*********************************************************************************************************
 ** 函数名称: __tpsFsSerial
@@ -99,6 +100,7 @@ static VOID  __tpsFsSBSerial (PTPS_SUPER_BLOCK  psb,
     TPS_CPU_TO_LE64(pucPos, psb->SB_ui64BPBlkCnt);
     TPS_CPU_TO_LE64(pucPos, psb->SB_inumSpaceMng);
     TPS_CPU_TO_LE64(pucPos, psb->SB_inumRoot);
+    TPS_CPU_TO_LE64(pucPos, psb->SB_inumDeleted);
 }
 /*********************************************************************************************************
 ** 函数名称: tpsFsMount
@@ -192,6 +194,7 @@ errno_t  tpsFsMount (PTPS_DEV pdev, UINT uiFlags, PTPS_SUPER_BLOCK *ppsb)
     psb->SB_pinodeOpenList  = LW_NULL;
     psb->SB_uiInodeOpenCnt  = 0;
     psb->SB_uiFlags         = uiFlags;
+    psb->SB_pinodeDeleted   = LW_NULL;
 
     if (tspFsCheckTrans(psb) != TPS_ERR_NONE) {                         /* 检查事务完整性 (无法修复)    */
         TPS_FREE(pucSectorBuf);
@@ -239,12 +242,16 @@ errno_t  tpsFsUnmount (PTPS_SUPER_BLOCK psb)
         return  (EINVAL);
     }
 
+    if (LW_NULL != psb->SB_pinodeOpenList) {                            /* 存在未关闭的inode            */
+        return  (EBUSY);
+    }
+
     if (LW_NULL != psb->SB_pinodeSpaceMng) {
         tpsFsCloseInode(psb->SB_pinodeSpaceMng);
     }
 
-    if (LW_NULL != psb->SB_pinodeOpenList) {                            /* 存在未关闭的inode            */
-        return  (EBUSY);
+    if (LW_NULL != psb->SB_pinodeSpaceMng) {
+        tpsFsCloseInode(psb->SB_pinodeDeleted);
     }
 
     if (tspFsCompleteTrans(psb) != TPS_ERR_NONE) {                      /* 标记事物为一致状态           */
@@ -353,6 +360,7 @@ errno_t  tpsFsFormat (PTPS_DEV pdev, UINT uiBlkSize, UINT64 uiLogSize)
     psb->SB_ui64BPBlkCnt        = TPS_BPSTART_CNT;
     psb->SB_inumSpaceMng        = TPS_SPACE_MNG_INUM;
     psb->SB_inumRoot            = TPS_ROOT_INUM;
+    psb->SB_inumDeleted         = 0;
     psb->SB_pinodeOpenList      = LW_NULL;
     psb->SB_dev                 = pdev;
 
@@ -380,12 +388,35 @@ errno_t  tpsFsFormat (PTPS_DEV pdev, UINT uiBlkSize, UINT64 uiLogSize)
         return  (EIO);
     }
 
+    if (tpsFsBtreeInitBP(psb,
+                         psb->SB_ui64DataStartBlk,
+                         TPS_ADJUST_BP_BLK) != TPS_ERR_NONE) {          /* 初始化块缓冲区               */
+        TPS_FREE(pucSectorBuf);
+        TPS_FREE(psb);
+        return  (EIO);
+    }
+
+    psb->SB_pbp = (PTPS_BLK_POOL)TPS_ALLOC(sizeof(TPS_BLK_POOL));
+    if (LW_NULL == psb->SB_pbp) {
+        TPS_FREE(pucSectorBuf);
+        TPS_FREE(psb);
+        return  (ENOMEM);
+    }
+
+    if (tpsFsBtreeReadBP(psb) != TPS_ERR_NONE) {                        /* 读取块缓冲区                 */
+        TPS_FREE(pucSectorBuf);
+        TPS_FREE(psb->SB_pbp);
+        TPS_FREE(psb);
+        return  (EIO);
+    }
+
     if (tpsFsBtreeFreeBlk(LW_NULL,
                          psb->SB_pinodeSpaceMng,
-                         psb->SB_ui64DataStartBlk,
-                         psb->SB_ui64DataStartBlk,
-                         psb->SB_ui64DataBlkCnt) != TPS_ERR_NONE) {
+                         psb->SB_ui64DataStartBlk + TPS_ADJUST_BP_BLK,
+                         psb->SB_ui64DataStartBlk + TPS_ADJUST_BP_BLK,
+                         psb->SB_ui64DataBlkCnt - TPS_ADJUST_BP_BLK) != TPS_ERR_NONE) {
         TPS_FREE(pucSectorBuf);
+        TPS_FREE(psb->SB_pbp);
         TPS_FREE(psb);
         return  (EIO);
     }
@@ -394,14 +425,9 @@ errno_t  tpsFsFormat (PTPS_DEV pdev, UINT uiBlkSize, UINT64 uiLogSize)
     iErr  = tpsFsCreateInode(LW_NULL, psb, psb->SB_inumRoot, iMode);
     if (iErr != ERROR_NONE) {
         TPS_FREE(pucSectorBuf);
+        TPS_FREE(psb->SB_pbp);
         TPS_FREE(psb);
         return  (iErr);
-    }
-
-    if (tpsFsBtreeInitBP(psb) != TPS_ERR_NONE) {                        /* 初始化块缓冲区               */
-        TPS_FREE(pucSectorBuf);
-        TPS_FREE(psb);
-        return  (EIO);
     }
 
     tpsFsCloseInode(psb->SB_pinodeSpaceMng);
@@ -411,13 +437,35 @@ errno_t  tpsFsFormat (PTPS_DEV pdev, UINT uiBlkSize, UINT64 uiLogSize)
     if (pdev->DEV_WriteSector(pdev, pucSectorBuf, TPS_SUPER_BLOCK_SECTOR,
                               1, LW_TRUE) != 0) {                       /* 写super block扇区            */
         TPS_FREE(pucSectorBuf);
+        TPS_FREE(psb->SB_pbp);
         TPS_FREE(psb);
         return  (EIO);
     }
 
     TPS_FREE(pucSectorBuf);
+    TPS_FREE(psb->SB_pbp);
     TPS_FREE(psb);
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: tpsFsFlushSuperBlock
+** 功能描述: flush超级块
+** 输　入  : psb          超级块指针
+**           ptrans       事物指针
+** 输　出  : 成功返回0，失败返回错误码
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+TPS_RESULT tpsFsFlushSuperBlock (TPS_TRANS *ptrans, PTPS_SUPER_BLOCK psb)
+{
+    __tpsFsSBSerial(psb, psb->SB_pucSectorBuf, psb->SB_uiSectorSize);
+
+    if (tpsFsTransWrite(ptrans, psb, TPS_SUPER_BLOCK_NUM,
+                        0, psb->SB_pucSectorBuf, psb->SB_uiSectorSize) != 0) {
+        return  (TPS_ERR_WRITE_DEV);
+    }
+
+    return  (TPS_ERR_NONE);
 }
 
 #endif                                                                  /*  LW_CFG_TPSFS_EN > 0         */

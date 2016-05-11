@@ -159,8 +159,9 @@ BOOL  _CandTableTryAdd (PLW_CLASS_TCB  ptcb, PLW_CLASS_PCB  ppcb)
 
     if (ptcb->TCB_bCPULock) {                                           /*  任务锁定 CPU                */
         pcpu = LW_CPU_GET(ptcb->TCB_ulCPULock);
-        _BugFormat(!LW_CPU_IS_ACTIVE(pcpu), LW_TRUE,
-                   "CPU Inactive %ld.\r\n", ptcb->TCB_ulCPULock);       /*  CPU 必须为激活状态          */
+        if (!LW_CPU_IS_ACTIVE(pcpu)) {
+            goto    __can_not_cand;
+        }
         
         ptcbCand = LW_CAND_TCB(pcpu);
         if (ptcbCand == LW_NULL) {                                      /*  候选表为空                  */
@@ -219,10 +220,9 @@ __can_cand:
             goto    __can_cand;
         }
     }
-
-__can_not_cand:
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
+__can_not_cand:
     if (_PcbIsEmpty(ppcb)) {
         __ADD_RDY_MAP(ptcb);                                            /*  将位图的相关位置一          */
     }

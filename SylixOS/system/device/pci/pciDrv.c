@@ -85,7 +85,7 @@ static INT  __tshellPciDrvDevDel (CPCHAR  cpcName, INT iAll, INT  iBus, INT  iDe
     return  (ERROR_NONE);
 
 __error_handle:
-    fprintf(stderr, "probe pci device error.\n");
+    fprintf(stderr, "delete pci device error.\n");
     return  (PX_ERROR);
 }
 /*********************************************************************************************************
@@ -210,13 +210,16 @@ __error_handle:
 ** 功能描述: 加载 PCI 驱动
 ** 输　入  : hDrvHandle     驱动句柄
 **           hDevHandle     设备句柄
+**           hIdEntry       当前匹配成功的一个 PCI ID 条目
 ** 输　出  : ERROR or OK
 ** 全局变量:
 ** 调用模块:
 **                                            API 函数
 *********************************************************************************************************/
 LW_API
-INT  API_PciDrvLoad (PCI_DRV_HANDLE  hDrvHandle, PCI_DEV_HANDLE  hDevHandle)
+INT  API_PciDrvLoad (PCI_DRV_HANDLE       hDrvHandle,
+                     PCI_DEV_HANDLE       hDevHandle,
+                     PCI_DEVICE_ID_HANDLE hIdEntry)
 {
     INT     iRet;
 
@@ -225,7 +228,11 @@ INT  API_PciDrvLoad (PCI_DRV_HANDLE  hDrvHandle, PCI_DEV_HANDLE  hDevHandle)
         return  (PX_ERROR);
     }
 
-    iRet = hDrvHandle->PDT_pfuncDrvProbe(hDevHandle, hDrvHandle->PDT_hDrvIdTable);
+    if (!hIdEntry) {
+        hIdEntry = hDrvHandle->PDT_hDrvIdTable;
+    }
+
+    iRet = hDrvHandle->PDT_pfuncDrvProbe(hDevHandle, hIdEntry);
     if (iRet != ERROR_NONE) {
         return  (PX_ERROR);
     }
@@ -413,7 +420,7 @@ PCI_DRV_HANDLE  API_PciDrvHandleGet (CPCHAR  cpcName)
          plineTemp != LW_NULL;
          plineTemp  = _list_line_get_next(plineTemp)) {
         hDrvHandle = _LIST_ENTRY(plineTemp, PCI_DRV_TCB, PDT_lineDrvNode);
-        if (lib_strcmp(&hDrvHandle->PDT_cDrvName[0], cpcName) == 0) {
+        if (lib_strncmp(&hDrvHandle->PDT_cDrvName[0], cpcName, PCI_DRV_NAME_MAX) == 0) {
             break;
         }
     }
@@ -519,9 +526,55 @@ INT  API_PciDrvRegister (PCI_DRV_REGISTER_HANDLE  hHandle)
     if (hDrvHandle->PDT_iDrvFlag & PCI_DRV_FLAG_ACTIVE) {
         _GuiPciDrvActiveNum += 1;
     }
+
+    API_PciDrvBindEachDev(hDrvHandle);                                  /*  尝试绑定设备                */
     __PCI_DRV_UNLOCK();
 
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciDevBindEachDrv
+** 功能描述: 对一个新的PCI设备, 尝试与系统中的驱动进行绑定(适用于热插拔支持)
+** 输　入  : hDevHandle     设备句柄
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+                                           API 函数
+*********************************************************************************************************/
+LW_API
+VOID  API_PciDevBindEachDrv (PCI_DEV_HANDLE hDevHandle)
+{
+    PCI_DRV_HANDLE        hDrvCurr;
+    PLW_LIST_LINE         plineTemp;
+    PCI_DEVICE_ID_HANDLE  hId;
+    INT                   iRet;
+
+    if (hDevHandle->PDT_pvDevDriver) {
+        return;
+    }
+
+    __PCI_DRV_LOCK();
+    for (plineTemp  = _GplinePciDrvHeader;
+         plineTemp != LW_NULL;
+         plineTemp  = _list_line_get_next(plineTemp)) {
+
+        hDrvCurr = _LIST_ENTRY(plineTemp, PCI_DRV_TCB, PDT_lineDrvNode);
+
+        hId = API_PciDevMatchDrv(hDevHandle, hDrvCurr);
+        if (!hId) {
+            continue;                                                   /*  ID 不匹配                   */
+        }
+
+        /*
+         * 如果探测失败, 不直接返回. 因为系统中可能还存在合适的驱动
+         * 这完全由 PCI 设备驱动编写者决定
+         */
+        iRet = API_PciDrvLoad(hDrvCurr, hDevHandle, hId);
+        if (iRet == ERROR_NONE) {
+            break;
+        }
+    }
+    __PCI_DRV_UNLOCK();
 }
 /*********************************************************************************************************
 ** 函数名称: API_PciDrvInit
@@ -540,10 +593,13 @@ INT  API_PciDrvInit (VOID)
     _GplinePciDrvHeader = LW_NULL;
     _GulPciDrvLock      = LW_OBJECT_HANDLE_INVALID;
 
-    _GulPciDrvLock = API_SemaphoreMCreate("pci_drv_lock", LW_PRIO_DEF_CEILING,
-                                          LW_OPTION_INHERIT_PRIORITY |
-                                          LW_OPTION_DELETE_SAFE |
-                                          LW_OPTION_OBJECT_GLOBAL, LW_NULL);
+    _GulPciDrvLock = API_SemaphoreMCreate("pci_drv_lock",
+                                          LW_PRIO_DEF_CEILING,
+                                          (LW_OPTION_WAIT_FIFO |
+                                           LW_OPTION_DELETE_SAFE |
+                                           LW_OPTION_INHERIT_PRIORITY |
+                                           LW_OPTION_OBJECT_GLOBAL),
+                                          LW_NULL);
     if (_GulPciDrvLock == LW_OBJECT_HANDLE_INVALID) {
         return  (PX_ERROR);
     }

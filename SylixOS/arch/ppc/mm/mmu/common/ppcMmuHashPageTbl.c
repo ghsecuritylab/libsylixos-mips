@@ -35,7 +35,6 @@ extern VOID  ppcHashPageTblPteSet(PTE    *pPte,
                                   UINT32  uiWord0,
                                   UINT32  uiWord1,
                                   UINT32  uiEffectiveAddr);
-extern VOID  ppcMmuInvalidateTLBEA(UINT32  uiEffectiveAddr);
 /*********************************************************************************************************
   全局变量定义
 *********************************************************************************************************/
@@ -421,12 +420,13 @@ VOID  ppcMmuHashPageTblMakeTrans (addr_t  ulEffectiveAddr,
                                      uiVSID);
             } else {
                 /*
-                 * 没有无效的 PTE，无效 TLB，不作强制淘汰 PTE，让其产生 MISS
+                 * 没有无效的 PTE，外部会无效 TLB，不作强制淘汰 PTE，让其产生 MISS
                  */
-                ppcMmuInvalidateTLBEA(ulEffectiveAddr);
             }
         } else {
-            ppcMmuInvalidateTLBEA(ulEffectiveAddr);
+            /*
+             * 没有无效的 PTE，外部会无效 TLB，不作强制淘汰 PTE，让其产生 MISS
+             */
         }
     }
 }
@@ -437,7 +437,8 @@ VOID  ppcMmuHashPageTblMakeTrans (addr_t  ulEffectiveAddr,
 **           uiPteValue1           PTE 值1
 ** 输　出  : NONE
 ** 全局变量:
-** 调用模块:
+** 调用模块: 
+** 说  明  : 如果没有找到，外部会无效 TLB，不作查找无效 PTE 和强制淘汰 PTE，让其产生 MISS
 *********************************************************************************************************/
 VOID  ppcMmuHashPageTblFlagSet (addr_t  ulEffectiveAddr,
                                 UINT32  uiPteValue1)
@@ -494,9 +495,8 @@ VOID  ppcMmuHashPageTblFlagSet (addr_t  ulEffectiveAddr,
         }
     } else {
         /*
-         * 没有找到，无效 TLB，不作查找无效 PTE 和强制淘汰 PTE，让其产生 MISS
+         * 没有找到，外部会无效 TLB，不作查找无效 PTE 和强制淘汰 PTE，让其产生 MISS
          */
-        ppcMmuInvalidateTLBEA(ulEffectiveAddr);
     }
 }
 /*********************************************************************************************************
@@ -575,6 +575,7 @@ VOID  ppcMmuHashPageTblPteMiss (addr_t  ulEffectiveAddr,
 ** 调用模块:
 *********************************************************************************************************/
 #ifdef __MMU_PTE_DEBUG
+
 int  mmu_show (int  argc, char  **argv)
 {
     PTEG   *pPteg = (PTEG *)_G_uiHashPageTblOrg;
@@ -605,8 +606,8 @@ int  mmu_show (int  argc, char  **argv)
 
     return  (0);
 }
-#endif
 
+#endif
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 /*********************************************************************************************************
   END

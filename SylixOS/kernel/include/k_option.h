@@ -78,6 +78,7 @@
 #define  LW_OPTION_THREAD_SCOPE_PROCESS                 0x00000800      /*  进程区域内竞争 (当前不支持) */
 
 #ifdef __SYLIXOS_KERNEL
+#define  LW_OPTION_THREAD_AFFINITY_ALWAYS               0x20000000      /*  总是锁定一个 CPU 执行       */
 #define  LW_OPTION_THREAD_STK_MAIN                      0x40000000      /*  进程主线程 stack            */
 #endif                                                                  /*  __SYLIXOS_KERNEL            */
 

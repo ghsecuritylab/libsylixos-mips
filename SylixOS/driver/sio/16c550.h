@@ -150,6 +150,8 @@ typedef struct sio16c550_chan SIO16C550_CHAN;
 
 struct sio16c550_chan {
     SIO_DRV_FUNCS   *pdrvFuncs;
+    
+    LW_SPINLOCK_DEFINE  (slock);
 
     int (*pcbGetTxChar)();
     int (*pcbPutRcvChar)();

@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -125,8 +125,25 @@ VOID    armBranchPredictionEnable(VOID);
 #define AUX_CTRL_A15_LOOP_BUF_DIS                   (1 <<  1)
 #define AUX_CTRL_A15_BTB                            (1 <<  0)
 
+#define AUX_CTRL_A17_SMP                            (1 <<  6)
+#define AUX_CTRL_A17_ASSE                           (1 <<  3)
+#define AUX_CTRL_A17_L2_PREFETCH                    (1 <<  2)
+#define AUX_CTRL_A17_L1_PREFETCH                    (1 <<  1)
+
 VOID    armAuxControlFeatureDisable(UINT32  uiFeature);
 VOID    armAuxControlFeatureEnable(UINT32  uiFeature);
+
+/*********************************************************************************************************
+  ARM A15 A17 内部集成 L2 控制
+*********************************************************************************************************/
+
+#define A15_L2_CTL_L2_ECC_EN                        (1 << 21)
+
+#define A17_L2_CTL_L2_DIS                           (1 << 18)
+#define A17_L2_CTL_L2_ECC_DIS                       (1 << 19)
+
+VOID    armA1xL2CtlSet(UINT32  uiL2Ctl);
+UINT32  armA1xL2CtlGet(VOID);
 
 /*********************************************************************************************************
   ARM 系统控制器

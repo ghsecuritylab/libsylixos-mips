@@ -81,7 +81,9 @@ static const CHAR   _G_cNetstatHelp[] = {
     "-A <net type>, --<net type>    select <net type>, <net type>=inet, inet6 or unix\n"
 };
 extern VOID  __tshellNetstatIf(VOID);
+#if LW_CFG_LWIP_IGMP > 0
 extern VOID  __tshellNetstatGroup(INT  iNetType);
+#endif
 extern VOID  __tshellNetstatStat(VOID);
 extern VOID  __tshellNetstatRaw(INT  iNetType);
 extern VOID  __tshellNetstatTcp(INT  iNetType);
@@ -147,7 +149,9 @@ static INT  __tshellNetstat (INT  iArgC, PCHAR  *ppcArgV)
             return  (ERROR_NONE);
             
         case 'g':                                                       /*  显示组播表情况              */
+#if LW_CFG_LWIP_IGMP > 0
             __tshellNetstatGroup(iNetType);
+#endif
             return  (ERROR_NONE);
         
         case 's':                                                       /*  显示统计信息                */

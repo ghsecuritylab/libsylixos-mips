@@ -24,6 +24,7 @@
 2012.03.19  这里提前记录 CPU ID, 这样就不必每次操作 _K_ulThreadIdleCounter 都获取 CPU ID.
 2013.07.20  _K_ulThreadIdleCounter 不再使用数组, 直接 ++ 即可.
 2014.01.06  不再需要 idle 计数器.
+2016.05.10  idle hook 加入 cpuid 参数.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -35,13 +36,13 @@
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-PVOID  _IdleThread (PVOID    pvArg)
+PVOID  _IdleThread (PVOID  pvArg)
 {
-    (VOID)pvArg;
+    ULONG  ulCPUId = (ULONG)pvArg;
     
     for (;;) {
         bspTaskIdleHook();                                              /*  空闲任务钩子函数            */
-        __LW_THREAD_IDLE_HOOK();
+        __LW_THREAD_IDLE_HOOK(ulCPUId);
     }
     
     return  (LW_NULL);

@@ -1,4 +1,4 @@
-;/**********************************************************************************************************
+;/*********************************************************************************************************
 ;**
 ;**                                    中国软件开源组织
 ;**
@@ -30,19 +30,85 @@
 
     FILE_BEGIN()
     
+    EXPORT_LABEL(armCacheV7CTR)
     EXPORT_LABEL(armCacheV7CCSIDR)
+    EXPORT_LABEL(armCacheV7CLIDR)
+    EXPORT_LABEL(armCacheV7CSSELR)
+
     EXPORT_LABEL(armDCacheV7Disable)
     EXPORT_LABEL(armDCacheV7FlushPoU)
     EXPORT_LABEL(armDCacheV7FlushAll)
+    EXPORT_LABEL(armDCacheV7FlushAllPoU)
     EXPORT_LABEL(armDCacheV7ClearAll)
+    EXPORT_LABEL(armDCacheV7ClearAllPoU)
     EXPORT_LABEL(armDCacheV7InvalidateAll)
+    EXPORT_LABEL(armDCacheV7InvalidateAllPoU)
     
 ;/*********************************************************************************************************
-;  ARMv7 获得 CCSIDR 寄存器
+;  ARMv7 cache levels 最多 7 级 CACHE
 ;*********************************************************************************************************/
+
+#define ARMv7_CACHE_LEVEL1          0
+#define ARMv7_CACHE_LEVEL2          1
+#define ARMv7_CACHE_LEVEL3          2
+#define ARMv7_CACHE_LEVEL4          3
+#define ARMv7_CACHE_LEVEL5          4
+#define ARMv7_CACHE_LEVEL6          5
+#define ARMv7_CACHE_LEVEL7          6
+
+;/*********************************************************************************************************
+;  ARMv7 CLIDR 寄存器 CACHE 类型
+;*********************************************************************************************************/
+
+#define ARMv7_CLDR_ICACHE           0x1
+#define ARMv7_CLID_DCACHE           0x2
+#define ARMv7_CLID_UCACHE           0x4
+
+;/*********************************************************************************************************
+;  ARMv7 CSSEL 寄存器 CACHE 类型
+;*********************************************************************************************************/
+
+#define ARMv7_CSSEL_ICACHE          0x1                                 ;/* select instruction cache     */
+#define ARMv7_CSSEL_DCACHE          0x0                                 ;/* select data or unified cache */
+
+;/*********************************************************************************************************
+;  ARMv7 CSSELR 寄存信息
+;*********************************************************************************************************/
+
+#define ARMv7_CCSID_LINESIZE_MSK    0x7                                 ;/* line size bit mask           */
+#define ARMv7_CCSID_WAYNUM_MSK      0x1ff8                              ;/* associativity bit mask       */
+#define ARMv7_CCSID_SETNUM_MSK      0xfffe000                           ;/* set number bit mask          */
+#define ARMv7_CCSID_MODE_MSK        0xf0000000                          ;/* mode bit mask                */
+
+#define ARMv7_CCSID_WAYNUM_SHFT     3                                   ;/* associativity field shift    */
+#define ARMv7_CCSID_SETNUM_SHFT     13                                  ;/* set number field shift       */
+
+#define ARMv7_CCSID_MODE_WT         0x80000000                          ;/* write-through mode           */
+#define ARMv7_CCSID_MODE_WB         0x40000000                          ;/* write-back mode              */
+#define ARMv7_CCSID_MODE_RA         0x20000000                          ;/* read-allocate mode           */
+#define ARMv7_CCSID_MODE_WA         0x10000000                          ;/* write-allocate mode          */
+
+;/*********************************************************************************************************
+;  ARMv7 获得 CACHE 相关寄存器
+;*********************************************************************************************************/
+
+FUNC_DEF(armCacheV7CTR)
+    MRC     p15, 0, R0, c0, c0, 1
+    BX      LR
+    FUNC_END()
 
 FUNC_DEF(armCacheV7CCSIDR)
     MRC     p15, 1, R0, c0, c0, 0
+    BX      LR
+    FUNC_END()
+
+FUNC_DEF(armCacheV7CLIDR)
+    MRC     p15, 1, R0, c0, c0, 1
+    BX      LR
+    FUNC_END()
+
+FUNC_DEF(armCacheV7CSSELR)
+    MRC     p15, 2, R0, c0, c0, 0
     BX      LR
     FUNC_END()
 
@@ -94,18 +160,29 @@ FUNC_DEF(armDCacheV7FlushPoU)
     FUNC_END()
 
 ;/*********************************************************************************************************
+;  ARMv7 CLIDR 寄存器 level shift & mask
+;*********************************************************************************************************/
+
+#define LoUIS_MASK      0x00e00000
+#define LoUIS_SHIFT     20
+#define LoC_MASK        0x07000000
+#define LoC_SHIFT       23
+#define LoUU_MASK       0x38000000
+#define LoUU_SHIFT      26
+
+;/*********************************************************************************************************
 ;  ARMv7 DCACHE 操作宏
 ;*********************************************************************************************************/
 
 #define _FLD_MAX_WAY    0x3ff
 #define _FLD_MAX_IDX    0x7fff
 
-MACRO_DEF(armDCacheV7Op Op CRm)
+MACRO_DEF(armDCacheV7Op Op CRm LoXM LoXS)
     STMFD   SP!, {R4-R11}
     ARM_DMB()
     MRC     p15, 1, R0, c0, c0, 1                                       ;/* Read CLID register           */
-    ANDS    R3, R0, #0x7000000                                          ;/* Get Level of Coherency       */
-    MOV     R3, R3, LSR #23
+    ANDS    R3, R0, #\LoXM                                              ;/* Get Level of Coherency       */
+    MOV     R3, R3, LSR #\LoXS
     BEQ     finished\Op
     MOV     R10, #0
 
@@ -162,7 +239,15 @@ LINE_LABEL(finished\Op)
 ;*********************************************************************************************************/
 
 FUNC_DEF(armDCacheV7FlushAll)
-    armDCacheV7Op   FlushAll        c10
+    armDCacheV7Op   FlushAll            c10     LoC_MASK    LoC_SHIFT
+    FUNC_END()
+
+;/*********************************************************************************************************
+;  ARMv7 回写 DCACHE PoU
+;*********************************************************************************************************/
+
+FUNC_DEF(armDCacheV7FlushAllPoU)
+    armDCacheV7Op   FlushAllPoU         c10     LoUU_MASK   LoUU_SHIFT
     FUNC_END()
     
 ;/*********************************************************************************************************
@@ -170,16 +255,32 @@ FUNC_DEF(armDCacheV7FlushAll)
 ;*********************************************************************************************************/
 
 FUNC_DEF(armDCacheV7ClearAll)
-	armDCacheV7Op   ClearAll        c14
-	FUNC_END()
+    armDCacheV7Op   ClearAll            c14     LoC_MASK    LoC_SHIFT
+    FUNC_END()
+
+;/*********************************************************************************************************
+;  ARMv7 回写并无效 DCACHE PoU
+;*********************************************************************************************************/
+
+FUNC_DEF(armDCacheV7ClearAllPoU)
+    armDCacheV7Op   ClearAllPoU         c14     LoUU_MASK   LoUU_SHIFT
+    FUNC_END()
 
 ;/*********************************************************************************************************
 ;  ARMv7 无效 DCACHE
 ;*********************************************************************************************************/
 
 FUNC_DEF(armDCacheV7InvalidateAll)
-	armDCacheV7Op   InvalidateAll   c6
-	FUNC_END()
+    armDCacheV7Op   InvalidateAll       c6      LoC_MASK    LoC_SHIFT
+    FUNC_END()
+
+;/*********************************************************************************************************
+;  ARMv7 无效 DCACHE
+;*********************************************************************************************************/
+
+FUNC_DEF(armDCacheV7InvalidateAllPoU)
+    armDCacheV7Op   InvalidateAllPoU    c6      LoUU_MASK   LoUU_SHIFT
+    FUNC_END()
 
     FILE_END()
 

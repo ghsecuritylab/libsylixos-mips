@@ -124,6 +124,10 @@ VOID    _SmpSpinLockTask(spinlock_t *psl);
 BOOL    _SmpSpinTryLockTask(spinlock_t *psl);
 INT     _SmpSpinUnlockTask(spinlock_t *psl);
 
+VOID    _SmpSpinLockRaw(spinlock_t *psl, INTREG  *piregInterLevel);
+BOOL    _SmpSpinTryLockRaw(spinlock_t *psl, INTREG  *piregInterLevel);
+VOID    _SmpSpinUnlockRaw(spinlock_t *psl, INTREG  iregInterLevel);
+
 #define LW_SPIN_INIT(psl)                   _SmpSpinInit(psl)
 
 #define LW_SPIN_LOCK(psl)                   _SmpSpinLock(psl)
@@ -145,14 +149,15 @@ INT     _SmpSpinUnlockTask(spinlock_t *psl);
 #define LW_SPIN_TRYLOCK_TASK(psl)           _SmpSpinTryLockTask(psl)
 #define LW_SPIN_UNLOCK_TASK(psl)            _SmpSpinUnlockTask(psl)
 
+#define LW_SPIN_LOCK_RAW(psl, pireg)        _SmpSpinLockRaw(psl, pireg)
+#define LW_SPIN_TRYLOCK_RAW(psl, pireg)     _SmpSpinTryLockRaw(psl, pireg)
+#define LW_SPIN_UNLOCK_RAW(psl, ireg)       _SmpSpinUnlockRaw(psl, ireg)
+
 /*********************************************************************************************************
   SMP 内核锁操作.
 *********************************************************************************************************/
 
 struct  __lw_tcb;
-VOID    _SmpKernelLock(VOID);
-VOID    _SmpKernelUnlock(VOID);
-
 VOID    _SmpKernelLockIgnIrq(VOID);
 VOID    _SmpKernelUnlockIgnIrq(VOID);
 
@@ -160,9 +165,6 @@ VOID    _SmpKernelLockQuick(INTREG  *piregInterLevel);
 VOID    _SmpKernelUnlockQuick(INTREG  iregInterLevel);
 
 VOID    _SmpKernelUnlockSched(struct __lw_tcb *ptcbOwner);
-
-#define LW_SPIN_KERN_LOCK()                 _SmpKernelLock()
-#define LW_SPIN_KERN_UNLOCK()               _SmpKernelUnlock()
 
 #define LW_SPIN_KERN_LOCK_IGNIRQ()          _SmpKernelLockIgnIrq()
 #define LW_SPIN_KERN_UNLOCK_IGNIRQ()        _SmpKernelUnlockIgnIrq()
@@ -192,6 +194,10 @@ BOOL    _UpSpinTryLockIrq(spinlock_t *psl, INTREG  *piregInterLevel);
 INT     _UpSpinUnlockIrq(spinlock_t *psl, INTREG  iregInterLevel);
 VOID    _UpSpinUnlockIrqQuick(spinlock_t *psl, INTREG  iregInterLevel);
 
+VOID    _UpSpinLockRaw(spinlock_t *psl, INTREG  *piregInterLevel);
+BOOL    _UpSpinTryLockRaw(spinlock_t *psl, INTREG  *piregInterLevel);
+VOID    _UpSpinUnlockRaw(spinlock_t *psl, INTREG  iregInterLevel);
+
 #define LW_SPIN_INIT(psl)                   _UpSpinInit(psl)
 
 #define LW_SPIN_LOCK(psl)                   _UpSpinLock(psl)
@@ -213,14 +219,15 @@ VOID    _UpSpinUnlockIrqQuick(spinlock_t *psl, INTREG  iregInterLevel);
 #define LW_SPIN_TRYLOCK_TASK(psl)           _UpSpinTryLock(psl)
 #define LW_SPIN_UNLOCK_TASK(psl)            _UpSpinUnlock(psl)
 
+#define LW_SPIN_LOCK_RAW(psl, pireg)        _UpSpinLockRaw(psl, pireg)
+#define LW_SPIN_TRYLOCK_RAW(psl, pireg)     _UpSpinTryLockRaw(psl, pireg)
+#define LW_SPIN_UNLOCK_RAW(psl, ireg)       _UpSpinUnlockRaw(psl, ireg)
+
 /*********************************************************************************************************
   单处理器内核锁操作
 *********************************************************************************************************/
 
 struct  __lw_tcb;
-VOID    _UpKernelLock(VOID);
-VOID    _UpKernelUnlock(VOID);
-
 VOID    _UpKernelLockIgnIrq(VOID);
 VOID    _UpKernelUnlockIgnIrq(VOID);
 
@@ -228,9 +235,6 @@ VOID    _UpKernelLockQuick(INTREG  *piregInterLevel);
 VOID    _UpKernelUnlockQuick(INTREG  iregInterLevel);
 
 VOID    _UpKernelUnlockSched(struct __lw_tcb *ptcbOwner);
-
-#define LW_SPIN_KERN_LOCK()                 _UpKernelLock()
-#define LW_SPIN_KERN_UNLOCK()               _UpKernelUnlock()
 
 #define LW_SPIN_KERN_LOCK_IGNIRQ()          _UpKernelLockIgnIrq()
 #define LW_SPIN_KERN_UNLOCK_IGNIRQ()        _UpKernelUnlockIgnIrq()

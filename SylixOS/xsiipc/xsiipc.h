@@ -44,8 +44,9 @@
  * ipc version
  * 0.0.4    2013.11.28 add thread test point in msgrcv() and msgsnd()
  * 0.0.5    2016.04.13 fixed semctl() va_arg() bug.
+ * 0.0.6    2016.04.20 fixed cache alias prob.
  */
-#define IPC_VER         "0.0.5"
+#define IPC_VER         "0.0.6"
 
 /*
  * ipc config

@@ -75,7 +75,7 @@ extern struct raw_pcb *raw_pcbs;
 #include "lwip/igmp.h"
 #include "lwip/mld6.h"
 extern struct igmp_group *igmp_group_list;
-static struct mld_group  *mld_group_list;
+extern struct mld_group  *mld_group_list;
 /*********************************************************************************************************
   ROUTE
 *********************************************************************************************************/
@@ -1057,6 +1057,8 @@ static ssize_t  __procFsNetRaw6Read (PLW_PROCFS_NODE  p_pfsn,
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_LWIP_IGMP > 0
+
 static VOID  __procFsNetIgmpPrint (struct igmp_group *group, PCHAR  pcBuffer, 
                                   size_t  stTotalSize, size_t *pstOft)
 {
@@ -1068,6 +1070,8 @@ static VOID  __procFsNetIgmpPrint (struct igmp_group *group, PCHAR  pcBuffer,
                        group->group_address.addr,
                        (u32_t)group->use);
 }
+
+#endif                                                                  /*  LW_CFG_LWIP_IGMP > 0        */
 /*********************************************************************************************************
 ** 函数名称: __procFsNetIgmpRead
 ** 功能描述: procfs 读一个读取网络 igmp 文件
@@ -1084,6 +1088,7 @@ static ssize_t  __procFsNetIgmpRead (PLW_PROCFS_NODE  p_pfsn,
                                      size_t           stMaxBytes,
                                      off_t            oft)
 {
+#if LW_CFG_LWIP_IGMP > 0
     const CHAR      cIgmpInfoHdr[] = 
     "DEV  GROUP    COUNT\n";
           PCHAR     pcFileBuffer;
@@ -1132,6 +1137,9 @@ static ssize_t  __procFsNetIgmpRead (PLW_PROCFS_NODE  p_pfsn,
     lib_memcpy(pcBuffer, (CPVOID)(pcFileBuffer + oft), (UINT)stCopeBytes);
     
     return  ((ssize_t)stCopeBytes);
+#else
+    return  (0);
+#endif                                                                  /*  LW_CFG_LWIP_IGMP > 0        */
 }
 /*********************************************************************************************************
 ** 函数名称: __procFsNetIgmp6Print
@@ -1144,6 +1152,8 @@ static ssize_t  __procFsNetIgmpRead (PLW_PROCFS_NODE  p_pfsn,
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_LWIP_IGMP > 0
+
 static VOID  __procFsNetIgmp6Print (struct mld_group *group, PCHAR  pcBuffer, 
                                     size_t  stTotalSize, size_t *pstOft)
 {
@@ -1158,6 +1168,8 @@ static VOID  __procFsNetIgmp6Print (struct mld_group *group, PCHAR  pcBuffer,
                        group->group_address.addr[3],
                        (u32_t)group->use);
 }
+
+#endif                                                                  /*  LW_CFG_LWIP_IGMP > 0        */
 /*********************************************************************************************************
 ** 函数名称: __procFsNetIgmp6Read
 ** 功能描述: procfs 读一个读取网络 igmp6 文件
@@ -1174,6 +1186,7 @@ static ssize_t  __procFsNetIgmp6Read (PLW_PROCFS_NODE  p_pfsn,
                                       size_t           stMaxBytes,
                                       off_t            oft)
 {
+#if LW_CFG_LWIP_IGMP > 0
     const CHAR      cIgmp6InfoHdr[] = 
     "DEV  GROUP                            COUNT\n";
           PCHAR     pcFileBuffer;
@@ -1222,6 +1235,9 @@ static ssize_t  __procFsNetIgmp6Read (PLW_PROCFS_NODE  p_pfsn,
     lib_memcpy(pcBuffer, (CPVOID)(pcFileBuffer + oft), (UINT)stCopeBytes);
     
     return  ((ssize_t)stCopeBytes);
+#else
+    return  (0);
+#endif                                                                  /*  LW_CFG_LWIP_IGMP > 0        */
 }
 /*********************************************************************************************************
 ** 函数名称: __procFsNetTcpipStatPrintProto
@@ -1256,6 +1272,8 @@ static VOID  __procFsNetTcpipStatPrintProto (struct stats_proto *proto, const ch
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
+#if LW_CFG_LWIP_IGMP > 0
+
 static VOID  __procFsNetTcpipStatPrintIgmp (struct stats_igmp *igmp, const char *name,
                                             PCHAR  pcBuffer, size_t  stTotalSize, size_t *pstOft)
 {                 
@@ -1265,6 +1283,8 @@ static VOID  __procFsNetTcpipStatPrintIgmp (struct stats_igmp *igmp, const char 
                        igmp->memerr, igmp->proterr, igmp->rx_v1, igmp->rx_group, igmp->rx_general, 
                        igmp->rx_report, igmp->tx_join, igmp->tx_leave, igmp->tx_report);
 }
+
+#endif                                                                  /*  LW_CFG_LWIP_IGMP > 0        */
 /*********************************************************************************************************
 ** 函数名称: __procFsNetTcpipStatPrintMem
 ** 功能描述: 打印网络 tcpip_stat 文件 mem 部分
@@ -1343,8 +1363,12 @@ static VOID  __procFsNetTcpipStatPrint (PCHAR  pcBuffer, size_t  stTotalSize, si
 
     __procFsNetTcpipStatPrintProto(&lwip_stats.link,     "LINK",      pcBuffer, stTotalSize, pstOft);
     __procFsNetTcpipStatPrintProto(&lwip_stats.etharp,   "ETHARP",    pcBuffer, stTotalSize, pstOft);
+    
+#if LW_CFG_LWIP_IPFRAG > 0
     __procFsNetTcpipStatPrintProto(&lwip_stats.ip_frag,  "IP_FRAG",   pcBuffer, stTotalSize, pstOft);
     __procFsNetTcpipStatPrintProto(&lwip_stats.ip6_frag, "IPv6_FRAG", pcBuffer, stTotalSize, pstOft);
+#endif                                                                  /*  LW_CFG_LWIP_IPFRAG > 0      */
+
     __procFsNetTcpipStatPrintProto(&lwip_stats.ip,       "IP",        pcBuffer, stTotalSize, pstOft);
     __procFsNetTcpipStatPrintProto(&lwip_stats.nd6,      "ND",        pcBuffer, stTotalSize, pstOft);
     __procFsNetTcpipStatPrintProto(&lwip_stats.ip6,      "IPv6",      pcBuffer, stTotalSize, pstOft);
@@ -1354,9 +1378,11 @@ static VOID  __procFsNetTcpipStatPrint (PCHAR  pcBuffer, size_t  stTotalSize, si
                        "name", "xmit", "recv", "drop", "chkerr", "lenerr", "memerr", "proterr", 
                        "rx_v1", "rx_group", "rx_general", "rx_report", 
                        "tx_join", "tx_leave", "tx_report");
-                        
+
+#if LW_CFG_LWIP_IGMP > 0
     __procFsNetTcpipStatPrintIgmp(&lwip_stats.igmp,      "IGMP",      pcBuffer, stTotalSize, pstOft);
     __procFsNetTcpipStatPrintIgmp(&lwip_stats.mld6,      "MLDv1",     pcBuffer, stTotalSize, pstOft);
+#endif
     
     *pstOft = bnprintf(pcBuffer, stTotalSize, *pstOft,
                        "\n%-9s %-8s %-8s %-8s %-8s %-8s %-8s %-8s %-8s %-8s %-8s %-8s %-8s\n",
@@ -2112,9 +2138,15 @@ static ssize_t  __procFsNetAodvRead (PLW_PROCFS_NODE  p_pfsn,
                               TTL_INCREMENT,
                               TTL_THRESHOLD,
                               AODV_MCAST,
+#if LW_CFG_LWIP_IGMP > 0
                               GROUP_HELLO_INTERVAL,
                               RREP_WAIT_TIME,
                               PRUNE_TIMEOUT,
+#else
+                              0,
+                              0,
+                              0,
+#endif
                               AODV_TIMER_PRECISION,
                               AODV_MAX_NETIF,
                               AODV_RECV_N_HELLOS,

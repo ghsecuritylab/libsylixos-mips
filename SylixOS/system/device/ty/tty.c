@@ -265,6 +265,18 @@ static LONG   _ttyOpen (TYCO_DEV    *ptycoDev,
         }
         sioIoctl(ptycoDev->TYCODEV_psiochan, FIOFLUSH, LW_NULL);        /*  清除缓冲区                  */
     
+        if (iFlags & O_NOCTTY) {                                        /*  不支持控制指令              */
+            INT   iOpt = OPT_TERMINAL;
+            _TyIoctl(&ptycoDev->TYCODEV_tydevTyDev, FIOGETOPTIONS, (LONG)&iOpt);
+            iOpt &= ~(OPT_ABORT | OPT_MON_TRAP);
+            _TyIoctl(&ptycoDev->TYCODEV_tydevTyDev, FIOSETOPTIONS, iOpt);
+        }
+        
+        if (iFlags & O_NONBLOCK) {                                      /*  读写非阻塞                  */
+            ptycoDev->TYCODEV_tydevTyDev.TYDEV_ulRTimeout = LW_OPTION_NOT_WAIT;
+            ptycoDev->TYCODEV_tydevTyDev.TYDEV_ulWTimeout = LW_OPTION_NOT_WAIT;
+        }
+    
     } else {
         LW_DEV_DEC_USE_COUNT(&ptycoDev->TYCODEV_tydevTyDev.TYDEV_devhdrHdr);
         _ErrorHandle(EBUSY);                                            /*  只允许打开一次              */

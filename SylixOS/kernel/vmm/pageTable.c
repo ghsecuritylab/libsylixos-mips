@@ -35,6 +35,7 @@
 2013.08.20  无效快表时, 需要通知其他的 CPU 无效快表.
 2013.07.20  加入主从核分离的 MMU 初始化.
 2014.11.09  VMM LIB 初始化不再启动 MMU.
+2016.05.01  加入虚拟地址空间重叠判断.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -42,6 +43,7 @@
   加入裁剪支持
 *********************************************************************************************************/
 #if LW_CFG_VMM_EN > 0
+#include "virPage.h"
 /*********************************************************************************************************
   体系结构函数声明
 *********************************************************************************************************/
@@ -64,6 +66,30 @@ PLW_MMU_CONTEXT __vmmGetCurCtx (VOID)
 
     return  (&mmuctxGlobal);                                            /*  目前不打算支持, 每一个任务  */
                                                                         /*  拥有自己的虚拟地址空间      */
+}
+/*********************************************************************************************************
+** 函数名称: __vmmLibVirtualOverlap
+** 功能描述: 虚拟空间地址冲突检查
+** 输　入  : ulAddr         地址
+**           stSize         长度
+** 输　出  : 地址空间是否冲突
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+BOOL  __vmmLibVirtualOverlap (addr_t  ulAddr, size_t  stSize)
+{
+#define __ADDR_OVERLAP(addr)    \
+        if (((addr) >= pvirdesc->ulVirtualSwitch) &&    \
+            ((addr) < pvirdesc->ulVirtualSwitch + pvirdesc->stSize)) {  \
+            return  (LW_TRUE);  \
+        }
+
+    PLW_MMU_VIRTUAL_DESC pvirdesc = __vmmVirtualDesc();
+
+    __ADDR_OVERLAP(ulAddr);
+    __ADDR_OVERLAP(ulAddr + stSize);
+
+    return  (LW_FALSE);
 }
 /*********************************************************************************************************
 ** 函数名称: __vmmLibPrimaryInit
@@ -189,6 +215,11 @@ static INT  __vmmLibGlobalMap (PLW_MMU_CONTEXT   pmmuctx, PLW_MMU_GLOBAL_DESC  p
             ulPageNum++;
         }
         
+        _BugFormat(__vmmLibVirtualOverlap(pmmugdesc[i].ulVirtualAddr,
+                                          pmmugdesc[i].stSize), LW_FALSE,
+                   "global map vaddr 0x%08lx size : 0x%08zx overlap with virtual space.\r\n",
+                   pmmugdesc[i].ulVirtualAddr, pmmugdesc[i].stSize);
+
         if (__vmmLibPageMap(pmmugdesc[i].ulPhysicalAddr, 
                             pmmugdesc[i].ulVirtualAddr,
                             ulPageNum,
@@ -199,6 +230,75 @@ static INT  __vmmLibGlobalMap (PLW_MMU_CONTEXT   pmmuctx, PLW_MMU_GLOBAL_DESC  p
     }
     
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+  TextUpdate Parameter
+*********************************************************************************************************/
+#if LW_CFG_SMP_EN > 0
+
+typedef struct {
+    PLW_MMU_CONTEXT     FTLB_pmmuctx;
+    addr_t              FTLB_ulPageAddr;
+    ULONG               FTLB_ulPageNum;
+} LW_VMM_FTLB_ARG;
+/*********************************************************************************************************
+** 函数名称: __vmmLibFlushTblTlb
+** 功能描述: 刷新当前 CPU TLB (IPI 执行)
+** 输　入  : pftlb     刷新参数
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+static VOID  __vmmLibFlushTlbIpi (LW_VMM_FTLB_ARG  *pftlb)
+{
+    INTREG      iregInterLevel;
+
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
+    __VMM_MMU_INV_TLB(pftlb->FTLB_pmmuctx, 
+                      pftlb->FTLB_ulPageAddr, 
+                      pftlb->FTLB_ulPageNum);                           /*  无效快表                    */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
+}
+
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+/*********************************************************************************************************
+** 函数名称: __vmmLibFlushTlb
+** 功能描述: 刷新 TLB
+** 输　入  : pmmuctx       MMU 上下文
+**           ulPageAddr    页面虚拟地址
+**           ulPageNum     页面个数
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+static VOID  __vmmLibFlushTlb (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulPageAddr, ULONG  ulPageNum)
+{
+    INTREG           iregInterLevel;
+#if LW_CFG_SMP_EN > 0
+    LW_VMM_FTLB_ARG  ftlb;
+    BOOL             bLock;
+#endif                                                                  /*  LW_CFG_SMP_EN               */
+    
+    ulPageAddr &= LW_CFG_VMM_PAGE_MASK;                                 /*  地址对齐                    */
+    
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
+    __VMM_MMU_INV_TLB(pmmuctx, ulPageAddr, ulPageNum);                  /*  无效快表                    */
+    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
+
+#if LW_CFG_SMP_EN > 0
+    if (LW_SYS_STATUS_IS_RUNNING() && 
+        (__VMM_MMU_OPTION() & LW_VMM_MMU_FLUSH_TLB_MP) &&
+        (LW_NCPUS > 1)) {                                               /*  需要通知其他 CPU            */
+        ftlb.FTLB_pmmuctx    = pmmuctx;
+        ftlb.FTLB_ulPageAddr = ulPageAddr;
+        ftlb.FTLB_ulPageNum  = ulPageNum;
+        
+        bLock = __SMP_CPU_LOCK();                                       /*  锁定当前 CPU 执行           */
+        _SmpCallFuncAllOther((FUNCPTR)__vmmLibFlushTlbIpi, &ftlb,
+                             LW_NULL, LW_NULL, IPIM_OPT_NORMAL);        /*  通知其他的 CPU              */
+        __SMP_CPU_UNLOCK(bLock);                                        /*  解锁当前 CPU 执行           */
+    }
+#endif                                                                  /*  LW_CFG_SMP_EN               */
 }
 /*********************************************************************************************************
 ** 函数名称: __vmmLibPageMap
@@ -222,7 +322,8 @@ ULONG  __vmmLibPageMap (addr_t  ulPhysicalAddr,
     LW_PGD_TRANSENTRY       *p_pgdentry;
     LW_PMD_TRANSENTRY       *p_pmdentry;
     LW_PTE_TRANSENTRY       *p_pteentry;
-        
+    addr_t                   ulVirtualTlb = ulVirtualAddr;
+    
     for (i = 0; i < ulPageNum; i++) {
         p_pgdentry = __vmm_pgd_alloc(pmmuctx, ulVirtualAddr);
         if (p_pgdentry == LW_NULL) {
@@ -249,17 +350,7 @@ ULONG  __vmmLibPageMap (addr_t  ulPhysicalAddr,
         ulVirtualAddr  += LW_CFG_VMM_PAGE_SIZE;
     }
     
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-
-#if LW_CFG_SMP_EN > 0
-    if (LW_SYS_STATUS_IS_RUNNING() && 
-        (__VMM_MMU_OPTION() & LW_VMM_MMU_FLUSH_TLB_MP)) {
-        _SmpSendIpiAllOther(LW_IPI_FLUSH_TLB, 1);                       /*  同步刷新所有 CPU TLB        */
-    }
-#endif                                                                  /*  LW_CFG_SMP_EN               */
-
-    __VMM_MMU_INV_TLB(pmmuctx);                                         /*  无效快表                    */
-    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
+    __vmmLibFlushTlb(pmmuctx, ulVirtualTlb, ulPageNum);                 /*  同步刷新所有 CPU TLB        */
     
     return  (ERROR_NONE);
 }
@@ -274,8 +365,8 @@ ULONG  __vmmLibPageMap (addr_t  ulPhysicalAddr,
 *********************************************************************************************************/
 ULONG  __vmmLibGetFlag (addr_t  ulVirtualAddr, ULONG  *pulFlag)
 {
-    PLW_MMU_CONTEXT          pmmuctx = __vmmGetCurCtx();
-    ULONG                    ulFlag;
+    PLW_MMU_CONTEXT     pmmuctx = __vmmGetCurCtx();
+    ULONG               ulFlag;
 
     ulFlag = __VMM_MMU_FLAG_GET(pmmuctx, ulVirtualAddr);
     if (pulFlag) {
@@ -284,6 +375,7 @@ ULONG  __vmmLibGetFlag (addr_t  ulVirtualAddr, ULONG  *pulFlag)
     
     if (ulFlag & LW_VMM_FLAG_VALID) {
         return  (ERROR_NONE);
+    
     } else {
         _ErrorHandle(ERROR_VMM_PAGE_INVAL);
         return  (ERROR_VMM_PAGE_INVAL);
@@ -293,26 +385,33 @@ ULONG  __vmmLibGetFlag (addr_t  ulVirtualAddr, ULONG  *pulFlag)
 ** 函数名称: __vmmLibSetFlag
 ** 功能描述: 设置指定逻辑地址的访问权限
 ** 输　入  : ulVirtualAddr         需要映射的虚拟地址
+**           ulPageNum             页面数量
 **           ulFlag                页面标志
 ** 输　出  : ERROR CODE
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-ULONG  __vmmLibSetFlag (addr_t  ulVirtualAddr, ULONG  ulFlag)
+ULONG  __vmmLibSetFlag (addr_t  ulVirtualAddr, ULONG   ulPageNum, ULONG  ulFlag)
 {
-    INTREG                   iregInterLevel;
-    PLW_MMU_CONTEXT          pmmuctx = __vmmGetCurCtx();
-    INT                      iError;
+    INTREG              iregInterLevel;
+    INT                 i;
+    PLW_MMU_CONTEXT     pmmuctx = __vmmGetCurCtx();
+    INT                 iError;
+    addr_t              ulVirtualTlb = ulVirtualAddr;
 
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-    iError = __VMM_MMU_FLAG_SET(pmmuctx, ulVirtualAddr, ulFlag);
-    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
-
-    if (iError < ERROR_NONE) {
-        return  (ERROR_VMM_LOW_LEVEL);
-    } else {
-        return  (ERROR_NONE);
+    for (i = 0; i < ulPageNum; i++) {                                   /*  重新映射这些页面            */
+        iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
+        iError = __VMM_MMU_FLAG_SET(pmmuctx, ulVirtualAddr, ulFlag);
+        KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
+        
+        _BugHandle((iError < 0), LW_FALSE, "set page flag error,\r\n");
+        
+        ulVirtualAddr += LW_CFG_VMM_PAGE_SIZE;
     }
+    
+    __vmmLibFlushTlb(pmmuctx, ulVirtualTlb, ulPageNum);                 /*  同步刷新所有 CPU TLB        */
+    
+    return  (ERROR_NONE);
 }
 /*********************************************************************************************************
 ** 函数名称: __vmmLibVirtualToPhysical
@@ -359,6 +458,7 @@ __error_handle:
     _ErrorHandle(ERROR_VMM_PAGE_INVAL);
     return  (ERROR_VMM_PAGE_INVAL);
 }
+
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 /*********************************************************************************************************
   END

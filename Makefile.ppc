@@ -189,7 +189,8 @@ SylixOS/arch/ppc/mm/mmu/common/ppcMmuAsm.S \
 SylixOS/arch/ppc/mm/mmu/common/ppcMmuHashPageTbl.c \
 SylixOS/arch/ppc/mm/mmu/ppc603/ppcMmu603Asm.S \
 SylixOS/arch/ppc/mpcore/ppcMpCoreAsm.S \
-SylixOS/arch/ppc/mpcore/ppcSpinlock.c
+SylixOS/arch/ppc/mpcore/ppcSpinlock.c \
+SylixOS/arch/ppc/param/ppcParam.c 
 
 #*********************************************************************************************************
 # debug source
@@ -348,6 +349,7 @@ SylixOS/kernel/core/_SmpIpi.c \
 SylixOS/kernel/core/_SmpSpinlock.c \
 SylixOS/kernel/core/_SmpSpinlockKernel.c \
 SylixOS/kernel/core/_StackCheckInit.c \
+SylixOS/kernel/core/_StackMem.c \
 SylixOS/kernel/core/_ThreadAffinity.c \
 SylixOS/kernel/core/_ThreadFpu.c \
 SylixOS/kernel/core/_ThreadIdInit.c \
@@ -380,6 +382,7 @@ SylixOS/kernel/interface/EventSetStatus.c \
 SylixOS/kernel/interface/EventSetTryGet.c \
 SylixOS/kernel/interface/GetLastError.c \
 SylixOS/kernel/interface/InterContext.c \
+SylixOS/kernel/interface/InterDefer.c \
 SylixOS/kernel/interface/InterEnterExit.c \
 SylixOS/kernel/interface/InterLock.c \
 SylixOS/kernel/interface/InterStack.c \
@@ -603,6 +606,7 @@ SylixOS/lib/libc/setjmp/setjmp.c \
 SylixOS/lib/libc/stdio/asprintf.c \
 SylixOS/lib/libc/stdio/clrerr.c \
 SylixOS/lib/libc/stdio/ctermid.c \
+SylixOS/lib/libc/stdio/cvtfloat.c \
 SylixOS/lib/libc/stdio/fclose.c \
 SylixOS/lib/libc/stdio/fdopen.c \
 SylixOS/lib/libc/stdio/fdprintf.c \

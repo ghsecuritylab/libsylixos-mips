@@ -84,17 +84,21 @@ static VOID  __makeOtherDown (VOID)
 {
     ULONG           i;
     PLW_CLASS_TCB   ptcbIdle;
+    BOOL            bRunning;
     
     for (i = 1; i < LW_NCPUS; i++) {                                    /*  除 0 以外的其他 CPU         */
-        ptcbIdle = _K_ptcbTCBIdTable[i];
-        if (LW_PRIO_IS_EQU(ptcbIdle->TCB_ucPriority, LW_PRIO_HIGHEST)) {
+        ptcbIdle = _K_ptcbIdle[i];
+        if (!LW_PRIO_IS_EQU(ptcbIdle->TCB_ucPriority, LW_PRIO_HIGHEST)) {
             __KERNEL_ENTER();                                           /*  进入内核                    */
             _SchedSetPrio(ptcbIdle, LW_PRIO_HIGHEST);
             __KERNEL_EXIT();                                            /*  退出内核                    */
             
-            while (!__LW_THREAD_IS_RUNNING(ptcbIdle)) {
-                LW_SPINLOCK_DELAY();
-            }
+            do {
+                API_TimeSleep(LW_OPTION_ONE_TICK);
+                __KERNEL_ENTER();                                       /*  进入内核                    */
+                bRunning = __LW_THREAD_IS_RUNNING(ptcbIdle);
+                __KERNEL_EXIT();                                        /*  退出内核                    */
+            } while (!bRunning);
         }
     }
 }
@@ -151,7 +155,7 @@ VOID   API_KernelRebootEx (INT  iRebootType, addr_t  ulStartAddress)
         return;
     }
 
-    _DebugHandle(__LOGMESSAGE_LEVEL, "kernel rebooting...\r\n");
+    _DebugHandle(__PRINTMESSAGE_LEVEL, "kernel rebooting...\r\n");
     
     _K_ulRebootStartAddress = ulStartAddress;                           /*  记录局部变量, 防止 XXX      */
     
@@ -173,14 +177,20 @@ VOID   API_KernelRebootEx (INT  iRebootType, addr_t  ulStartAddress)
     iregInterLevel = __KERNEL_ENTER_IRQ();                              /*  进入内核同时关闭中断        */
 
 #if LW_CFG_CACHE_EN > 0
-    API_CacheDisable(DATA_CACHE);                                       /*  禁能 CACHE                  */
-    API_CacheDisable(INSTRUCTION_CACHE);
+    if (LW_NCPUS <= 1) {
+        API_CacheDisable(DATA_CACHE);                                   /*  禁能 CACHE                  */
+        API_CacheDisable(INSTRUCTION_CACHE);
+    }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 
 #if LW_CFG_VMM_EN > 0
-    API_VmmMmuDisable();                                                /*  关闭 MMU                    */
+    if (LW_NCPUS <= 1) {
+        API_VmmMmuDisable();                                            /*  关闭 MMU                    */
+    }
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 
+    _DebugHandle(__PRINTMESSAGE_LEVEL, "kernel rebooting down.\r\n");
+    
     archReboot(iRebootType, _K_ulRebootStartAddress);                   /*  调用体系架构重启操作        */
     
     _BugHandle(LW_TRUE, LW_TRUE, "kernel reboot error!\r\n");           /*  不会运行到这里              */

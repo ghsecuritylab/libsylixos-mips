@@ -113,7 +113,7 @@ static VOID  _SchedSmpNotify (ULONG  ulCPUIdCur)
             }
             if (LW_CAND_ROT(pcpu) &&
                 ((LW_CPU_GET_IPI_PEND(i) & LW_IPI_SCHED_MSK) == 0)) {
-                _SmpSendIpi(i, LW_IPI_SCHED, 0);                        /*  产生核间中断                */
+                _SmpSendIpi(i, LW_IPI_SCHED, 0, LW_TRUE);               /*  产生核间中断                */
             }
         }
     }

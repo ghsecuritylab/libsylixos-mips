@@ -44,19 +44,19 @@ INT  API_KernelSmpCall (ULONG        ulCPUId,
                         PVOID        pvAsync, 
                         INT          iOpt)
 {
-    INTREG      iregInterLevel;
-    INT         iRet;
+    BOOL    bLock;
+    INT     iRet;
     
-    iregInterLevel = KN_INT_DISABLE();
+    bLock = __SMP_CPU_LOCK();                                           /*  锁定当前 CPU 执行           */
     
     if (ulCPUId == LW_CPU_GET_CUR_ID()) {                               /*  不能自己调用自己            */
-        KN_INT_ENABLE(iregInterLevel);
-        return  (PX_ERROR);
+        iRet = PX_ERROR;
+    
+    } else {
+        iRet = _SmpCallFunc(ulCPUId, pfunc, pvArg, pfuncAsync, pvAsync, iOpt);
     }
     
-    iRet = _SmpCallFunc(ulCPUId, pfunc, pvArg, pfuncAsync, pvAsync, iOpt);
-    
-    KN_INT_ENABLE(iregInterLevel);
+    __SMP_CPU_UNLOCK(bLock);                                            /*  解锁当前 CPU 执行           */
     
     return  (iRet);
 }
@@ -80,13 +80,13 @@ VOID  API_KernelSmpCallAllOther (FUNCPTR      pfunc,
                                  PVOID        pvAsync,
                                  INT          iOpt)
 {
-    INTREG      iregInterLevel;
+    BOOL    bLock;
     
-    iregInterLevel = KN_INT_DISABLE();
+    bLock = __SMP_CPU_LOCK();                                           /*  锁定当前 CPU 执行           */
     
     _SmpCallFuncAllOther(pfunc, pvArg, pfuncAsync, pvAsync, iOpt);
     
-    KN_INT_ENABLE(iregInterLevel);
+    __SMP_CPU_UNLOCK(bLock);                                            /*  解锁当前 CPU 执行           */
 }
 
 #endif                                                                  /*  LW_CFG_SMP_EN > 0           */

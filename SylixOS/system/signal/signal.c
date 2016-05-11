@@ -946,11 +946,12 @@ static VOID  __sig_trap (LW_OBJECT_HANDLE  ulIdSig, LW_OBJECT_HANDLE  ulIdStop, 
                                            API 函数
 *********************************************************************************************************/
 LW_API  
-INT  sigTrap (LW_OBJECT_HANDLE    ulId, const union sigval  sigvalue)
+INT  sigTrap (LW_OBJECT_HANDLE  ulId, const union sigval  sigvalue)
 {
     REGISTER PLW_CLASS_TCB  ptcbCur;
     
     if (!LW_CPU_GET_CUR_NESTING()) {                                    /*  必须在异常中                */
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "not in exception mode.\r\n");
         return  (PX_ERROR);
     }
     

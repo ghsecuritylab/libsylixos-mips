@@ -321,32 +321,46 @@ static LW_INLINE PVOID        API_VmmIoRemapNocache(PVOID  pvPhysicalAddr,
 #endif                                                                  /*  __SYLIXOS_KERNEL            */
 
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
-
 /*********************************************************************************************************
   API_VmmAbortIsr() 为异常处理函数, 只允许 ARCH 代码使用. 
   没有使能 VMM SylixOS 依然可以处理异常情况
 *********************************************************************************************************/
 #ifdef __SYLIXOS_KERNEL
 
+typedef struct __lw_vmm_abort {
+
+#define LW_VMM_ABORT_TYPE_NOINFO            0                           /*  内部使用                    */
 #define LW_VMM_ABORT_TYPE_TERMINAL          1                           /*  体系结构相关严重错误        */
 #define LW_VMM_ABORT_TYPE_MAP               2                           /*  页表映射错误 (MMU 报告)     */
-#define LW_VMM_ABORT_TYPE_EXEC              3                           /*  不允许执行                  */
-#define LW_VMM_ABORT_TYPE_WRITE             4                           /*  写权限错误 (MMU 报告)       */
-#define LW_VMM_ABORT_TYPE_FPE               5                           /*  浮点运算器异常              */
-#define LW_VMM_ABORT_TYPE_BUS               6                           /*  总线访问异常                */
-#define LW_VMM_ABORT_TYPE_BREAK             7                           /*  断点异常                    */
-#define LW_VMM_ABORT_TYPE_SYS               8                           /*  系统调用异常                */
-#define LW_VMM_ABORT_TYPE_UNDEF             9                           /*  未定义指令, 将产生 SIGILL   */
+                                                                        /*  需要 uiMethod 标记访问类型  */
+#define LW_VMM_ABORT_TYPE_PERM              3                           /*  访问权限错误 (MMU 报告)     */
+                                                                        /*  需要 uiMethod 标记访问类型  */
+#define LW_VMM_ABORT_TYPE_FPE               4                           /*  浮点运算器异常              */
+#define LW_VMM_ABORT_TYPE_BUS               5                           /*  总线访问异常                */
+#define LW_VMM_ABORT_TYPE_BREAK             6                           /*  断点异常                    */
+#define LW_VMM_ABORT_TYPE_SYS               7                           /*  系统调用异常                */
+#define LW_VMM_ABORT_TYPE_UNDEF             8                           /*  未定义指令, 将产生 SIGILL   */
+
+    UINT32               VMABT_uiType;
+    
+#define LW_VMM_ABORT_METHOD_READ            1                           /*  读访问                      */
+#define LW_VMM_ABORT_METHOD_WRITE           2                           /*  写访问                      */
+#define LW_VMM_ABORT_METHOD_EXEC            3                           /*  执行访问                    */
+    
+    UINT32               VMABT_uiMethod;
+} LW_VMM_ABORT;
+typedef LW_VMM_ABORT    *PLW_VMM_ABORT;
 
 LW_API VOID         API_VmmAbortIsr(addr_t          ulRetAddr,
                                     addr_t          ulAbortAddr, 
-                                    ULONG           ulAbortType,
+                                    PLW_VMM_ABORT   pabtInfo,
                                     PLW_CLASS_TCB   ptcb);              /*  异常中断服务函数            */
 
 #endif                                                                  /*  __SYLIXOS_KERNEL            */
 /*********************************************************************************************************
   vmm api macro
 *********************************************************************************************************/
+#if LW_CFG_VMM_EN > 0
 
 #define vmmMalloc               API_VmmMalloc
 #define vmmMallocEx             API_VmmMallocEx
@@ -387,6 +401,7 @@ LW_API VOID         API_VmmAbortIsr(addr_t          ulRetAddr,
 #define vmmZoneStatus           API_VmmZoneStatus
 #define vmmVirtualStatus        API_VmmVirtualStatus
 
+#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 #endif                                                                  /*  __VMM_H                     */
 /*********************************************************************************************************
   END

@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -317,10 +317,11 @@ static LW_INLINE size_t  emitADDH (BOOL bSizeOnly, UINT8 *pucBuffer, DMAMOV_DST 
     pucBuffer[0] |= (dst << 1);
     
 #if LW_CFG_CPU_ENDIAN > 0
+    pucBuffer[2] = (UINT8)(usVal & 0xff);
+    pucBuffer[1] = (UINT8)((usVal >>  8) & 0xff);
+#else
     pucBuffer[1] = (UINT8)(usVal & 0xff);
     pucBuffer[2] = (UINT8)((usVal >>  8) & 0xff);
-#else
-    *((UINT16 *)&pucBuffer[1]) = usVal;
 #endif                                                                  /*  LW_CFG_CPU_ENDIAN > 0       */
 
     PL330_DEBUG((KERN_DEBUG "PL330 DMAADDH %s %u\n",
@@ -367,7 +368,7 @@ static LW_INLINE size_t  emitFLUSHP (BOOL  bSizeOnly, UINT8 *pucBuffer, UINT8  u
     
     pucBuffer[0] = CMD_DMAFLUSHP;
     
-    ucPeri &= 0x1f;
+    ucPeri  &= 0x1f;
     ucPeri <<= 3;
     pucBuffer[1] = ucPeri;
     
@@ -400,12 +401,15 @@ static LW_INLINE size_t  emitGO (BOOL  bSizeOnly, UINT8 *pucBuffer, UINT8  ucCha
     pucBuffer[1]  = ucChan & 0x7;
     
 #if LW_CFG_CPU_ENDIAN > 0
+    pucBuffer[5] = (UINT8)(uiAddr & 0xff);
+    pucBuffer[4] = (UINT8)((uiAddr >>  8) & 0xff);
+    pucBuffer[3] = (UINT8)((uiAddr >> 16) & 0xff);
+    pucBuffer[2] = (UINT8)((uiAddr >> 24) & 0xff);
+#else
     pucBuffer[2] = (UINT8)(uiAddr & 0xff);
     pucBuffer[3] = (UINT8)((uiAddr >>  8) & 0xff);
     pucBuffer[4] = (UINT8)((uiAddr >> 16) & 0xff);
     pucBuffer[5] = (UINT8)((uiAddr >> 24) & 0xff);
-#else
-    *((UINT32 *)&pucBuffer[2]) = uiAddr;
 #endif                                                                  /*  LW_CFG_CPU_ENDIAN > 0       */
     
     PL330_DEBUG((KERN_DEBUG "PL330 DMAGO chan_%u 0x%x %s\n",
@@ -590,12 +594,15 @@ static LW_INLINE size_t  emitMOV (BOOL bSizeOnly, UINT8 *pucBuffer, DMAMOV_DST d
     pucBuffer[1] = (UINT8)dst;
     
 #if LW_CFG_CPU_ENDIAN > 0
+    pucBuffer[5] = (UINT8)(uiVal & 0xff);
+    pucBuffer[4] = (UINT8)((uiVal >>  8) & 0xff);
+    pucBuffer[3] = (UINT8)((uiVal >> 16) & 0xff);
+    pucBuffer[2] = (UINT8)((uiVal >> 24) & 0xff);
+#else
     pucBuffer[2] = (UINT8)(uiVal & 0xff);
     pucBuffer[3] = (UINT8)((uiVal >>  8) & 0xff);
     pucBuffer[4] = (UINT8)((uiVal >> 16) & 0xff);
     pucBuffer[5] = (UINT8)((uiVal >> 24) & 0xff);
-#else
-    *((UINT32 *)&pucBuffer[2]) = uiVal;
 #endif                                                                  /*  LW_CFG_CPU_ENDIAN > 0       */
     
     PL330_DEBUG((KERN_DEBUG "PL330 DMAMOV %s 0x%x\n", 
@@ -870,12 +877,15 @@ static LW_INLINE VOID executeDBGINSN (DMAC_PL330  *pl330, UINT8 *pucIns,
     PL330_DBGINST0(pl330->PL330_ulBase) = uiVal;
     
 #if LW_CFG_CPU_ENDIAN > 0
+    uiVal  = pucIns[5] << 0;
+    uiVal |= pucIns[4] << 8;
+    uiVal |= pucIns[3] << 16;
+    uiVal |= pucIns[2] << 24;
+#else
     uiVal  = pucIns[2] << 0;
     uiVal |= pucIns[3] << 8;
     uiVal |= pucIns[4] << 16;
     uiVal |= pucIns[5] << 24;
-#else
-    uiVal  = *((UINT32 *)&pucIns[2]);
 #endif                                                                  /*  LW_CFG_CPU_ENDIAN > 0       */
 
     PL330_DBGINST1(pl330->PL330_ulBase) = uiVal;
@@ -1203,7 +1213,8 @@ static INT  armDmaPl330Trigger (DMAC_PL330          *pl330,
     size_t  stOff     = 0;
     UINT8  *pucBuffer = pl330->PL330_ucCode[uiInnerChan];
     UINT8   ucInsn[6] = {0, 0, 0, 0, 0, 0};
-    
+    BOOL    bNonSecure;
+
     stOff += emitMOV(LW_FALSE, &pucBuffer[stOff], CCR, uiCcr);
     stOff += emitMOV(LW_FALSE, &pucBuffer[stOff], SAR, (UINT32)pdmatMsg->DMAT_pucSrcAddress);
     stOff += emitMOV(LW_FALSE, &pucBuffer[stOff], DAR, (UINT32)pdmatMsg->DMAT_pucDestAddress);
@@ -1220,13 +1231,15 @@ static INT  armDmaPl330Trigger (DMAC_PL330          *pl330,
     }
     
     _DebugFormat(__LOGMESSAGE_LEVEL, "trigger DMA buffer used %zu bytes.\r\n", stOff);
-    
-#if LW_CFG_CACHE_EN > 0
-    API_CacheFlushPage(DATA_CACHE, (PVOID)pucBuffer, 
-                       (PVOID)pucBuffer, stOff);                        /*  将 DMA 指令写入内存         */
-#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
-    
-    emitGO(LW_FALSE, ucInsn, (UINT8)uiInnerChan, (UINT32)pucBuffer, LW_FALSE);
+
+    if ((pdmatMsg->DMAT_ulOption & PL330_OPTION_SRCNS) ||
+        (pdmatMsg->DMAT_ulOption & PL330_OPTION_DSTNS)) {
+        bNonSecure = LW_TRUE;
+    } else {
+        bNonSecure = LW_FALSE;
+    }
+
+    emitGO(LW_FALSE, ucInsn, (UINT8)uiInnerChan, (UINT32)pucBuffer, bNonSecure);
     
     PL330_INTEN(pl330->PL330_ulBase) |= (1 << uiInnerChan);             /*  允许事件中断                */
     
@@ -1286,14 +1299,12 @@ static INT  armDmaPl330Trans (UINT                 uiChan,
         return  (PX_ERROR);
     }
     
-    if (pdmatMsg->DMAT_ulOption & PL330_OPTION_SRCNS) {
+    if ((pdmatMsg->DMAT_ulOption & PL330_OPTION_SRCNS) ||
+        (pdmatMsg->DMAT_ulOption & PL330_OPTION_DSTNS)) {
         uiCcr |= CC_SRCNS;
-    }
-    
-    if (pdmatMsg->DMAT_ulOption & PL330_OPTION_DSTNS) {
         uiCcr |= CC_DSTNS;
     }
-    
+
     if (pdmatMsg->DMAT_ulOption & PL330_OPTION_SRCIA) {
         uiCcr |= CC_SRCIA;
     }
@@ -1371,8 +1382,8 @@ static INT  armDmaPl330Status (UINT  uiChan, PLW_DMA_FUNCS  pdmafuncs)
 *********************************************************************************************************/
 PVOID  armDmaPl330Add (addr_t  ulBase, UINT  uiChanOft)
 {
-    INT          i;
     DMAC_PL330  *pl330;
+    INT          i;
     
     if (uiChanOft & 0x7) {
         _ErrorHandle(EINVAL);
@@ -1393,11 +1404,7 @@ PVOID  armDmaPl330Add (addr_t  ulBase, UINT  uiChanOft)
     
     pl330->PL330_ulBase    = ulBase;
     pl330->PL330_uiChanOft = uiChanOft;
-    
-    /*
-     *  XXX 是否可使用 API_VmmDmaAlloc ? 可减少回写 CACHE 操作.
-     */
-    pl330->PL330_ucCode[0] = (UINT8 *)__SHEAP_ALLOC(ARM_DMA_PL330_CHANS * ARM_DMA_PL330_PSZ);
+    pl330->PL330_ucCode[0] = (UINT8 *)API_VmmDmaAlloc(ARM_DMA_PL330_CHANS * ARM_DMA_PL330_PSZ);
     if (pl330->PL330_ucCode[0] == LW_NULL) {
         __SHEAP_FREE(pl330);
         _ErrorHandle(ERROR_SYSTEM_LOW_MEMORY);
@@ -1423,8 +1430,8 @@ PVOID  armDmaPl330Add (addr_t  ulBase, UINT  uiChanOft)
 irqreturn_t  armDmaPl330Isr (PVOID  pvPl330)
 {
     DMAC_PL330  *pl330 = (DMAC_PL330 *)pvPl330;
-    INT          i;
     UINT32       uiEvtStatus;
+    INT          i;
     
     if (pl330 == LW_NULL) {
         return  (LW_IRQ_NONE);

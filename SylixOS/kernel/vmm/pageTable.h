@@ -78,7 +78,7 @@
 #define LW_VMM_FLAG_DMA                 (LW_VMM_FLAG_VALID |        \
                                          LW_VMM_FLAG_ACCESS |       \
                                          LW_VMM_FLAG_WRITABLE |     \
-                                         LW_VMM_FLAG_GUARDED)           /*  物理硬件映射                */
+                                         LW_VMM_FLAG_GUARDED)           /*  物理硬件映射 (CACHE 一致的) */
                                          
 #define LW_VMM_FLAG_FAIL                (LW_VMM_FLAG_VALID |        \
                                          LW_VMM_FLAG_UNACCESS |     \
@@ -129,6 +129,17 @@ typedef struct {
 typedef LW_MMU_OP           *PLW_MMU_OP;
 
 extern  LW_MMU_OP            _G_mmuOpLib;                               /*  MMU 操作函数集              */
+
+/*********************************************************************************************************
+  MMU 锁
+*********************************************************************************************************/
+#ifndef __VMM_MAIN_FILE
+extern LW_OBJECT_HANDLE     _G_ulVmmLock;
+#endif
+
+#define __VMM_LOCK()        API_SemaphoreMPend(_G_ulVmmLock, LW_OPTION_WAIT_INFINITE)
+#define __VMM_UNLOCK()      API_SemaphoreMPost(_G_ulVmmLock)
+
 /*********************************************************************************************************
   MMU 获得选项信息
 *********************************************************************************************************/
@@ -217,9 +228,9 @@ extern  LW_MMU_OP            _G_mmuOpLib;                               /*  MMU 
         if (_G_mmuOpLib.MMUOP_pfuncMakeCurCtx) {    \
             _G_mmuOpLib.MMUOP_pfuncMakeCurCtx(pmmuctx); \
         }
-#define __VMM_MMU_INV_TLB(pmmuctx)  \
+#define __VMM_MMU_INV_TLB(pmmuctx, ulPageAddr, ulPageNum)  \
         if (_G_mmuOpLib.MMUOP_pfuncInvalidateTLB) { \
-            _G_mmuOpLib.MMUOP_pfuncInvalidateTLB(pmmuctx); \
+            _G_mmuOpLib.MMUOP_pfuncInvalidateTLB(pmmuctx, ulPageAddr, ulPageNum); \
         }
 #define __VMM_MMU_ENABLE()  \
         if (_G_mmuOpLib.MMUOP_pfuncSetEnable) { \
@@ -308,7 +319,7 @@ ULONG                   __vmmLibPageMap(addr_t ulPhysicalAddr,
                                         ULONG  ulPageNum, 
                                         ULONG  ulFlag);                 /*  mmu map                     */
 ULONG                   __vmmLibGetFlag(addr_t  ulVirtualAddr, ULONG  *pulFlag);
-ULONG                   __vmmLibSetFlag(addr_t  ulVirtualAddr, ULONG  ulFlag);
+ULONG                   __vmmLibSetFlag(addr_t  ulVirtualAddr, ULONG   ulPageNum, ULONG  ulFlag);
 ULONG                   __vmmLibVirtualToPhysical(addr_t  ulVirtualAddr, addr_t  *pulPhysicalAddr);
 
 /*********************************************************************************************************

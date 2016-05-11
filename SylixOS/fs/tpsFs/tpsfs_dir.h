@@ -46,7 +46,7 @@
 typedef struct tps_entry {
     struct tps_entry   *ENTRY_pnext;                                    /* entry链表                    */
     PTPS_SUPER_BLOCK    ENTRY_psb;                                      /* 超级块                       */
-    PTPS_INODE          ENTRY_pinodeDir;                                /* 父目录inode指针              */
+    TPS_INUM            ENTRY_inumDir;                                  /* 父目录inode号                */
     PTPS_INODE          ENTRY_pinode;                                   /* 文件inode指针                */
     UINT                ENTRY_uiLen;                                    /* entry磁盘结构长度            */
     UINT                ENTRY_uiMagic;                                  /* entry模数                    */

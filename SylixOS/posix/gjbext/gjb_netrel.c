@@ -63,6 +63,7 @@ int  ifconfig (char *name, char *ip, char *netmask)
     }
     
     lib_strlcpy(req.ifr_name, name, IFNAMSIZ);
+    req.ifr_addr.sa_family = AF_INET;
     
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {

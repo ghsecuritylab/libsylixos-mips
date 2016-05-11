@@ -294,7 +294,7 @@ static void *do_shmat (int idnum, int flag)
         map_flag = LW_VMM_FLAG_RDWR;
     }
 
-    if (API_CacheLocation(DATA_CACHE) == CACHE_LOCATION_VIVT) {
+    if (API_CacheAliasProb()) {
         map_flag &= ~(LW_VMM_FLAG_CACHEABLE | LW_VMM_FLAG_BUFFERABLE); /* MAP_SHARED (non-cache) */
     }
 

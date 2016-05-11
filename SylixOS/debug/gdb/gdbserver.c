@@ -52,7 +52,7 @@
 /*********************************************************************************************************
   常量定义
 *********************************************************************************************************/
-#define GDB_RSP_MAX_LEN             0x4000                              /*  rsp 缓冲区大小              */
+#define GDB_RSP_MAX_LEN             0x1000                              /*  rsp 缓冲区大小              */
 #define GDB_MAX_THREAD_NUM          LW_CFG_MAX_THREADS                  /*  最大线程数                  */
 /*********************************************************************************************************
   链接 keepalive 参数配置
@@ -125,8 +125,7 @@ typedef struct {
 /*********************************************************************************************************
   全局变量定义
 *********************************************************************************************************/
-static const CHAR    GcHexChars[] = "0123456789abcdef";                 /* hex->asc转换表               */
-static      atomic_t GHookRefCnt  = {0};                                /* gdb hook 引用计数            */
+static atomic_t     GHookRefCnt = {0};                                  /* gdb hook 引用计数            */
 /*********************************************************************************************************
 ** 函数名称: gdbTcpSockInit
 ** 功能描述: 初始化socket
@@ -270,8 +269,11 @@ static INT gdbAsc2Hex (CHAR ch)
 *********************************************************************************************************/
 static VOID gdbByte2Asc (PCHAR pcAsc, BYTE iByte)
 {
-    pcAsc[0] = GcHexChars[(iByte >> 4) & 0xf];
-    pcAsc[1] = GcHexChars[iByte & 0xf];
+    BYTE  val = (iByte >> 4) & 0xf;
+
+    pcAsc[0] = val > 9 ? (val - 0xA + 'a') : (val + '0');
+    val = iByte & 0xf;
+    pcAsc[1] = val > 9 ? (val - 0xA + 'a') : (val + '0');
 }
 /*********************************************************************************************************
 ** 函数名称: gdbAscToByte
@@ -295,11 +297,17 @@ static INT gdbAscToByte (PCHAR pcAsc)
 *********************************************************************************************************/
 static VOID gdbWord2Asc (PCHAR pcAsc, UINT32 ui32Word)
 {
-    INT i;
-
-    for (i = 0; i < 4; i++) {
-        gdbByte2Asc(pcAsc + i * 2, (ui32Word >> (i * 8)) & 0xFF);
-    }
+#if LW_CFG_CPU_ENDIAN == 0
+    gdbByte2Asc(pcAsc + 0, (ui32Word >>  0) & 0xFF);
+    gdbByte2Asc(pcAsc + 2, (ui32Word >>  8) & 0xFF);
+    gdbByte2Asc(pcAsc + 4, (ui32Word >> 16) & 0xFF);
+    gdbByte2Asc(pcAsc + 6, (ui32Word >> 24) & 0xFF);
+#else
+    gdbByte2Asc(pcAsc + 0, (ui32Word >> 24) & 0xFF);
+    gdbByte2Asc(pcAsc + 2, (ui32Word >> 16) & 0xFF);
+    gdbByte2Asc(pcAsc + 4, (ui32Word >>  8) & 0xFF);
+    gdbByte2Asc(pcAsc + 6, (ui32Word >>  0) & 0xFF);
+#endif
 }
 /*********************************************************************************************************
 ** 函数名称: gdbAscToWord
@@ -311,13 +319,20 @@ static VOID gdbWord2Asc (PCHAR pcAsc, UINT32 ui32Word)
 *********************************************************************************************************/
 static UINT32 gdbAscToWord (char *pcAsc)
 {
-    INT         i;
-    UINT32      ui32Ret = 0;
+    UINT32      ui32Ret;
 
-    for (i = 3; i >= 0; i--) {
-        ui32Ret = (ui32Ret << 8) + gdbAscToByte(pcAsc + i * 2);
-    }
-    
+#if LW_CFG_CPU_ENDIAN == 0
+    ui32Ret  = gdbAscToByte(pcAsc + 0) <<  0;
+    ui32Ret += gdbAscToByte(pcAsc + 2) <<  8;
+    ui32Ret += gdbAscToByte(pcAsc + 4) << 16;
+    ui32Ret += gdbAscToByte(pcAsc + 6) << 24;
+#else
+    ui32Ret  = gdbAscToByte(pcAsc + 0) << 24;
+    ui32Ret += gdbAscToByte(pcAsc + 2) << 16;
+    ui32Ret += gdbAscToByte(pcAsc + 4) <<  8;
+    ui32Ret += gdbAscToByte(pcAsc + 6) <<  0;
+#endif
+
     return  (ui32Ret);
 }
 /*********************************************************************************************************
@@ -382,8 +397,8 @@ static INT gdbRspPkgPut (LW_GDB_PARAM *pparam, PCHAR pcOutBuff, BOOL bNotify)
     }
 
     pcOutBuff[iPkgLen++] = '#';
-    pcOutBuff[iPkgLen++] = GcHexChars[ucCheckSum >> 4];
-    pcOutBuff[iPkgLen++] = GcHexChars[ucCheckSum % 16];
+    gdbByte2Asc(&pcOutBuff[iPkgLen], ucCheckSum);
+    iPkgLen += 2;
 
     do {
         if (write(pparam->GDB_iCommFd, &cHeader, 1) < 0) {
@@ -1131,10 +1146,25 @@ static INT gdbGetElfOffset (pid_t   pid,
         }
 
         pphdr = (Elf_Phdr *)pcBuf;
+        (*addrText) = 0;
+        (*addrData) = 0;
+        (*addrBss)  = 0;
+        for (i = 0; i < ehdr.e_phnum; i++) {
+            if (PT_LOAD != pphdr[i].p_type) {                           /*  只处理可加载段              */
+                continue;
+            }
 
-        (*addrText) = addrBase + pphdr[0].p_vaddr;
-        (*addrData) = addrBase + pphdr[1].p_vaddr;
-        (*addrBss)  = addrBase + pphdr[1].p_vaddr;
+            if ((*addrText) == 0) {                                     /*  第一个可加载段位代码段      */
+                (*addrText) = addrBase + pphdr[i].p_vaddr;
+                continue;
+            }
+
+            if ((*addrData) == 0) {                                     /*  第二个可加载段位数据段      */
+                (*addrData) = addrBase + pphdr[i].p_vaddr;
+                (*addrBss)  = addrBase + pphdr[i].p_vaddr;
+                break;
+            }
+        }
     }
 
     close(iFd);
@@ -1156,8 +1186,17 @@ static INT gdbGetElfOffset (pid_t   pid,
 static INT gdbHandleQCmd (LW_GDB_PARAM *pparam, PCHAR pcInBuff, PCHAR pcOutBuff)
 {
     if (lib_strstr(pcInBuff, "NonStop:1") == pcInBuff) {
+#ifndef LW_CFG_CPU_ARCH_PPC
         pparam->GDB_bNonStop = 1;
         gdbReplyOk(pcOutBuff);
+#else
+        /*
+         * PowerPC 在设置 NonStop 模式后，单步时 GDB 会拷贝下一条指令到某个地址执行，
+         * 该方法在相对跳转的指令会有问题
+         */
+        pparam->GDB_bNonStop = 0;
+        gdbReplyError(pcOutBuff, 0);
+#endif
 
     } else if (lib_strstr(pcInBuff, "NonStop:0") == pcInBuff) {
         pparam->GDB_bNonStop = 0;
@@ -1215,10 +1254,16 @@ static INT gdbCmdQuery (LW_GDB_PARAM *pparam, PCHAR pcInBuff, PCHAR pcOutBuff)
         }
     
     } else if (lib_strstr(pcInBuff, "Supported") == pcInBuff) {         /* 获取能力项                   */
+#ifdef LW_CFG_CPU_ARCH_MIPS
+        sprintf(pcOutBuff, "PacketSize=1000;"
+                           "qXfer:libraries:read+;"
+                           "QNonStop+");
+#else
         sprintf(pcOutBuff, "PacketSize=1000;"
                            "qXfer:features:read+;"
                            "qXfer:libraries:read+;"
                            "QNonStop+");
+#endif
     
     } else if (lib_strstr(pcInBuff, "Xfer:features:read:target.xml") == pcInBuff) {
         sprintf(pcOutBuff, archGdbTargetXml());
@@ -1269,8 +1314,6 @@ static INT gdbCmdQuery (LW_GDB_PARAM *pparam, PCHAR pcInBuff, PCHAR pcOutBuff)
     } else if (lib_strstr(pcInBuff, "C") == pcInBuff) {                 /* 获取当前线程                 */
         sprintf(pcOutBuff, "QC%lx", pparam->GDB_ulThreads[0]);
 
-    } else if (lib_strstr(pcInBuff, "Symbol") == pcInBuff) {            /* 设置符号值                   */
-    	sprintf(pcOutBuff, "OK");
     } else {
         pcOutBuff[0] = 0;
     }
@@ -1675,6 +1718,14 @@ static INT gdbRspPkgHandle (LW_GDB_PARAM    *pparam,
             LW_GDB_SAFEFREE(cOutBuff);
             LW_GDB_MSG("[GDB]Host close.\n");
             return  (PX_ERROR);
+        } else {
+            if (pdmsg->DTM_uiType == SIGQUIT &&
+                pparam->GDB_byCommType == COMM_TYPE_TTY) {              /* 串口模式不再等待客户端通知   */
+                LW_GDB_SAFEFREE(cInBuff);
+                LW_GDB_SAFEFREE(cOutBuff);
+                LW_GDB_MSG("[GDB]Host close.\n");
+                return  (PX_ERROR);
+            }
         }
     }
 
@@ -2238,7 +2289,7 @@ static INT gdbMain (INT argc, CHAR **argv)
         return  (PX_ERROR);
     }
 
-    pparam->GDB_pvDtrace = API_DtraceCreate(LW_DTRACE_PROCESS, LW_DTRACE_F_KBP,
+    pparam->GDB_pvDtrace = API_DtraceCreate(LW_DTRACE_PROCESS, LW_DTRACE_F_DEF,
                                             API_ThreadIdSelf());        /*  创建dtrace对象              */
     if (pparam->GDB_pvDtrace == NULL) {
         gdbRelease(pparam);
@@ -2355,7 +2406,7 @@ static INT gdbMain (INT argc, CHAR **argv)
     }
 
     if (API_AtomicInc(&GHookRefCnt) == 1) {                             /* 第一次调用时添加HOOK         */
-        API_SystemHookAdd((LW_HOOK_FUNC)API_DtraceSchedHook,
+        API_SystemHookAdd(API_DtraceSchedHook,
                           LW_OPTION_THREAD_SWAP_HOOK);                  /* 添加线程切换HOOK，用于单步   */
     }
 
@@ -2431,7 +2482,7 @@ static INT gdbMain (INT argc, CHAR **argv)
     gdbRelease(pparam);
 
     if (API_AtomicDec(&GHookRefCnt) == 0) {                             /* 最后一次调用完成时清除HOOK   */
-        API_SystemHookDelete((LW_HOOK_FUNC)API_DtraceSchedHook,
+        API_SystemHookDelete(API_DtraceSchedHook,
                              LW_OPTION_THREAD_SWAP_HOOK);               /* 删除线程切换HOOK，           */
     }
 

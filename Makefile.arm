@@ -176,6 +176,7 @@ SylixOS/arch/arm/fpu/vfpv4/armVfpV4.c \
 SylixOS/arch/arm/fpu/vfpnone/armVfpNone.c \
 SylixOS/arch/arm/fpu/armFpu.c \
 SylixOS/arch/arm/mm/cache/l2/armL2.c \
+SylixOS/arch/arm/mm/cache/l2/armL2A17.c \
 SylixOS/arch/arm/mm/cache/l2/armL2A8.c \
 SylixOS/arch/arm/mm/cache/l2/armL2x0.c \
 SylixOS/arch/arm/mm/cache/v4/armCacheV4.c \
@@ -186,6 +187,7 @@ SylixOS/arch/arm/mm/cache/v6/armCacheV6.c \
 SylixOS/arch/arm/mm/cache/v6/armCacheV6Asm.S \
 SylixOS/arch/arm/mm/cache/v7/armCacheV7.c \
 SylixOS/arch/arm/mm/cache/v7/armCacheV7Asm.S \
+SylixOS/arch/arm/mm/cache/v8/armCacheV8.c \
 SylixOS/arch/arm/mm/cache/armCacheCommonAsm.S \
 SylixOS/arch/arm/mm/mmu/v4/armMmuV4.c \
 SylixOS/arch/arm/mm/mmu/v7/armMmuV7.c \
@@ -196,7 +198,8 @@ SylixOS/arch/arm/mm/armCache.c \
 SylixOS/arch/arm/mm/armMmu.c \
 SylixOS/arch/arm/mpcore/scu/armScu.c \
 SylixOS/arch/arm/mpcore/armMpCoreAsm.S \
-SylixOS/arch/arm/mpcore/armSpinlock.c
+SylixOS/arch/arm/mpcore/armSpinlock.c \
+SylixOS/arch/arm/param/armParam.c 
 
 #*********************************************************************************************************
 # debug source
@@ -355,6 +358,7 @@ SylixOS/kernel/core/_SmpIpi.c \
 SylixOS/kernel/core/_SmpSpinlock.c \
 SylixOS/kernel/core/_SmpSpinlockKernel.c \
 SylixOS/kernel/core/_StackCheckInit.c \
+SylixOS/kernel/core/_StackMem.c \
 SylixOS/kernel/core/_ThreadAffinity.c \
 SylixOS/kernel/core/_ThreadFpu.c \
 SylixOS/kernel/core/_ThreadIdInit.c \
@@ -387,6 +391,7 @@ SylixOS/kernel/interface/EventSetStatus.c \
 SylixOS/kernel/interface/EventSetTryGet.c \
 SylixOS/kernel/interface/GetLastError.c \
 SylixOS/kernel/interface/InterContext.c \
+SylixOS/kernel/interface/InterDefer.c \
 SylixOS/kernel/interface/InterEnterExit.c \
 SylixOS/kernel/interface/InterLock.c \
 SylixOS/kernel/interface/InterStack.c \
@@ -610,6 +615,7 @@ SylixOS/lib/libc/setjmp/setjmp.c \
 SylixOS/lib/libc/stdio/asprintf.c \
 SylixOS/lib/libc/stdio/clrerr.c \
 SylixOS/lib/libc/stdio/ctermid.c \
+SylixOS/lib/libc/stdio/cvtfloat.c \
 SylixOS/lib/libc/stdio/fclose.c \
 SylixOS/lib/libc/stdio/fdopen.c \
 SylixOS/lib/libc/stdio/fdprintf.c \
@@ -1354,7 +1360,7 @@ endif										    						# -Os is not align for function
 #*********************************************************************************************************
 DEPENDFLAG  = -MM
 CXX_EXCEPT  = -fno-exceptions -fno-rtti
-COMMONFLAGS = $(CPUFLAGS) $(OPTIMIZE) -Wall -fmessage-length=0 -fsigned-char -fno-short-enums
+COMMONFLAGS = $(CPUFLAGS) $(OPTIMIZE) -Wall -fmessage-length=0 -fsigned-char -fno-short-enums -mno-unaligned-access
 ASFLAGS     = -x assembler-with-cpp $(DSYMBOL) $(INCDIR) $(COMMONFLAGS) -c
 CFLAGS      = $(DSYMBOL) $(INCDIR) $(COMMONFLAGS) -c
 CXXFLAGS    = $(DSYMBOL) $(INCDIR) $(CXX_EXCEPT) $(COMMONFLAGS) -c

@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -19,7 +19,7 @@
 ** 描        述: MIPS32 体系构架 MMU 驱动.
 **
 ** BUG:
-2016.04.06	 修改TLB无效对EntryHi Register 操作(JZ4780支持)
+2016.04.06  修改TLB无效对EntryHi Register 操作(JZ4780支持)
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
@@ -36,6 +36,7 @@ static PVOID                _G_pvPTETable       = LW_NULL;              /*  PTE 
 static UINT32               _G_uiTlbSize        = 0;                    /*  TLB 数组大小                */
 static INT32                _G_iHwNeverExecBit  = -1;                   /*  硬件的代码永不执行位        */
 static UINT32               _G_uiEntryLoPFNMask = 0;                    /*  ENTRYLO PFN 域掩码          */
+static BOOL                 _G_bIsIncITLB       = LW_FALSE;             /*  是否需要处理 ITLB           */
 /*********************************************************************************************************
   ENTRYLO
 *********************************************************************************************************/
@@ -53,6 +54,19 @@ static UINT32               _G_uiEntryLoPFNMask = 0;                    /*  ENTR
 #define MIPS32_ENTRYHI_VPN_SHIFT        (13)
 
 #define MIPS32_PTE_EXEC_SHIFT           (0)
+#define MIPS32_FLUSH_ITLB               {  mipsCp0DiagWrite(0x04);  }
+
+#define UNIQUE_ENTRYHI(idx)             (A_K1BASE + ((idx) << (LW_CFG_VMM_PAGE_SHIFT + 1)))
+
+#define MIPS32_TLB_4K_PAGE_SIZE_MASK   (0x00000000)
+#define MIPS32_TLB_16K_PAGE_SIZE_MASK  (0x00006000)
+#define MIPS32_TLB_64K_PAGE_SIZE_MASK  (0x0001E000)
+#define MIPS32_TLB_256K_PAGE_SIZE_MASK (0x0007E000)
+#define MIPS32_TLB_1M_PAGE_SIZE_MASK   (0x001FE000)
+#define MIPS32_TLB_4M_PAGE_SIZE_MASK   (0x007FE000)
+#define MIPS32_TLB_16M_PAGE_SIZE_MASK  (0x01FFE000)
+#define MIPS32_TLB_64M_PAGE_SIZE_MASK  (0x07FFE000)
+#define MIPS32_TLB_256M_PAGE_SIZE_MASK (0x1FFFE000)
 /*********************************************************************************************************
   TLB 操作
 *********************************************************************************************************/
@@ -98,13 +112,17 @@ static VOID  mips32MmuInvalidateTLB (VOID)
         mipsCp0IndexWrite(i);
         mipsCp0EntryLo0Write(0);
         mipsCp0EntryLo1Write(0);
-        mipsCp0EntryHiWrite(A_K1BASE | ((i) << (LW_CFG_VMM_PAGE_SHIFT + 1)));
-        mipsCp0PageMaskWrite(0);
+        mipsCp0EntryHiWrite(UNIQUE_ENTRYHI(i));
+        mipsCp0PageMaskWrite(MIPS32_TLB_4K_PAGE_SIZE_MASK);
 
         MIPS_MMU_TLB_WRITE();
     }
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
+
+    if (_G_bIsIncITLB) {
+        MIPS32_FLUSH_ITLB;
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuDumpTLB
@@ -136,6 +154,10 @@ VOID  mips32MmuDumpTLB (VOID)
     }
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
+
+    if (_G_bIsIncITLB) {
+        MIPS32_FLUSH_ITLB;
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuInvalidateTLBMVA
@@ -161,7 +183,7 @@ static VOID  mips32MmuInvalidateTLBMVA (addr_t  ulAddr)
 
             mipsCp0EntryLo0Write(0);
             mipsCp0EntryLo1Write(0);
-            mipsCp0EntryHiWrite(0);
+            mipsCp0EntryHiWrite(UNIQUE_ENTRYHI(iIndex));
 
             MIPS_MMU_TLB_WRITE();
         } else {
@@ -170,6 +192,10 @@ static VOID  mips32MmuInvalidateTLBMVA (addr_t  ulAddr)
     }
 
     mipsCp0EntryHiWrite(uiEntryHiBak);
+
+    if (_G_bIsIncITLB) {
+        MIPS32_FLUSH_ITLB;
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: mips32MmuBuildPgdesc
@@ -302,7 +328,7 @@ static INT  mips32MmuGlobalInit (CPCHAR  pcMachineName)
     
     mips32MmuInvalidateTLB();                                           /*  无效 TLB                    */
     mipsCp0EntryHiWrite(0);                                             /*  ASID = 0                    */
-    mipsCp0PageMaskWrite(0);                                            /*  4K 页面大小                 */
+    mipsCp0PageMaskWrite(MIPS32_TLB_4K_PAGE_SIZE_MASK);                 /*  4K 页面大小                 */
     mipsCp0WiredWrite(0);                                               /*  全部允许随机替换            */
 
     return  (ERROR_NONE);
@@ -425,7 +451,7 @@ static LW_PGD_TRANSENTRY *mips32MmuPgdAlloc (PLW_MMU_CONTEXT  pmmuctx, addr_t  u
      * 而 LW_PGD_TRANSENTRY 的大小为 4
      */
     p_pgdentry = (LW_PGD_TRANSENTRY *)((addr_t)p_pgdentry
-               | ((ulAddr >> LW_CFG_VMM_PGD_SHIFT) * 4));               /*  获得一级页表描述符地址      */
+               | ((ulAddr >> LW_CFG_VMM_PGD_SHIFT) << 2));              /*  获得一级页表描述符地址      */
                
     return  (p_pgdentry);
 }
@@ -606,7 +632,7 @@ static ULONG  mips32MmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
 ** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
-** 注  意  : 由于改变了单条目的页表, VMM 本身在这个函数并不无效快表, 所以这里需要无效指定条目的快表.
+** 注  意  : 这里不需要清除快表 TLB, 因为 VMM 自身会作此操作.
 *********************************************************************************************************/
 static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  ulFlag)
 {
@@ -632,7 +658,6 @@ static INT  mips32MmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  u
              */
             *p_pteentry = (LW_PTE_TRANSENTRY)mips32MmuBuildPtentry((UINT32)ulPhysicalAddr,
                                                                    ulFlag);
-            mips32MmuInvalidateTLBMVA(ulAddr);                          /*  无效 TLB                    */
             return  (ERROR_NONE);
 
         } else {
@@ -751,6 +776,30 @@ static VOID  mips32MmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
     mipsCp0ContextWrite((UINT32)_G_pvPTETable);                         /*  将 PTE 表写入 Context 寄存器*/
 }
 /*********************************************************************************************************
+** 函数名称: mips32MmuInvTLB
+** 功能描述: 无效当前 CPU TLB
+** 输　入  : pmmuctx        mmu 上下文
+**           ulPageAddr     页面虚拟地址
+**           ulPageNum      页面个数
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static VOID  mips32MmuInvTLB (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulPageAddr, ULONG  ulPageNum)
+{
+    ULONG   i;
+
+    if (ulPageNum > 16) {
+        mips32MmuInvalidateTLB();                                       /*  全部清除 TLB                */
+
+    } else {
+        for (i = 0; i < ulPageNum; i++) {
+            mips32MmuInvalidateTLBMVA((addr_t)ulPageAddr);              /*  逐个页面清除 TLB            */
+            ulPageAddr += LW_CFG_VMM_PAGE_SIZE;
+        }
+    }
+}
+/*********************************************************************************************************
 ** 函数名称: mips32MmuInit
 ** 功能描述: MMU 系统初始化
 ** 输　入  : pmmuop            MMU 操作函数集
@@ -764,45 +813,50 @@ VOID  mips32MmuInit (LW_MMU_OP  *pmmuop, CPCHAR  pcMachineName)
     if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1X) == 0) {
         _G_iHwNeverExecBit  = 30;
         _G_uiEntryLoPFNMask = MIPS32_ENTRYLO_PFN_DEFAULT_MASK & (~(0x3 << 30));
+
     } else {
+        if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS2X) == 0) {
+            _G_bIsIncITLB = LW_TRUE;
+        }
+
         _G_iHwNeverExecBit  = -1;
         _G_uiEntryLoPFNMask = MIPS32_ENTRYLO_PFN_DEFAULT_MASK;
     }
 
 #if LW_CFG_SMP_EN > 0
-    pmmuop->MMUOP_ulOption          = LW_VMM_MMU_FLUSH_TLB_MP;
+    pmmuop->MMUOP_ulOption = LW_VMM_MMU_FLUSH_TLB_MP;
 #else
-    pmmuop->MMUOP_ulOption          = 0ul;
+    pmmuop->MMUOP_ulOption = 0ul;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    pmmuop->MMUOP_pfuncMemInit      = mips32MmuMemInit;
-    pmmuop->MMUOP_pfuncGlobalInit   = mips32MmuGlobalInit;
+    pmmuop->MMUOP_pfuncMemInit       = mips32MmuMemInit;
+    pmmuop->MMUOP_pfuncGlobalInit    = mips32MmuGlobalInit;
     
-    pmmuop->MMUOP_pfuncPGDAlloc     = mips32MmuPgdAlloc;
-    pmmuop->MMUOP_pfuncPGDFree      = mips32MmuPgdFree;
-    pmmuop->MMUOP_pfuncPMDAlloc     = mips32MmuPmdAlloc;
-    pmmuop->MMUOP_pfuncPMDFree      = mips32MmuPmdFree;
-    pmmuop->MMUOP_pfuncPTEAlloc     = mips32MmuPteAlloc;
-    pmmuop->MMUOP_pfuncPTEFree      = mips32MmuPteFree;
+    pmmuop->MMUOP_pfuncPGDAlloc      = mips32MmuPgdAlloc;
+    pmmuop->MMUOP_pfuncPGDFree       = mips32MmuPgdFree;
+    pmmuop->MMUOP_pfuncPMDAlloc      = mips32MmuPmdAlloc;
+    pmmuop->MMUOP_pfuncPMDFree       = mips32MmuPmdFree;
+    pmmuop->MMUOP_pfuncPTEAlloc      = mips32MmuPteAlloc;
+    pmmuop->MMUOP_pfuncPTEFree       = mips32MmuPteFree;
     
-    pmmuop->MMUOP_pfuncPGDIsOk      = mips32MmuPgdIsOk;
-    pmmuop->MMUOP_pfuncPMDIsOk      = mips32MmuPgdIsOk;
-    pmmuop->MMUOP_pfuncPTEIsOk      = mips32MmuPteIsOk;
+    pmmuop->MMUOP_pfuncPGDIsOk       = mips32MmuPgdIsOk;
+    pmmuop->MMUOP_pfuncPMDIsOk       = mips32MmuPgdIsOk;
+    pmmuop->MMUOP_pfuncPTEIsOk       = mips32MmuPteIsOk;
     
-    pmmuop->MMUOP_pfuncPGDOffset    = mips32MmuPgdOffset;
-    pmmuop->MMUOP_pfuncPMDOffset    = mips32MmuPmdOffset;
-    pmmuop->MMUOP_pfuncPTEOffset    = mips32MmuPteOffset;
+    pmmuop->MMUOP_pfuncPGDOffset     = mips32MmuPgdOffset;
+    pmmuop->MMUOP_pfuncPMDOffset     = mips32MmuPmdOffset;
+    pmmuop->MMUOP_pfuncPTEOffset     = mips32MmuPteOffset;
     
-    pmmuop->MMUOP_pfuncPTEPhysGet   = mips32MmuPtePhysGet;
+    pmmuop->MMUOP_pfuncPTEPhysGet    = mips32MmuPtePhysGet;
     
-    pmmuop->MMUOP_pfuncFlagGet      = mips32MmuFlagGet;
-    pmmuop->MMUOP_pfuncFlagSet      = mips32MmuFlagSet;
+    pmmuop->MMUOP_pfuncFlagGet       = mips32MmuFlagGet;
+    pmmuop->MMUOP_pfuncFlagSet       = mips32MmuFlagSet;
     
-    pmmuop->MMUOP_pfuncMakeTrans    = mips32MmuMakeTrans;
-    pmmuop->MMUOP_pfuncMakeCurCtx   = mips32MmuMakeCurCtx;
-    pmmuop->MMUOP_pfuncInvalidateTLB= mips32MmuInvalidateTLB;
-    pmmuop->MMUOP_pfuncSetEnable    = mips32MmuEnable;
-    pmmuop->MMUOP_pfuncSetDisable   = mips32MmuDisable;
+    pmmuop->MMUOP_pfuncMakeTrans     = mips32MmuMakeTrans;
+    pmmuop->MMUOP_pfuncMakeCurCtx    = mips32MmuMakeCurCtx;
+    pmmuop->MMUOP_pfuncInvalidateTLB = mips32MmuInvTLB;
+    pmmuop->MMUOP_pfuncSetEnable     = mips32MmuEnable;
+    pmmuop->MMUOP_pfuncSetDisable    = mips32MmuDisable;
 }
 
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */

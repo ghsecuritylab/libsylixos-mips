@@ -399,9 +399,8 @@ INT  API_INetPing6 (struct in6_addr  *pin6addr,
                     : ((__ARCH_ULONG_MAX - ulTime1) + ulTime2 + 1);
             ulTime2 = ((ulTime2 * 1000) / LW_TICK_HZ);                  /*  ×ªÎªºÁÃëÊý                  */
                     
-            printf("Reply from %s: bytes=%d time=%ldms hoplim=%d\n", inet6_ntoa_r(*pin6addr, 
-                                                                     cInetAddr, 
-                                                                     sizeof(cInetAddr)),
+            printf("Reply from %s: bytes=%d time=%ldms hoplim=%d\n", 
+                   inet6_ntoa_r(*pin6addr, cInetAddr, sizeof(cInetAddr)),
                    iDataSize, ulTime2, iHLRecv);
         
             iSuc++;

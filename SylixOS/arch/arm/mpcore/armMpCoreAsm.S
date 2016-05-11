@@ -1,4 +1,4 @@
-;/**********************************************************************************************************
+;/*********************************************************************************************************
 ;**
 ;**                                    中国软件开源组织
 ;**
@@ -24,7 +24,6 @@
 #endif
 
 #include <arch/assembler.h>
-#include <config/mp/mp_cfg.h>
 
 #if LW_CFG_SMP_EN > 0
 
@@ -52,7 +51,7 @@ FUNC_DEF(armSpinLock)
     LDREX   R2, [R0]
     CMP     R2, #0
 
-#if __SYLIXOS_ARM_ARCH__ >= 7
+#if (__SYLIXOS_ARM_ARCH__ >= 7) && (ARM_SPINLOCK_EVENT > 0)
     WFENE
 #endif
 
@@ -80,7 +79,7 @@ FUNC_DEF(armSpinUnlock)
     STR     R1, [R0]
     ARM_DSB()
 
-#if __SYLIXOS_ARM_ARCH__ >= 7
+#if (__SYLIXOS_ARM_ARCH__ >= 7) && (ARM_SPINLOCK_EVENT > 0)
     SEV
 #endif
 

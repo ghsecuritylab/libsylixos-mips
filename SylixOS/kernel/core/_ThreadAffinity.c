@@ -46,12 +46,21 @@ VOID  _ThreadSetAffinity (PLW_CLASS_TCB  ptcb, size_t  stSize, const PLW_CLASS_C
     ulNumChk = (ulNumChk > LW_NCPUS) ? LW_NCPUS : ulNumChk;
     
     for (i = 0; i < ulNumChk; i++) {
-        if (LW_CPU_ISSET(i, pcpuset) && 
-            LW_CPU_IS_ACTIVE(LW_CPU_GET(i)) &&
-            !(LW_CPU_GET_IPI_PEND(i) & LW_IPI_DOWN_MSK)) {              /*  必须激活并且没有要被停止    */
-            ptcb->TCB_ulCPULock = i;
-            ptcb->TCB_bCPULock  = LW_TRUE;                              /*  锁定执行 CPU                */
-            return;
+        if (ptcb->TCB_ulOption & LW_OPTION_THREAD_AFFINITY_ALWAYS) {
+            if (LW_CPU_ISSET(i, pcpuset)) {
+                ptcb->TCB_ulCPULock = i;
+                ptcb->TCB_bCPULock  = LW_TRUE;                          /*  锁定执行 CPU                */
+                return;
+            }
+        
+        } else {
+            if (LW_CPU_ISSET(i, pcpuset) && 
+                LW_CPU_IS_ACTIVE(LW_CPU_GET(i)) &&
+                !(LW_CPU_GET_IPI_PEND(i) & LW_IPI_DOWN_MSK)) {          /*  必须激活并且没有要被停止    */
+                ptcb->TCB_ulCPULock = i;
+                ptcb->TCB_bCPULock  = LW_TRUE;                          /*  锁定执行 CPU                */
+                return;
+            }
         }
     }
     
@@ -98,7 +107,9 @@ VOID  _ThreadOffAffinity (PLW_CLASS_CPU  pcpu)
          
         iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
         ptcb = _LIST_ENTRY(plineList, LW_CLASS_TCB, TCB_lineManage);
-        if (ptcb->TCB_bCPULock && (ptcb->TCB_ulCPULock == ulCPUId)) {
+        if (ptcb->TCB_bCPULock && 
+            (ptcb->TCB_ulCPULock == ulCPUId) &&
+            !(ptcb->TCB_ulOption & LW_OPTION_THREAD_AFFINITY_ALWAYS)) {
             if (__LW_THREAD_IS_READY(ptcb)) {
                 if (ptcb->TCB_bIsCand) {
                     ptcb->TCB_bCPULock = LW_FALSE;

@@ -159,6 +159,7 @@
 *********************************************************************************************************/
 
 #define Lw_Thread_Once                          API_ThreadOnce
+#define Lw_Thread_Once2                         API_ThreadOnce2
 
 #define Lw_Thread_Cleanup_Push                  API_ThreadCleanupPush
 #define Lw_Thread_Cleanup_PushEx                API_ThreadCleanupPushEx

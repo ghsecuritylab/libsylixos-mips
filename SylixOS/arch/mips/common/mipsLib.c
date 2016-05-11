@@ -115,7 +115,7 @@ VOID  archPageCopy (PVOID  pvTo, PVOID  pvFrom)
     REGISTER UINT64  *pu64To   = (UINT64 *)pvTo;
     REGISTER UINT64  *pu64From = (UINT64 *)pvFrom;
 
-    for (i = 0; i < 512; i++) {                                         /*  4KB PAGE SIZE               */
+    for (i = 0; i < (LW_CFG_VMM_PAGE_SIZE >> 3); i++) {
         *pu64To++ = *pu64From++;
     }
 }

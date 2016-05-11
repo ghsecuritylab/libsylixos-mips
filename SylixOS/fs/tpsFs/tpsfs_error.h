@@ -61,7 +61,9 @@ typedef enum {
     TPS_ERR_INODE_TRUNC,                                                /* 截断inode错误                */
     TPS_ERR_INODE_SIZE,                                                 /* inode大小错误                */
     TPS_ERR_INODE_SYNC,                                                 /* 同步inode错误                */
+    TPS_ERR_INODE_SERIAL,                                               /* 序列号inode错误              */
 
+    TPS_ERR_BTREE_INIT,                                                 /* 初始化b+tree                 */
     TPS_ERR_BTREE_INSERT,                                               /* 插入块到b+tree错误           */
     TPS_ERR_BTREE_TRUNC,                                                /* 截断b+tree错误               */
     TPS_ERR_BTREE_ALLOC,                                                /* 分配b+tree节点错误           */
@@ -79,6 +81,7 @@ typedef enum {
     TPS_ERR_BTREE_KEY_NOTFOUND,                                         /* 查找指定键值错误             */
     TPS_ERR_BTREE_UPDATE_KEY,                                           /* 更新键值错                   */
     TPS_ERR_BTREE_DISK_SPACE,                                           /* 磁盘空间不足                 */
+    TPS_ERR_BTREE_NODE_MAGIC,                                           /* BTREE 节点 magic错误         */
 
     TPS_ERR_CHECK_NAME,                                                 /* 文件路径检查错误             */
 

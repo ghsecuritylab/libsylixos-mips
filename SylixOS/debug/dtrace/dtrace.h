@@ -41,13 +41,15 @@
   创建 dtrace flags
 *********************************************************************************************************/
 
+#define LW_DTRACE_F_DEF     0x00
 #define LW_DTRACE_F_KBP     0x01                                        /*  内核断点使能                */
 
 /*********************************************************************************************************
-  LW_DTRACE_MSG 类型
+  LW_DTRACE_MSG 类型 (LW_TRAP_RETRY 为内部使用)
 *********************************************************************************************************/
 
 #define LW_TRAP_INVAL       0                                           /*  无效                        */
+#define LW_TRAP_RETRY       SIGCONT                                     /*  虚假断点                    */
 #define LW_TRAP_BRKPT       SIGTRAP                                     /*  断点                        */
 #define LW_TRAP_ABORT       SIGSEGV                                     /*  终止                        */
 #define LW_TRAP_WATCH       SIGTRAP                                     /*  观察点 (暂不支持)           */
@@ -69,6 +71,7 @@ typedef LW_DTRACE_MSG  *PLW_DTRACE_MSG;
 
 LW_API PVOID    API_DtraceCreate(UINT  uiType, UINT  uiFlag, LW_OBJECT_HANDLE  ulDbger);
 LW_API ULONG    API_DtraceDelete(PVOID  pvDtrace);
+LW_API BOOL     API_DtraceIsValid(VOID);
 LW_API ULONG    API_DtraceSetPid(PVOID  pvDtrace, pid_t  pid);
 LW_API ULONG    API_DtraceGetRegs(PVOID  pvDtrace, 
                                   LW_OBJECT_HANDLE  ulThread, 
@@ -104,7 +107,7 @@ LW_API ULONG    API_DtraceThreadExtraInfo(PVOID  pvDtrace, LW_OBJECT_HANDLE  ulT
                                           PCHAR  pcExtraInfo, size_t  stSize);
 LW_API ULONG    API_DtraceThreadStepSet(PVOID  pvDtrace, LW_OBJECT_HANDLE  ulThread, addr_t  ulAddr);
 LW_API ULONG    API_DtraceThreadStepGet(PVOID  pvDtrace, LW_OBJECT_HANDLE  ulThread, addr_t  *pulAddr);
-LW_API ULONG    API_DtraceSchedHook(LW_OBJECT_HANDLE  ulThreadOld, LW_OBJECT_HANDLE  ulThreadNew);
+LW_API VOID     API_DtraceSchedHook(LW_OBJECT_HANDLE  ulThreadOld, LW_OBJECT_HANDLE  ulThreadNew);
 
 /*********************************************************************************************************
   API (SylixOS internal use only!)

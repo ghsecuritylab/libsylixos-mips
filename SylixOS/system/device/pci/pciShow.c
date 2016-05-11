@@ -636,7 +636,7 @@ VOID  API_PciStatusShow (INT iBus, INT iSlot, INT iFunc)
            PCI_FLAG(usStatus, PCI_STATUS_REC_MASTER_ABORT),
            PCI_FLAG(usStatus, PCI_STATUS_SIG_SYSTEM_ERROR),
            PCI_FLAG(usStatus, PCI_STATUS_DETECTED_PARITY),
-           PCI_FLAG(usStatus, PCI_STATUS_INTx));
+           PCI_FLAG(usStatus, PCI_COMMAND_INTX_DISABLE));
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: API_PciCommandShow

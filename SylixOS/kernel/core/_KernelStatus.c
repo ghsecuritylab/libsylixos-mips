@@ -199,6 +199,36 @@ BOOL  __kernelIsEnter (VOID)
     }
 }
 /*********************************************************************************************************
+** 函数名称: __kernelIsLockByMe
+** 功能描述: 内核自旋锁是否被当前 CPU 锁定
+** 输　入  : bIntLock      外部是否已经关闭了中断
+** 输　出  : LW_TRUE or LW_FALSE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+BOOL  __kernelIsLockByMe (BOOL  bIntLock)
+{
+    INTREG         iregInterLevel;
+    PLW_CLASS_CPU  pcpuCur;
+    BOOL           bRet;
+
+    if (!bIntLock) {
+        iregInterLevel = KN_INT_DISABLE();                              /*  关闭中断                    */
+    }
+
+    pcpuCur = LW_CPU_GET_CUR();
+
+    KN_SMP_MB();
+    bRet = ((PLW_CLASS_CPU)_K_klKernel.KERN_slLock.SL_pcpuOwner == pcpuCur)
+         ? LW_TRUE : LW_FALSE;
+    
+    if (!bIntLock) {
+        KN_INT_ENABLE(iregInterLevel);                                  /*  打开中断                    */
+    }
+    
+    return  (bRet);
+}
+/*********************************************************************************************************
 ** 函数名称: __kernelSched
 ** 功能描述: 内核调度
 ** 输　入  : NONE

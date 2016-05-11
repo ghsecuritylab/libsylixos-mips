@@ -21,6 +21,7 @@
 ** BUG:
 2015.05.15  加入 CPU_ulSpinNesting 处理.
 2015.05.16  加入 Task 型自旋锁, 此类型锁允许任务调用阻塞函数.
+2016.04.26  加入 raw 型自旋锁, 此类型用于 atomic 变量处理.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -364,7 +365,7 @@ VOID  _SmpSpinUnlockIrqQuick (spinlock_t *psl, INTREG  iregInterLevel)
 }
 /*********************************************************************************************************
 ** 函数名称: _SmpSpinLockTask
-** 功能描述: 自旋锁原始加锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
+** 功能描述: 自旋锁任务加锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
 ** 输　入  : psl               自旋锁
 ** 输　出  : NONE
 ** 全局变量: 
@@ -389,7 +390,7 @@ VOID  _SmpSpinLockTask (spinlock_t *psl)
 }
 /*********************************************************************************************************
 ** 函数名称: _SmpSpinTryLockTask
-** 功能描述: 自旋锁尝试原始加锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
+** 功能描述: 自旋锁尝试任务加锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
 ** 输　入  : psl               自旋锁
 ** 输　出  : LW_TRUE 加锁正常 LW_FALSE 加锁失败
 ** 全局变量: 
@@ -421,7 +422,7 @@ BOOL  _SmpSpinTryLockTask (spinlock_t *psl)
 }
 /*********************************************************************************************************
 ** 函数名称: _SmpSpinUnlockTask
-** 功能描述: 自旋锁原始解锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
+** 功能描述: 自旋锁任务解锁操作. (不锁定中断, 同时允许加锁后调用可能产生阻塞的操作)
 ** 输　入  : psl               自旋锁
 ** 输　出  : 调度器返回值
 ** 全局变量: 
@@ -456,6 +457,62 @@ INT  _SmpSpinUnlockTask (spinlock_t *psl)
     } else {
         return  (ERROR_NONE);
     }
+}
+/*********************************************************************************************************
+** 函数名称: _SmpSpinLockRaw
+** 功能描述: 自旋锁原始加锁操作.
+** 输　入  : psl               自旋锁
+**           piregInterLevel   中断状态
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _SmpSpinLockRaw (spinlock_t *psl, INTREG  *piregInterLevel)
+{
+    *piregInterLevel = KN_INT_DISABLE();
+    
+    __ARCH_SPIN_LOCK_RAW(psl);                                          /*  驱动保证锁定必须成功        */
+    KN_SMP_MB();
+}
+/*********************************************************************************************************
+** 函数名称: _SmpSpinTryLockRaw
+** 功能描述: 自旋锁尝试原始加锁操作.
+** 输　入  : psl               自旋锁
+**           piregInterLevel   中断状态
+** 输　出  : LW_TRUE 加锁正常 LW_FALSE 加锁失败
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+BOOL  _SmpSpinTryLockRaw (spinlock_t *psl, INTREG  *piregInterLevel)
+{
+    INT     iRet;
+    
+    *piregInterLevel = KN_INT_DISABLE();
+    
+    iRet = __ARCH_SPIN_TRYLOCK_RAW(psl);
+    KN_SMP_MB();
+    
+    if (iRet != LW_SPIN_OK) {
+        KN_INT_ENABLE(*piregInterLevel);
+    }
+    
+    return  ((iRet == LW_SPIN_OK) ? (LW_TRUE) : (LW_FALSE));
+}
+/*********************************************************************************************************
+** 函数名称: _SmpSpinUnlockRaw
+** 功能描述: 自旋锁原始解锁操作.
+** 输　入  : psl               自旋锁
+**           iregInterLevel    中断状态
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _SmpSpinUnlockRaw (spinlock_t *psl, INTREG  iregInterLevel)
+{
+    KN_SMP_MB();
+    __ARCH_SPIN_UNLOCK_RAW(psl);
+    
+    KN_INT_ENABLE(iregInterLevel);
 }
 
 #endif                                                                  /*  LW_CFG_SMP_EN               */

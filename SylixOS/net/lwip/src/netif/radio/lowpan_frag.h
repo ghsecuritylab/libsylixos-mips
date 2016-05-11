@@ -42,6 +42,8 @@
 #include "lwip/ethip6.h"
 #include "netif/etharp.h"
 
+#if LWIP_SUPPORT_CUSTOM_PBUF
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -91,5 +93,7 @@ err_t lowpan_frag(struct lowpanif *lowpanif, struct pbuf *p);
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* LWIP_SUPPORT_CUSTOM_PBUF */
 
 #endif  /* __LOWPAN_FRAG_H__ */

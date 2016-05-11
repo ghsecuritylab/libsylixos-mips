@@ -40,6 +40,10 @@ VOID  __procFsPosixInfoInit(VOID);
 VOID  _posixAioInit(VOID);
 #endif                                                                  /*  LW_CFG_SIGNAL_EN > 0        */
 
+VOID  _posixPSemInit(VOID);
+VOID  _posixPMutexInit(VOID);
+VOID  _posixPRWLockInit(VOID);
+VOID  _posixPCondInit(VOID);
 VOID  _posixSyslogInit(VOID);
 /*********************************************************************************************************
   posix lock
@@ -163,6 +167,10 @@ VOID  API_PosixInit (VOID)
     _posixAioInit();
 #endif                                                                  /*  LW_CFG_POSIX_AIO_EN > 0     */
 
+    _posixPSemInit();
+    _posixPMutexInit();
+    _posixPRWLockInit();
+    _posixPCondInit();
     _posixSyslogInit();
     
 #if LW_CFG_SHELL_EN > 0

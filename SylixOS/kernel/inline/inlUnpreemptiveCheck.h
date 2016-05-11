@@ -76,6 +76,34 @@ static LW_INLINE BOOL __can_preemptive (PLW_CLASS_CPU  pcpu, ULONG  ulMaxLockCou
                                                   LW_CAND_ROT(pcpu))
 #endif
 
+/*********************************************************************************************************
+  多核 CPU 内部锁定
+*********************************************************************************************************/
+#if LW_CFG_SMP_EN > 0
+
+static LW_INLINE BOOL  __smp_cpu_lock (VOID)
+{
+    BOOL    bSchedLock = _SchedIsLock(0);
+    
+    if (bSchedLock == LW_FALSE) {
+        _ThreadLock();                                                  /*  锁定当前 CPU 执行           */
+    }
+    
+    return  (bSchedLock ? LW_FALSE : LW_TRUE);
+}
+
+static LW_INLINE VOID  __smp_cpu_unlock (BOOL  bUnlock)
+{
+    if (bUnlock) {
+        _ThreadUnlock();                                                /*  解锁当前 CPU 执行           */
+    }
+}
+
+#define __SMP_CPU_LOCK()        __smp_cpu_lock()
+#define __SMP_CPU_UNLOCK(prev)  __smp_cpu_unlock(prev)
+
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+
 #endif                                                                  /*  __INLUNPREEMPTIVECHECK_H    */
 /*********************************************************************************************************
   END

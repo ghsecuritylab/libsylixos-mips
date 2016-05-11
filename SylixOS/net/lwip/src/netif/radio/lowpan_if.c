@@ -77,10 +77,12 @@ lowpan_input (struct pbuf *p, struct netif *inp)
   patch = *((u8_t *)p->payload);
   /* If the frame is a fragmentation frame. */
   if (patch & 0x80) {
+#if IP_FRAG
     p = lowpan_reass(p, &ethhdr);
     if (p == NULL) {
       return ERR_OK;
     }
+#endif
   }
   
   /* The frame is a fully frame, can prase it. */
@@ -125,7 +127,7 @@ lowpan_output (struct netif *netif, struct pbuf *p)
   u8_t iphdr[96];
   u8_t head_len;
   u16_t iphdr_len;
-  err_t err;
+  err_t err = ERR_OK;
   u8_t isbc;
   struct pbuf *q, *pfw;
   struct lowpanif *lowpanif = (struct lowpanif *)netif->state;
@@ -166,7 +168,9 @@ lowpan_output (struct netif *netif, struct pbuf *p)
       err = ERR_IF;
     }
   } else { /* Use the lowpan frag to send the various fragments. */
+#if IP_FRAG
     err = lowpan_frag(lowpanif, pfw);
+#endif
   }
   
   if (err == ERR_OK) {
@@ -338,7 +342,9 @@ lowpan_netif_add (struct lowpanif *lowpanif, netif_add_handle fn_add,
   
   if (lowpan_proto_init == 0) {
     lowpan_proto_init = 1;
+#if IP_FRAG
     lowpan_reass_init();
+#endif
   }
   
   if (!RADIO_DRIVER(lowpanif) ||

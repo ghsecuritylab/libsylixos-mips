@@ -1,4 +1,4 @@
-;/**********************************************************************************************************
+;/*********************************************************************************************************
 ;**
 ;**                                    中国软件开源组织
 ;**
@@ -42,7 +42,6 @@
     EXPORT_LABEL(armSyncBusMode)
     EXPORT_LABEL(armWaitForInterrupt)
     EXPORT_LABEL(armBranchPredictorInvalidate)
-    EXPORT_LABEL(armBranchPredictorInvalidateInnerShareable)
     EXPORT_LABEL(armBranchPredictionEnable)
     EXPORT_LABEL(armBranchPredictionDisable)
     EXPORT_LABEL(armVectorBaseAddrSet)
@@ -52,6 +51,8 @@
     EXPORT_LABEL(armControlFeatureEnable)
     EXPORT_LABEL(armAuxControlFeatureEnable)
     EXPORT_LABEL(armAuxControlFeatureDisable)
+    EXPORT_LABEL(armA1xL2CtlSet)
+    EXPORT_LABEL(armA1xL2CtlGet)
     EXPORT_LABEL(armPrivatePeriphBaseGet)
     
     WEAK(armControlFeatureDisable)
@@ -145,28 +146,19 @@ FUNC_DEF(armWaitForInterrupt)
 FUNC_DEF(armBranchPredictorInvalidate)
     ARM_DSB()
     ARM_ISB()
+#if __SYLIXOS_ARM_ARCH__ >= 6
     MOV     R0, #0
-    MCR     p15, 0, R0, c7, c5, 6
-    NOP
-    NOP
-    NOP
-    ARM_DSB()
-    ARM_ISB()
-    BX      LR
-    FUNC_END()
-
-;/*********************************************************************************************************
-;  This API invalidates the branch predictor array inner shareable
-;*********************************************************************************************************/
-
-FUNC_DEF(armBranchPredictorInvalidateInnerShareable)
-    ARM_DSB()
-    ARM_ISB()
-    MOV     R0, #0
-    MCR     p15, 0, R0, c7, c1, 6
-    NOP
-    NOP
-    NOP
+#if LW_CFG_SMP_EN > 0
+    SMP_UP_CHECK(R1)
+    MCRHI   p15, 0, R0, c7, c1, 6                                       ;/* BPIALLIS SMP                 */
+    MCRLS   p15, 0, R0, c7, c5, 6                                       ;/* BPIALL UP                    */
+#else
+    MCR     p15, 0, R0, c7, c5, 6                                       ;/* BPIALL UP                    */
+#endif
+#endif
+    ARM_NOP(R0)                                                         ;/* 3 * NOP                      */
+    ARM_NOP(R0)
+    ARM_NOP(R0)
     ARM_DSB()
     ARM_ISB()
     BX      LR
@@ -326,6 +318,28 @@ FUNC_DEF(armAuxControlFeatureDisable)
     BX      LR
     FUNC_END()
     
+;/*********************************************************************************************************
+;  A15 17 L2 Control Register
+;*********************************************************************************************************/
+
+FUNC_DEF(armA1xL2CtlSet)
+    ARM_DSB()
+    ARM_ISB()
+    MCR     p15, 0, R0, c9, c0, 2
+    ARM_DSB()
+    ARM_ISB()
+    BX      LR
+    FUNC_END()
+
+FUNC_DEF(armA1xL2CtlGet)
+    ARM_DSB()
+    ARM_ISB()
+    MRC     p15, 0, R0, c9, c0, 2
+    ARM_DSB()
+    ARM_ISB()
+    BX      LR
+    FUNC_END()
+
 ;/*********************************************************************************************************
 ;  In Cortex-A9 or later uniprocessor implementations the base address is set to zero.
 ;  In Cortex-A9 or later MPCore implementations, the base address is reset to PERIPHBASE[31:13]

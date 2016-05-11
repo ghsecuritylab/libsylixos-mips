@@ -96,6 +96,7 @@
 #include "SylixOS.h"
 #include "mipsInst.h"
 #include "mipsBranch.h"
+#include "../param/mipsParam.h"
 
 #define STR(x)      __STR(x)
 #define __STR(x)    #x
@@ -360,14 +361,22 @@ sigill:
 *********************************************************************************************************/
 ULONG  mipsUnalignedHandle (ARCH_REG_CTX  *pregctx, addr_t  ulAbortAddr)
 {
-    UINT  *pc;
+    MIPS_PARAM  *param = archKernelParamGet();
+    UINT        *pc;
 
     /*
      * Did we catch a fault trying to load an instruction?
      * Or are we running in MIPS16 mode?
      */
     if ((ulAbortAddr == pregctx->REG_uiCP0EPC) || (pregctx->REG_uiCP0EPC & 0x1)) {
-        goto sigbus;
+        goto    sigbus;
+    }
+
+    /*
+     * unsupport unalign access
+     */
+    if (param->AP_bUnalign == LW_FALSE) {
+        goto    sigbus;
     }
 
     pc = (UINT *)exception_epc(pregctx);

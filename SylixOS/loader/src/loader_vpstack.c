@@ -37,27 +37,29 @@
 *********************************************************************************************************/
 PVOID  vprocStackAlloc (PLW_CLASS_TCB  ptcbNew, ULONG  ulOption, size_t  stSize)
 {
-    PVOID         pvRet;
+    PVOID           pvRet;
 
-#if ((LW_CFG_VMM_EN > 0) && (!defined(LW_CFG_CPU_ARCH_PPC)))
-    PLW_CLASS_TCB    ptcbCur;
-    LW_LD_VPROC     *pvproc;
+#if (LW_CFG_VMM_EN > 0) && !defined(LW_CFG_CPU_ARCH_PPC)
+    PLW_CLASS_TCB   ptcbCur;
+    LW_LD_VPROC    *pvproc;
     
     LW_TCB_GET_CUR_SAFE(ptcbCur);
     
-    pvproc = __LW_VP_GET_TCB_PROC(ptcbCur);
-    if (pvproc && !(ulOption & LW_OPTION_OBJECT_GLOBAL)) {
-        ptcbNew->TCB_iStkLocation = LW_TCB_STK_VP;
-        _BugHandle(!pvproc->VP_pfuncMalloc, LW_TRUE, "vproc no malloc function!\r\n");
+    if (ptcbNew->TCB_iStkLocation == LW_TCB_STK_NONE) {                 /*  还没有确定堆栈的位置        */
+        pvproc = __LW_VP_GET_TCB_PROC(ptcbCur);
+        if ((pvproc && !(ulOption & LW_OPTION_OBJECT_GLOBAL)) ||
+            (ulOption & LW_OPTION_THREAD_STK_MAIN)) {
+            ptcbNew->TCB_iStkLocation = LW_TCB_STK_VMM;                 /*  使用 VMM 堆栈               */
 
-        LW_SOFUNC_PREPARE(pvproc->VP_pfuncMalloc);
-        pvRet = pvproc->VP_pfuncMalloc(stSize);
-        
-    } else if (ulOption & LW_OPTION_THREAD_STK_MAIN) {                  /*  主线程堆栈                  */
-        ptcbNew->TCB_iStkLocation = LW_TCB_STK_MAIN;
+        } else {
+            ptcbNew->TCB_iStkLocation = LW_TCB_STK_HEAP;                /*  使用系统堆栈                */
+        }
+    }
+
+    if (ptcbNew->TCB_iStkLocation == LW_TCB_STK_VMM) {
         pvRet = API_VmmMalloc(stSize);
-        
-    } else 
+
+    } else
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
     {
         ptcbNew->TCB_iStkLocation = LW_TCB_STK_HEAP;
@@ -78,26 +80,29 @@ PVOID  vprocStackAlloc (PLW_CLASS_TCB  ptcbNew, ULONG  ulOption, size_t  stSize)
 *********************************************************************************************************/
 VOID  vprocStackFree (PLW_CLASS_TCB  ptcbDel, PVOID  pvStack, BOOL  bImmed)
 {
-#if ((LW_CFG_VMM_EN > 0) && (!defined(LW_CFG_CPU_ARCH_PPC)))
+#if (LW_CFG_VMM_EN > 0) && !defined(LW_CFG_CPU_ARCH_PPC)
     LW_LD_VPROC     *pvproc;
+    BOOL             bFree = LW_TRUE;
 
     switch (ptcbDel->TCB_iStkLocation) {
     
-    case LW_TCB_STK_MAIN:                                               /*  主线程由 vprocDestroy 回收  */
+    case LW_TCB_STK_VMM:
         pvproc = __LW_VP_GET_TCB_PROC(ptcbDel);
-        if ((pvproc == LW_NULL) || bImmed) {
-            API_VmmFree(pvStack);
-            if (pvproc) {
+        if (pvproc && (pvproc->VP_ulMainThread == ptcbDel->TCB_ulId)) { /*  如果是主线程                */
+            if (bImmed) {
+#if LW_CFG_COROUTINE_EN > 0
+                if (pvproc->VP_pvMainStack == pvStack) {
+                    pvproc->VP_pvMainStack =  LW_NULL;                  /*  主线程堆栈删除              */
+                }
+#else
                 pvproc->VP_pvMainStack = LW_NULL;
+#endif                                                                  /*  LW_CFG_COROUTINE_EN > 0     */
+            } else {
+                bFree = LW_FALSE;                                       /*  延迟删除主线程堆栈          */
             }
         }
-        break;
-        
-    case LW_TCB_STK_VP:                                                 /*  进程内存堆                  */
-        pvproc = __LW_VP_GET_TCB_PROC(ptcbDel);
-        if (pvproc && pvproc->VP_pfuncFree) {
-            LW_SOFUNC_PREPARE(pvproc->VP_pfuncFree);
-            pvproc->VP_pfuncFree(pvStack);
+        if (bFree) {
+            API_VmmFree(pvStack);
         }
         break;
         

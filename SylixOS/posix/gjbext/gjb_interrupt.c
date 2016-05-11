@@ -54,7 +54,7 @@ int  int_install_handler (const char  *name,
         return  (EACCES);
     }
     
-    if (!handler) {
+    if (!name || !handler) {
         errno = EINVAL;
         return  (EINVAL);
     }

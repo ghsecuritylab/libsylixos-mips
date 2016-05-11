@@ -215,6 +215,11 @@ int  wdg_getinfo (wdg_t wdg_id, wdg_info_t *info)
 LW_API 
 int  wdg_show (wdg_t wdg_id)
 {
+    if (wdg_id == LW_OBJECT_HANDLE_INVALID) {
+        errno = EINVAL;
+        return  (PX_ERROR);
+    }
+
     API_TimerShow(wdg_id);
     
     return  (ERROR_NONE);

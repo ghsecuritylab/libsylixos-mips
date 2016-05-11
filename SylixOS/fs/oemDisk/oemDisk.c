@@ -33,6 +33,7 @@
 2013.10.03  加入 API_OemDiskHotplugEventMessage 发送热插拔信息.
 2015.12.25  加入 tpsFs 支持.
 2016.01.12  oemDisk 支持彻底脱离具体的文件系统调用.
+2016.05.10  oemDisk 遇到无法挂载的分区时, vol id 不增加.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -315,6 +316,9 @@ __refined_seq:
             }
             poemd->OEMDISK_pdevhdr[i] = API_IosDevMatchFull(cFullVolName);
             poemd->OEMDISK_iVolSeq[i] = iVolSeq;                        /*  记录卷序号                  */
+        
+        } else {
+            continue;                                                   /*  此分区无法加载              */
         }
         
         if (poemd->OEMDISK_iVolSeq[i] >= 0) {
@@ -573,6 +577,9 @@ __refined_seq:
             }
             poemd->OEMDISK_pdevhdr[i] = API_IosDevMatchFull(cFullVolName);
             poemd->OEMDISK_iVolSeq[i] = iVolSeq;                        /*  记录卷序号                  */
+        
+        } else {
+            continue;                                                   /*  此分区无法加载              */
         }
         
         if (poemd->OEMDISK_iVolSeq[i] >= 0) {

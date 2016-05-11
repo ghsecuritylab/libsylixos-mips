@@ -214,13 +214,25 @@ static BOOL  __dtraceMemVerify (PVOID  pvDtrace, addr_t  ulAddr, BOOL  bWrite)
 {
 #if LW_CFG_VMM_EN > 0
     ULONG  ulFlags;
+    
     if (API_VmmGetFlag((PVOID)ulAddr, &ulFlags)) {
         return  (LW_FALSE);
     }
-    if (bWrite && !(ulFlags & LW_VMM_FLAG_WRITABLE)) {
+    
+    if (!(ulFlags & LW_VMM_FLAG_ACCESS)) {
         return  (LW_FALSE);
     }
-    if (bWrite && !(ulFlags & LW_VMM_FLAG_ACCESS)) {
+    
+#if (LW_CFG_CACHE_EN > 0) && !defined(LW_CFG_CPU_ARCH_PPC)
+    if (!API_VmmVirtualIsInside(ulAddr)) {
+        if (!API_CacheAliasProb() &&
+            !(ulFlags & LW_VMM_FLAG_CACHEABLE)) {                       /*  暂时不允许读取设备内存      */
+            return  (LW_FALSE);
+        }
+    }
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
+                                                                        /*  !LW_CFG_CPU_ARCH_PPC        */
+    if (bWrite && !(ulFlags & LW_VMM_FLAG_WRITABLE)) {
         return  (LW_FALSE);
     }
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
@@ -255,7 +267,7 @@ INT  API_DtraceBreakTrap (addr_t  ulAddr, UINT  uiBpType)
     LW_TCB_GET_CUR_SAFE(ptcbCur);
     
     pvproc = __LW_VP_GET_TCB_PROC(ptcbCur);
-    if (!pvproc || (pvproc->VP_pid <= 0)) {
+    if (!pvproc || (pvproc->VP_pid <= 0) || !_G_plineDtraceHeader) {
         return  (PX_ERROR);
     }
     
@@ -284,8 +296,12 @@ INT  API_DtraceBreakTrap (addr_t  ulAddr, UINT  uiBpType)
                      dtm.DTM_ulThread, ulAddr, ptcbCur->TCB_ulCPUId);
         
 #if LW_CFG_SMP_EN > 0
+        if (uiBpType == LW_TRAP_RETRY) {
+            return  (ERROR_NONE);                                       /*  可能是虚断点, 再尝试一次    */
+        }
+        
         if (ulAddr == ptcbCur->TCB_ulStepAddr) {
-        	archDbgBpRemove(ptcbCur->TCB_ulStepAddr, sizeof(ULONG),
+        	archDbgBpRemove(ptcbCur->TCB_ulStepAddr, sizeof(addr_t),
         			        ptcbCur->TCB_ulStepInst, LW_FALSE);
             ptcbCur->TCB_bStepClear = LW_TRUE;                          /*  断点被移除                  */
         }
@@ -451,6 +467,20 @@ ULONG  API_DtraceDelete (PVOID  pvDtrace)
     
     _DebugHandle(__LOGMESSAGE_LEVEL, "dtrace delete.\r\n");
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_DtraceIsValid
+** 功能描述: 是否存在正在调试的 dtrace 调试节点
+** 输　入  : NONE
+** 输　出  : 是否存在
+** 全局变量: 
+** 调用模块: 
+                                           API 函数
+*********************************************************************************************************/
+LW_API 
+BOOL  API_DtraceIsValid (VOID)
+{
+    return  ((_G_plineDtraceHeader) ? (LW_TRUE) : (LW_FALSE));
 }
 /*********************************************************************************************************
 ** 函数名称: API_DtraceSetPid
@@ -695,6 +725,7 @@ ULONG  API_DtraceGetMems (PVOID  pvDtrace, addr_t  ulAddr, PVOID  pvBuffer, size
         return  (EACCES);
     }
     
+    KN_SMP_MB();
     lib_memcpy(pvBuffer, (const PVOID)ulAddr, stSize);
     
     return  (ERROR_NONE);
@@ -727,6 +758,7 @@ ULONG  API_DtraceSetMems (PVOID  pvDtrace, addr_t  ulAddr, const PVOID  pvBuffer
     }
     
     lib_memcpy((PVOID)ulAddr, pvBuffer, stSize);
+    KN_SMP_MB();
     
     __DTRACE_MSG("[DTRACE] <GDB>  Set memory @ 0x%08lx size %zu.\r\n", ulAddr, stSize);
     
@@ -1212,13 +1244,15 @@ ULONG  API_DtraceThreadStepGet (PVOID  pvDtrace, LW_OBJECT_HANDLE  ulThread, add
 ** 功能描述: 线程切换HOOK函数，用于切换断点信息
 **           ulThreadOld      切出线程
 **           ulThreadNew      切入线程
-** 输　出  : ERROR
+** 输　出  : NONE
 ** 全局变量:
 ** 调用模块:
+** 注  意  : 由于在任务切换 HOOK 中执行, 这里只处理本地 I-CACHE, 其他核通过判断虚断点生效 I-CACHE.
+
                                            API 函数
 *********************************************************************************************************/
 LW_API
-ULONG  API_DtraceSchedHook (LW_OBJECT_HANDLE  ulThreadOld, LW_OBJECT_HANDLE  ulThreadNew)
+VOID  API_DtraceSchedHook (LW_OBJECT_HANDLE  ulThreadOld, LW_OBJECT_HANDLE  ulThreadNew)
 {
     REGISTER UINT16         usIndex;
     REGISTER PLW_CLASS_TCB  ptcb;
@@ -1226,8 +1260,8 @@ ULONG  API_DtraceSchedHook (LW_OBJECT_HANDLE  ulThreadOld, LW_OBJECT_HANDLE  ulT
     usIndex = _ObjectGetIndex(ulThreadOld);
     ptcb    = __GET_TCB_FROM_INDEX(usIndex);
     if (ptcb && (ptcb->TCB_ulStepAddr != (addr_t)PX_ERROR) && !ptcb->TCB_bStepClear) {
-        archDbgBpRemove(ptcb->TCB_ulStepAddr, sizeof(ULONG), 
-                        ptcb->TCB_ulStepInst, LW_FALSE);
+        archDbgBpRemove(ptcb->TCB_ulStepAddr, sizeof(addr_t), 
+                        ptcb->TCB_ulStepInst, (LW_CFG_GDB_SMP_TU_LAZY) ? LW_TRUE : LW_FALSE);
         ptcb->TCB_bStepClear = LW_TRUE;                                 /*  单步断点已经被清除          */
         __DTRACE_MSG("[DTRACE] <HOOK> Clear thread 0x%lx Step-Breakpoint @ 0x%08lx CPU %ld.\r\n", 
                      ulThreadOld, ptcb->TCB_ulStepAddr, LW_CPU_GET_CUR_ID());
@@ -1235,15 +1269,13 @@ ULONG  API_DtraceSchedHook (LW_OBJECT_HANDLE  ulThreadOld, LW_OBJECT_HANDLE  ulT
 
     usIndex = _ObjectGetIndex(ulThreadNew);
     ptcb    = __GET_TCB_FROM_INDEX(usIndex);
-    if (ptcb->TCB_ulStepAddr != (addr_t)PX_ERROR) {
-        archDbgBpInsert(ptcb->TCB_ulStepAddr, sizeof(ULONG), 
+    if ((ptcb->TCB_ulStepAddr != (addr_t)PX_ERROR) && ptcb->TCB_bStepClear) {
+        archDbgBpInsert(ptcb->TCB_ulStepAddr, sizeof(addr_t), 
                         &ptcb->TCB_ulStepInst, LW_TRUE);                /*  仅更新本地 I-CACHE          */
         ptcb->TCB_bStepClear = LW_FALSE;                                /*  单步断点生效                */
         __DTRACE_MSG("[DTRACE] <HOOK> Set thread 0x%lx Step-Breakpoint @ 0x%08lx CPU %ld.\r\n", 
                      ulThreadNew, ptcb->TCB_ulStepAddr, LW_CPU_GET_CUR_ID());
     }
-
-    return  (ERROR_NONE);
 }
 
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */

@@ -114,9 +114,9 @@ extern "C" {
   sylixos do not use MEMP_NUM_NETCONN, because sylixos use another socket interface.
 *********************************************************************************************************/
 
-#define IP_FORWARD                      1                               /*  允许 IP 转发                */
-#define IP_REASSEMBLY                   1
-#define IP_FRAG                         1
+#define IP_FORWARD                      LW_CFG_NET_GATEWAY              /*  允许 IP 转发                */
+#define IP_REASSEMBLY                   LW_CFG_LWIP_IPFRAG
+#define IP_FRAG                         LW_CFG_LWIP_IPFRAG
 #define IP_REASS_MAX_PBUFS              (MEMP_NUM_PBUF / 2)
 
 #define IP_SOF_BROADCAST                1                               /*  Use the SOF_BROADCAST       */
@@ -133,11 +133,11 @@ extern "C" {
 *********************************************************************************************************/
 
 #define LWIP_IPV6                       1
-#define LWIP_IPV6_MLD                   1
-#define LWIP_IPV6_FORWARD               1
+#define LWIP_IPV6_MLD                   LW_CFG_LWIP_IGMP
+#define LWIP_IPV6_FORWARD               LW_CFG_NET_GATEWAY
 #define LWIP_ICMP6                      1
-#define LWIP_IPV6_FRAG                  1
-#define LWIP_IPV6_REASS                 1
+#define LWIP_IPV6_FRAG                  LW_CFG_LWIP_IPFRAG
+#define LWIP_IPV6_REASS                 LW_CFG_LWIP_IPFRAG
 
 #define MEMP_NUM_MLD6_GROUP             16
 #define LWIP_ND6_NUM_NEIGHBORS          LW_CFG_LWIP_ARP_TABLE_SIZE

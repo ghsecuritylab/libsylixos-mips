@@ -42,7 +42,7 @@ int  heap_mem_init (int flag)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: heap_mem_findmax
+** 函数名称: mem_findmax
 ** 功能描述: 获得系统内存最长连续空闲区域大小.
 ** 输　入  : flag      FIRST_FIT_ALLOCATION or BUDDY_ALLOCATION
 ** 输　出  : ERROR or OK
@@ -51,7 +51,7 @@ int  heap_mem_init (int flag)
                                            API 函数
 *********************************************************************************************************/
 LW_API 
-int  heap_mem_findmax (void)
+int  mem_findmax (void)
 {
     size_t  stMax;
     

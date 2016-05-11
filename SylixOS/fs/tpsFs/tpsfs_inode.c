@@ -45,7 +45,7 @@
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID  __tpsFsInodeSerial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSize)
+static BOOL  __tpsFsInodeSerial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSize)
 {
     PUCHAR  pucPos = pucBuff;
 
@@ -64,12 +64,9 @@ static VOID  __tpsFsInodeSerial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSize)
     TPS_CPU_TO_LE32(pucPos, pinode->IND_uiDataStart);
     TPS_CPU_TO_LE32(pucPos, pinode->IND_iUid);
     TPS_CPU_TO_LE32(pucPos, pinode->IND_iGid);
+    TPS_CPU_TO_LE64(pucPos, pinode->IND_inumDeleted);
 
-    tpsSerialBtrNode(&pinode->IND_data.IND_btrNode,
-                     pucBuff + pinode->IND_uiDataStart,
-                     uiSize - pinode->IND_uiDataStart,
-                     0, pinode->IND_data.IND_btrNode.ND_uiEntrys,
-                     LW_NULL, LW_NULL);
+    return  (LW_TRUE);
 }
 /*********************************************************************************************************
 ** 函数名称: __tpsFsInodeUnSerial
@@ -81,7 +78,7 @@ static VOID  __tpsFsInodeSerial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSize)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID  __tpsFsInodeUnserial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSize)
+static BOOL  __tpsFsInodeUnserial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSize)
 {
     PUCHAR  pucPos = pucBuff;
 
@@ -100,10 +97,93 @@ static VOID  __tpsFsInodeUnserial (PTPS_INODE pinode, PUCHAR pucBuff, UINT uiSiz
     TPS_LE32_TO_CPU(pucPos, pinode->IND_uiDataStart);
     TPS_LE32_TO_CPU(pucPos, pinode->IND_iUid);
     TPS_LE32_TO_CPU(pucPos, pinode->IND_iGid);
+    TPS_LE64_TO_CPU(pucPos, pinode->IND_inumDeleted);
 
-    tpsUnserialBtrNode(&pinode->IND_data.IND_btrNode,
-                       pucBuff + pinode->IND_uiDataStart,
-                       uiSize - pinode->IND_uiDataStart);
+    return  (LW_TRUE);
+}
+/*********************************************************************************************************
+** 函数名称: __tpsFsGetFromFreeList
+** 功能描述: 从空闲inode列表获取块
+**           ptrans             事物
+**           psb                超级块指针
+**           blkKey             键值
+**           blkAllocStart      返回分配得到的起始块
+**           blkAllocCnt        返回分配得到的块数量
+** 输　出  : 成功：0  失败：ERROR
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static TPS_RESULT  __tpsFsGetFromFreeList (PTPS_TRANS        ptrans,
+                                           PTPS_SUPER_BLOCK  psb,
+                                           TPS_IBLK          blkKey,
+                                           TPS_IBLK          blkCnt,
+                                           TPS_IBLK         *blkAllocStart,
+                                           TPS_IBLK         *blkAllocCnt)
+{
+    if (psb->SB_pinodeDeleted == LW_NULL) {
+        if (psb->SB_inumDeleted != 0) {
+            psb->SB_pinodeDeleted = tpsFsOpenInode(psb, psb->SB_inumDeleted);
+        }
+    }
+
+    if (psb->SB_pinodeDeleted == LW_NULL) {
+        return  (TPS_ERR_INODE_OPEN);
+    }
+
+    if (tpsFsBtreeTrunc(ptrans, psb->SB_pinodeDeleted,
+                        (blkCnt > psb->SB_pinodeDeleted->IND_blkCnt ? 0 :
+                                (psb->SB_pinodeDeleted->IND_blkCnt - blkCnt)),
+                        blkAllocStart, blkAllocCnt) != TPS_ERR_NONE) {
+        return  (TPS_ERR_BTREE_ALLOC);
+    }
+
+    psb->SB_pinodeDeleted->IND_blkCnt -= (*blkAllocCnt);
+
+    if (psb->SB_pinodeDeleted->IND_blkCnt <= 0) {
+        tpsFsBtreeFreeBlk(ptrans, psb->SB_pinodeSpaceMng,
+                          psb->SB_pinodeDeleted->IND_inum,
+                          psb->SB_pinodeDeleted->IND_inum, 1);
+
+        psb->SB_inumDeleted = psb->SB_pinodeDeleted->IND_inumDeleted;
+        tpsFsFlushSuperBlock(ptrans, psb);
+
+        tpsFsCloseInode(psb->SB_pinodeDeleted);
+        psb->SB_pinodeDeleted = LW_NULL;
+    }
+
+    if ((*blkAllocCnt) == 0) {
+        return  (TPS_ERR_BTREE_DISK_SPACE);
+    }
+
+    return  (TPS_ERR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: __tpsFsInodeAddToFreeList
+** 功能描述: 将inode添加到空闲队列
+** 输　入  : ptrans           事物
+**           psb              超级块指针
+**           pinode           inode指针
+** 输　出  : ERROR
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static TPS_RESULT  __tpsFsInodeAddToFreeList(PTPS_TRANS         ptrans,
+                                             PTPS_SUPER_BLOCK   psb,
+                                             PTPS_INODE         pinode)
+{
+    if (psb->SB_pinodeDeleted != LW_NULL) {
+        pinode->IND_inumDeleted = psb->SB_pinodeDeleted->IND_inumDeleted;
+        tpsFsFlushInodeHead(ptrans, pinode);
+        psb->SB_pinodeDeleted->IND_inumDeleted = pinode->IND_inum;
+        tpsFsFlushInodeHead(ptrans, psb->SB_pinodeDeleted);
+    } else {
+        pinode->IND_inumDeleted = psb->SB_inumDeleted;
+        tpsFsFlushInodeHead(ptrans, pinode);
+        psb->SB_inumDeleted = pinode->IND_inum;
+        tpsFsFlushSuperBlock(ptrans, psb);
+    }
+
+    return  (TPS_ERR_NONE);
 }
 /*********************************************************************************************************
 ** 函数名称: tpsFsCreateInode
@@ -120,7 +200,6 @@ TPS_RESULT  tpsFsCreateInode (PTPS_TRANS ptrans, PTPS_SUPER_BLOCK psb, TPS_INUM 
 {
     PTPS_INODE pinode       = LW_NULL;
     PUCHAR     pucBuff      = LW_NULL;
-    UINT       uiMaxNodeCnt = 0;
 	UINT       uiInodeSize  = 0;
 
     if (psb == LW_NULL) {
@@ -153,28 +232,35 @@ TPS_RESULT  tpsFsCreateInode (PTPS_TRANS ptrans, PTPS_SUPER_BLOCK psb, TPS_INUM 
     pinode->IND_ui64ATime       = pinode->IND_ui64CTime;
     pinode->IND_iUid            = getuid();
     pinode->IND_iGid            = getgid();
-    lib_bzero(&pinode->IND_data, psb->SB_uiBlkSize - TPS_INODE_DATASTART);
-    
-    uiMaxNodeCnt = (psb->SB_uiBlkSize - TPS_INODE_DATASTART - sizeof(TPS_BTR_NODE)) / sizeof(TPS_BTR_KV);
-    pinode->IND_data.IND_btrNode.ND_uiMaxCnt  = uiMaxNodeCnt;
-    pinode->IND_data.IND_btrNode.ND_blkThis   = inum;
-    pinode->IND_data.IND_btrNode.ND_iType     = TPS_BTR_NODE_LEAF;
-    pinode->IND_data.IND_btrNode.ND_uiMagic   = TPS_MAGIC_BTRNODE;
+    pinode->IND_inumDeleted     = 0;
 
-    pucBuff = (PUCHAR)TPS_ALLOC(psb->SB_uiBlkSize);
+    pucBuff = (PUCHAR)TPS_ALLOC(psb->SB_uiBlkSize);                     /* 后面将用于序列号缓冲区       */
     if (LW_NULL == pucBuff) {
         TPS_FREE(pinode);
         return  (TPS_ERR_ALLOC);
     }
 
-    __tpsFsInodeSerial(pinode, pucBuff, psb->SB_uiBlkSize);             /* 序列化                       */
+    if (!__tpsFsInodeSerial(pinode, pucBuff, TPS_INODE_MAX_HEADSIZE)) { /* 序列化                       */
+        TPS_FREE(pucBuff);
+        TPS_FREE(pinode);
+        return  (TPS_ERR_INODE_SERIAL);
+    }
 
     if (tpsFsTransWrite(ptrans, psb,
                         pinode->IND_inum, 0,
-                        pucBuff, psb->SB_uiBlkSize) != TPS_ERR_NONE) {  /* 写磁盘                       */
+                        pucBuff,
+                        TPS_INODE_MAX_HEADSIZE) != TPS_ERR_NONE) {      /* 写磁盘                       */
         TPS_FREE(pucBuff);
         TPS_FREE(pinode);
         return  (TPS_ERR_TRANS_WRITE);
+    }
+
+    pinode->IND_pucBuff = pucBuff;
+
+    if (tpsFsBtreeInit(ptrans, pinode) != TPS_ERR_NONE) {               /* 初始化b+tree                 */
+        TPS_FREE(pucBuff);
+        TPS_FREE(pinode);
+        return  (TPS_ERR_BTREE_INIT);
     }
 
     TPS_FREE(pucBuff);
@@ -194,7 +280,6 @@ PTPS_INODE  tpsFsOpenInode (PTPS_SUPER_BLOCK psb, TPS_INUM inum)
 {
     PTPS_INODE  pinode      = LW_NULL;
     PUCHAR      pucBuff     = LW_NULL;
-	UINT		uiInodeSize = 0;
 
     if (psb == LW_NULL) {
         return  (LW_NULL);
@@ -209,30 +294,28 @@ PTPS_INODE  tpsFsOpenInode (PTPS_SUPER_BLOCK psb, TPS_INUM inum)
         pinode = pinode->IND_pnext;
     }
 
-    pucBuff = (PUCHAR)TPS_ALLOC(psb->SB_uiBlkSize);
+    pucBuff = (PUCHAR)TPS_ALLOC(psb->SB_uiBlkSize);                     /* 后面将用于序列号缓冲区       */
     if (LW_NULL == pucBuff) {
         return  (LW_NULL);
     }
 
     if (tpsFsDevBufRead(psb, inum, 0, pucBuff,
-                        psb->SB_uiBlkSize) != TPS_ERR_NONE) {           /* 读取inode                    */
+                        TPS_INODE_MAX_HEADSIZE) != TPS_ERR_NONE) {      /* 读取inode                    */
         TPS_FREE(pucBuff);
         return  (LW_NULL);
     }
 
-	uiInodeSize = (psb->SB_uiBlkSize - TPS_INODE_DATASTART
-				   - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2);
-	uiInodeSize *=  sizeof(TPS_BTR_KV);
-	uiInodeSize += (TPS_INODE_DATASTART + sizeof(TPS_BTR_NODE));
-    pinode = (PTPS_INODE)TPS_ALLOC(uiInodeSize);
+    pinode = (PTPS_INODE)TPS_ALLOC(sizeof(TPS_INODE));
     if (LW_NULL == pinode) {
         TPS_FREE(pucBuff);
         return  (LW_NULL);
     }
 
-    __tpsFsInodeUnserial(pinode, pucBuff, psb->SB_uiBlkSize);
-
-   pinode->IND_pucBuff = pucBuff;
+    if (!__tpsFsInodeUnserial(pinode, pucBuff, TPS_INODE_MAX_HEADSIZE)) {
+        TPS_FREE(pucBuff);
+        TPS_FREE(pinode);
+        return  (LW_NULL);
+    }
 
     if (pinode->IND_ui64Generation != psb->SB_ui64Generation ||
         pinode->IND_uiMagic != TPS_MAGIC_INODE) {
@@ -241,6 +324,7 @@ PTPS_INODE  tpsFsOpenInode (PTPS_SUPER_BLOCK psb, TPS_INUM inum)
         return  (LW_NULL);
     }
 
+    pinode->IND_pucBuff     = pucBuff;
     pinode->IND_psb         = psb;
     pinode->IND_uiOpenCnt   = 1;
     pinode->IND_bDirty      = LW_FALSE;
@@ -249,7 +333,9 @@ PTPS_INODE  tpsFsOpenInode (PTPS_SUPER_BLOCK psb, TPS_INUM inum)
     psb->SB_pinodeOpenList  = pinode;
     pinode->IND_psb->SB_uiInodeOpenCnt++;
     lib_memset(pinode->IND_pBNPool, 0, sizeof(pinode->IND_pBNPool));
-    lib_memset(pinode->IND_pBNStatus, TPS_BN_POOL_NULL, sizeof(pinode->IND_pBNStatus));
+    lib_memset(pinode->IND_iBNRefCnt, TPS_BN_POOL_NULL, sizeof(pinode->IND_iBNRefCnt));
+
+    pinode->IND_blkCnt      = tpsFsBtreeBlkCnt(pinode);
 
     return  (pinode);
 }
@@ -282,7 +368,7 @@ TPS_RESULT  tpsFsFlushInodeHead (PTPS_TRANS ptrans, PTPS_INODE pinode)
                             pinode->IND_inum,
                             0,
                             pucBuff,
-                            psb->SB_uiSectorSize) != TPS_ERR_NONE) {
+                            TPS_INODE_MAX_HEADSIZE) != TPS_ERR_NONE) {
             return  (TPS_ERR_TRANS_WRITE);
         }
     }
@@ -369,7 +455,7 @@ TPS_RESULT  tpsFsInodeAddRef (PTPS_TRANS ptrans, PTPS_INODE pinode)
                         pinode->IND_inum,
                         0,
                         pucBuff,
-                        psb->SB_uiSectorSize) != TPS_ERR_NONE) {        /* 写磁盘                       */
+                        TPS_INODE_MAX_HEADSIZE) != TPS_ERR_NONE) {        /* 写磁盘                       */
         return  (TPS_ERR_TRANS_WRITE);
     }
 
@@ -404,12 +490,16 @@ TPS_RESULT  tpsFsInodeDelRef (PTPS_TRANS ptrans, PTPS_INODE pinode)
         pinode->IND_uiRefCnt--;
     }
     if (pinode->IND_uiRefCnt == 0) {                                    /* 引用为0时删除文件inode       */
-        if (tpsFsTruncInode(ptrans, pinode, 0) != TPS_ERR_NONE) {
-            return  (TPS_ERR_INODE_TRUNC);
-        }
-        if (tpsFsBtreeFreeBlk(ptrans, psb->SB_pinodeSpaceMng,
-                             pinode->IND_inum, pinode->IND_inum, 1) != TPS_ERR_NONE) {
-            return  (TPS_ERR_BTREE_INSERT);
+        if (tpsFsBtreeGetLevel(pinode) > 0) {
+            __tpsFsInodeAddToFreeList(ptrans, psb, pinode);
+        } else {
+            if (tpsFsTruncInode(ptrans, pinode, 0) != TPS_ERR_NONE) {
+                return  (TPS_ERR_INODE_TRUNC);
+            }
+            if (tpsFsBtreeFreeBlk(ptrans, psb->SB_pinodeSpaceMng,
+                                  pinode->IND_inum, pinode->IND_inum, 1) != TPS_ERR_NONE) {
+                return  (TPS_ERR_BTREE_INSERT);
+            }
         }
 
         ppinodeIter = &psb->SB_pinodeOpenList;
@@ -423,8 +513,6 @@ TPS_RESULT  tpsFsInodeDelRef (PTPS_TRANS ptrans, PTPS_INODE pinode)
         }
 
         pinode->IND_bDeleted        = LW_TRUE;
-        pinode->IND_uiMagic         = 0;                                /* 使该块无效                   */
-        pinode->IND_ui64Generation  = 0;
     }
 
     pucBuff = pinode->IND_pucBuff;
@@ -435,7 +523,7 @@ TPS_RESULT  tpsFsInodeDelRef (PTPS_TRANS ptrans, PTPS_INODE pinode)
                         pinode->IND_inum,
                         0,
                         pucBuff,
-                        psb->SB_uiSectorSize) != TPS_ERR_NONE) {        /* 写磁盘                       */
+                        TPS_INODE_MAX_HEADSIZE) != TPS_ERR_NONE) {        /* 写磁盘                       */
         return  (TPS_ERR_TRANS_WRITE);
     }
 
@@ -481,16 +569,17 @@ TPS_RESULT  tpsFsTruncInode (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_SIZE_T si
                            &blkPscStart, &blkPscCnt) == TPS_ERR_NONE) {
         if (blkPscCnt <= 0) {
             break;
-        }
+		}
 
-        if ((pinode->IND_data.IND_btrNode.ND_uiEntrys <= 2) && 
-            (pinode->IND_data.IND_btrNode.ND_uiLevel  == 0)) {
-            pinode->IND_data.IND_btrNode.ND_uiEntrys  =  pinode->IND_data.IND_btrNode.ND_uiEntrys;
-        }
+        pinode->IND_blkCnt -= blkPscCnt;
 
         if (tpsFsBtreeFreeBlk(ptrans, psb->SB_pinodeSpaceMng,
                              blkPscStart, blkPscStart, blkPscCnt) != TPS_ERR_NONE) {
             return  (TPS_ERR_BTREE_INSERT);
+        }
+
+        if (tpsFsBtreeAdjustBP(ptrans, psb) != TPS_ERR_NONE) {          /* 检查是否需要调空闲块队列     */
+            return  (TPS_ERR_BP_ADJUST);
         }
     }
 
@@ -509,7 +598,7 @@ TPS_RESULT  tpsFsTruncInode (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_SIZE_T si
                         pinode->IND_inum,
                         0,
                         pucBuff,
-                        psb->SB_uiSectorSize) != TPS_ERR_NONE) {        /* 写磁盘                       */
+                        TPS_INODE_MAX_HEADSIZE) != TPS_ERR_NONE) {        /* 写磁盘                       */
         return  (TPS_ERR_TRANS_WRITE);
     }
 
@@ -625,20 +714,32 @@ TPS_SIZE_T  tpsFsInodeWrite (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_OFF_T off
     }
 
     blkAlloc = 0;
-    if (blkEnd > tpsFsBtreeBlkCnt(pinode)) {
-        blkAlloc = blkEnd - tpsFsBtreeBlkCnt(pinode);
+    if (blkEnd > pinode->IND_blkCnt) {
+        blkAlloc = blkEnd - pinode->IND_blkCnt;
     }
     while (blkAlloc > 0) {                                              /* 需要新分配块到文件           */
-        if (tpsFsBtreeAllocBlk(ptrans, psb->SB_pinodeSpaceMng,
+        if (__tpsFsGetFromFreeList(ptrans, psb, 0, blkAlloc,
+                                   &blkPscStart, &blkPscCnt) == TPS_ERR_NONE) {
+            if (tpsFsBtreeAppendBlk(ptrans, pinode, blkPscStart, blkPscCnt) != TPS_ERR_NONE) {
+                return  (-EIO);
+            }
+            blkAlloc -= blkPscCnt;
+            pinode->IND_blkCnt += blkPscCnt;
+        } else if (tpsFsBtreeAllocBlk(ptrans, psb->SB_pinodeSpaceMng,
                                0, blkAlloc,
                                &blkPscStart, &blkPscCnt) == TPS_ERR_NONE) {
             if (tpsFsBtreeAppendBlk(ptrans, pinode, blkPscStart, blkPscCnt) != TPS_ERR_NONE) {
                 return  (-EIO);
             }
             blkAlloc -= blkPscCnt;
+            pinode->IND_blkCnt += blkPscCnt;
         
         } else {
             return  (-ENOSPC);
+        }
+
+        if (tpsFsBtreeAdjustBP(ptrans, psb) != TPS_ERR_NONE) {          /* 检查是否需要调空闲块队列     */
+            return  (-EIO);
         }
     }
 

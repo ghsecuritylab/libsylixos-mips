@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -19,7 +19,7 @@
 ** 描        述: MIPS32 体系构架 CACHE 驱动.
 **
 ** BUG:
-2016.04.06	 Add Cache Init 对CP0_ECC Register Init(loongson2H支持)
+2016.04.06  Add Cache Init 对CP0_ECC Register Init(loongson2H支持)
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
@@ -615,15 +615,40 @@ static INT	mips32CacheTextUpdate (PVOID  pvAdrs, size_t  stBytes)
     	PVOID   pvAdrsBak = pvAdrs;
 
         MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, _G_DCache.CACHE_uiLineSize);
-
         mips32DCacheFlush(pvAdrs, (PVOID)ulEnd,
                           _G_DCache.CACHE_uiLineSize);                  /*  部分回写                    */
 
         MIPS_CACHE_GET_END(pvAdrsBak, stBytes, ulEnd, _G_ICache.CACHE_uiLineSize);
-
         mips32ICacheInvalidate(pvAdrsBak, (PVOID)ulEnd, _G_ICache.CACHE_uiLineSize);
     }
     
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: mips32CacheDataUpdate
+** 功能描述: 回写 D CACHE (仅回写 CPU 独享级 CACHE)
+** 输　入  : pvAdrs                        虚拟地址
+**           stBytes                       长度
+**           bInv                          是否为回写无效
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+** 注  意  : L2 cache 为统一 CACHE 所以 data update 不需要操作 L2 cache.
+*********************************************************************************************************/
+INT  mips32CacheDataUpdate (PVOID  pvAdrs, size_t  stBytes, BOOL  bInv)
+{
+    addr_t  ulEnd;
+
+    (VOID)bInv;                                                         /*  MIPS 不支持单纯回写操作     */
+
+    if (stBytes >= MIPS_CACHE_LOOP_OP_MAX_SIZE) {
+        mips32DCacheClearAll();                                         /*  全部回写                    */
+
+    } else {                                                            /*  部分回写                    */
+        MIPS_CACHE_GET_END(pvAdrs, stBytes, ulEnd, _G_DCache.CACHE_uiLineSize);
+        mips32DCacheClear(pvAdrs, (PVOID)ulEnd, _G_DCache.CACHE_uiLineSize);
+    }
+
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
@@ -698,7 +723,7 @@ static INT  mips32CacheProbe (VOID)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: mips32CacheProbe
+** 函数名称: mips32CacheHwInit
 ** 功能描述: CACHE 探测
 ** 输　入  : pcMachineName  机器名称
 ** 输　出  : ERROR or OK
@@ -790,8 +815,7 @@ VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
 {
     INT     iError;
 
-    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1X) == 0 ||
-        lib_strcmp(pcMachineName, MIPS_MACHINE_LS2X) == 0) {
+    if (lib_strcmp(pcMachineName, MIPS_MACHINE_LS1X) == 0) {
         _G_bHaveTagHi         = LW_FALSE;
         _G_bHaveFillI         = LW_FALSE;
         _G_bHaveHitWritebackD = LW_FALSE;
@@ -817,34 +841,34 @@ VOID  mips32CacheInit (LW_CACHE_OP *pcacheop,
     pcacheop->CACHEOP_ulOption = 0ul;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    if (_G_ICache.CACHE_uiLineSize && _G_DCache.CACHE_uiLineSize) {
-        pcacheop->CACHEOP_iCacheLine = min(_G_ICache.CACHE_uiLineSize, _G_DCache.CACHE_uiLineSize);
-    } else {
-        pcacheop->CACHEOP_iCacheLine = max(_G_ICache.CACHE_uiLineSize, _G_DCache.CACHE_uiLineSize);
-    }
+    pcacheop->CACHEOP_iILoc = CACHE_LOCATION_VIPT;
+    pcacheop->CACHEOP_iDLoc = CACHE_LOCATION_VIPT;
 
-    pcacheop->CACHEOP_iILoc                 = CACHE_LOCATION_VIPT;
-    pcacheop->CACHEOP_iDLoc                 = CACHE_LOCATION_VIPT;
-    pcacheop->CACHEOP_iCacheWaySize 		= _G_DCache.CACHE_uiWayStep;
+    pcacheop->CACHEOP_iICacheLine = _G_ICache.CACHE_uiLineSize;
+    pcacheop->CACHEOP_iDCacheLine = _G_DCache.CACHE_uiLineSize;
 
-    pcacheop->CACHEOP_pfuncEnable           = mips32CacheEnable;
-    pcacheop->CACHEOP_pfuncDisable          = mips32CacheDisable;
+    pcacheop->CACHEOP_iICacheWaySize = _G_ICache.CACHE_uiWayStep;
+    pcacheop->CACHEOP_iDCacheWaySize = _G_DCache.CACHE_uiWayStep;
+
+    pcacheop->CACHEOP_pfuncEnable  = mips32CacheEnable;
+    pcacheop->CACHEOP_pfuncDisable = mips32CacheDisable;
     
-    pcacheop->CACHEOP_pfuncLock             = mips32CacheLock;          /*  暂时不支持锁定操作          */
-    pcacheop->CACHEOP_pfuncUnlock           = mips32CacheUnlock;
+    pcacheop->CACHEOP_pfuncLock   = mips32CacheLock;                    /*  暂时不支持锁定操作          */
+    pcacheop->CACHEOP_pfuncUnlock = mips32CacheUnlock;
     
-    pcacheop->CACHEOP_pfuncFlush            = mips32CacheFlush;
-    pcacheop->CACHEOP_pfuncFlushPage        = mips32CacheFlushPage;
-    pcacheop->CACHEOP_pfuncInvalidate       = mips32CacheInvalidate;
-    pcacheop->CACHEOP_pfuncInvalidatePage   = mips32CacheInvalidatePage;
-    pcacheop->CACHEOP_pfuncClear            = mips32CacheClear;
-    pcacheop->CACHEOP_pfuncClearPage        = mips32CacheClearPage;
-    pcacheop->CACHEOP_pfuncTextUpdate       = mips32CacheTextUpdate;
+    pcacheop->CACHEOP_pfuncFlush          = mips32CacheFlush;
+    pcacheop->CACHEOP_pfuncFlushPage      = mips32CacheFlushPage;
+    pcacheop->CACHEOP_pfuncInvalidate     = mips32CacheInvalidate;
+    pcacheop->CACHEOP_pfuncInvalidatePage = mips32CacheInvalidatePage;
+    pcacheop->CACHEOP_pfuncClear          = mips32CacheClear;
+    pcacheop->CACHEOP_pfuncClearPage      = mips32CacheClearPage;
+    pcacheop->CACHEOP_pfuncTextUpdate     = mips32CacheTextUpdate;
+    pcacheop->CACHEOP_pfuncDataUpdate     = mips32CacheDataUpdate;
     
 #if LW_CFG_VMM_EN > 0
-    pcacheop->CACHEOP_pfuncDmaMalloc        = API_VmmDmaAlloc;
-    pcacheop->CACHEOP_pfuncDmaMallocAlign   = API_VmmDmaAllocAlign;
-    pcacheop->CACHEOP_pfuncDmaFree          = API_VmmDmaFree;
+    pcacheop->CACHEOP_pfuncDmaMalloc      = API_VmmDmaAlloc;
+    pcacheop->CACHEOP_pfuncDmaMallocAlign = API_VmmDmaAllocAlign;
+    pcacheop->CACHEOP_pfuncDmaFree        = API_VmmDmaFree;
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 }
 /*********************************************************************************************************

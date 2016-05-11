@@ -177,7 +177,8 @@ SylixOS/arch/mips/mm/mmu/mips32/mips32Mmu.c \
 SylixOS/arch/mips/mm/mipsCache.c \
 SylixOS/arch/mips/mm/mipsMmu.c \
 SylixOS/arch/mips/mpcore/mipsMpCoreAsm.S \
-SylixOS/arch/mips/mpcore/mipsSpinlock.c
+SylixOS/arch/mips/mpcore/mipsSpinlock.c \
+SylixOS/arch/mips/param/mipsParam.c 
 
 #*********************************************************************************************************
 # debug source
@@ -336,6 +337,7 @@ SylixOS/kernel/core/_SmpIpi.c \
 SylixOS/kernel/core/_SmpSpinlock.c \
 SylixOS/kernel/core/_SmpSpinlockKernel.c \
 SylixOS/kernel/core/_StackCheckInit.c \
+SylixOS/kernel/core/_StackMem.c \
 SylixOS/kernel/core/_ThreadAffinity.c \
 SylixOS/kernel/core/_ThreadFpu.c \
 SylixOS/kernel/core/_ThreadIdInit.c \
@@ -368,6 +370,7 @@ SylixOS/kernel/interface/EventSetStatus.c \
 SylixOS/kernel/interface/EventSetTryGet.c \
 SylixOS/kernel/interface/GetLastError.c \
 SylixOS/kernel/interface/InterContext.c \
+SylixOS/kernel/interface/InterDefer.c \
 SylixOS/kernel/interface/InterEnterExit.c \
 SylixOS/kernel/interface/InterLock.c \
 SylixOS/kernel/interface/InterStack.c \
@@ -591,6 +594,7 @@ SylixOS/lib/libc/setjmp/setjmp.c \
 SylixOS/lib/libc/stdio/asprintf.c \
 SylixOS/lib/libc/stdio/clrerr.c \
 SylixOS/lib/libc/stdio/ctermid.c \
+SylixOS/lib/libc/stdio/cvtfloat.c \
 SylixOS/lib/libc/stdio/fclose.c \
 SylixOS/lib/libc/stdio/fdopen.c \
 SylixOS/lib/libc/stdio/fdprintf.c \

@@ -34,41 +34,13 @@
 ** 全局变量: 
 ** 调用模块: 
 ** 注  意  : 此 API 仅对当前 CPU 生效, 并不会影响其他 CPU 调度.
+
                                            API 函数
 *********************************************************************************************************/
 LW_API
 INT  API_ThreadUnlock (VOID)
 {
-    INTREG          iregInterLevel;
-    PLW_CLASS_CPU   pcpuCur;
-    PLW_CLASS_TCB   ptcbCur;
-    BOOL            bTrySched = LW_FALSE;
-   
-    if (!LW_SYS_STATUS_IS_RUNNING()) {                                  /*  系统必须已经启动            */
-        _ErrorHandle(ERROR_KERNEL_NOT_RUNNING);
-        return  (ERROR_NONE);
-    }
-    
-    LW_TCB_GET_CUR_SAFE(ptcbCur);
-    
-    KN_SMP_MB();
-    
-    if (__THREAD_LOCK_GET(ptcbCur)) {
-        __THREAD_LOCK_DEC(ptcbCur);                                     /*  解锁任务                    */
-    }
-    
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关中断, 禁止 CPU 调度       */
-    
-    pcpuCur = LW_CPU_GET_CUR();
-    if (__COULD_SCHED(pcpuCur, 0)) {
-        bTrySched = LW_TRUE;                                            /*  需要尝试调度                */
-    }
-    
-    KN_INT_ENABLE(iregInterLevel);
-
-    if (bTrySched) {
-        _ThreadSched(ptcbCur);                                          /*  尝试调度                    */
-    }
+    _ThreadUnlock();
     
     return  (ERROR_NONE);
 }

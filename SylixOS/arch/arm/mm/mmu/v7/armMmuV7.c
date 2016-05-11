@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -31,6 +31,7 @@
 #include "../armMmuCommon.h"
 #include "../../cache/armCacheCommon.h"
 #include "../../../common/cp15/armCp15.h"
+#include "../../../param/armParam.h"
 /*********************************************************************************************************
   一级描述符类型定义
 *********************************************************************************************************/
@@ -59,11 +60,6 @@
 #define ACCESS_AND_CHK      0                                           /*  0 号域                      */
 #define ACCESS_NOT_CHK      1                                           /*  1 号域                      */
 #define ACCESS_FAIL         2                                           /*  2 号域                      */
-/*********************************************************************************************************
-  MMU 相关配置选项 (Qt 里面用到了非对齐指令)
-  注 意: 如果使能地址对齐检查, GCC 编译必须加入 -mno-unaligned-access 选项 (不生成非对齐访问指令)
-*********************************************************************************************************/
-#define MMU_ALIGNFAULT_EN   0                                           /*  是否是能地址对齐检查        */
 /*********************************************************************************************************
   全局变量
 *********************************************************************************************************/
@@ -379,6 +375,8 @@ static INT  armMmuMemInit (PLW_MMU_CONTEXT  pmmuctx)
 *********************************************************************************************************/
 static INT  armMmuGlobalInit (CPCHAR  pcMachineName)
 {
+    ARM_PARAM   *param = archKernelParamGet();
+    
     archCacheReset(pcMachineName);
 
     armMmuInvalidateTLB();
@@ -386,12 +384,17 @@ static INT  armMmuGlobalInit (CPCHAR  pcMachineName)
     armMmuSetDomain(DOMAIN_ATTR);
     armMmuSetProcessId(0);
 
-#if MMU_ALIGNFAULT_EN > 0
-    armMmuEnableAlignFault();                                           /*  -mno-unaligned-access       */
-#else
-    armMmuDisableAlignFault();
-#endif                                                                  /*  __MMU_ALIGNFAULT_EN > 0     */
-
+    /*
+     *  地址检查选项 (Qt 里面用到了非对齐指令)
+     *  注 意: 如果使能地址对齐检查, GCC 编译必须加入 -mno-unaligned-access 选项 (不生成非对齐访问指令)
+     */
+    if (param->AP_bUnalign) {
+        armMmuDisableAlignFault();
+        
+    } else {
+        armMmuEnableAlignFault();                                       /*  -mno-unaligned-access       */
+    }
+    
     armControlFeatureDisable(CP15_CONTROL_TEXREMAP);                    /*  Disable TEX remapping       */
 
     armMmuV7SetTTBCR(0);                                                /*  Use the 32-bit translation  */
@@ -702,7 +705,7 @@ static ULONG  armMmuFlagGet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr)
 ** 输　出  : ERROR or OK
 ** 全局变量: 
 ** 调用模块: 
-** 注  意  : 由于改变了单条目的页表, VMM 本身在这个函数并不无效快表, 所以这里需要无效指定条目的快表.
+** 注  意  : 这里不需要清除快表 TLB, 因为 VMM 自身会作此操作.
 *********************************************************************************************************/
 static INT  armMmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  ulFlag)
 {
@@ -749,8 +752,6 @@ static INT  armMmuFlagSet (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulAddr, ULONG  ulFl
 #if LW_CFG_CACHE_EN > 0
             armDCacheFlush((PVOID)p_pteentry, (PVOID)p_pteentry, 32);   /*  第三个参数无影响            */
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
-            armMmuInvalidateTLBMVA((PVOID)ulAddr);
-
             return  (ERROR_NONE);
         }
     }
@@ -865,6 +866,30 @@ static VOID  armMmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
     armMmuSetTTBase1(p_pgdentry);
 }
 /*********************************************************************************************************
+** 函数名称: armMmuInvTLB
+** 功能描述: 无效当前 CPU TLB
+** 输　入  : pmmuctx        mmu 上下文
+**           ulPageAddr     页面虚拟地址
+**           ulPageNum      页面个数
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static VOID  armMmuInvTLB (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulPageAddr, ULONG  ulPageNum)
+{
+    ULONG   i;
+
+    if (ulPageNum > 16) {
+        armMmuInvalidateTLB();                                          /*  全部清除 TLB                */
+
+    } else {
+        for (i = 0; i < ulPageNum; i++) {
+            armMmuInvalidateTLBMVA((PVOID)ulPageAddr);                  /*  逐个页面清除 TLB            */
+            ulPageAddr += LW_CFG_VMM_PAGE_SIZE;
+        }
+    }
+}
+/*********************************************************************************************************
 ** 函数名称: armMmuV7Init
 ** 功能描述: MMU 系统初始化
 ** 输　入  : pmmuop            MMU 操作函数集
@@ -876,7 +901,6 @@ static VOID  armMmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
 VOID  armMmuV7Init (LW_MMU_OP *pmmuop, CPCHAR  pcMachineName)
 {
     pmmuop->MMUOP_ulOption = 0ul;
-
     pmmuop->MMUOP_pfuncMemInit    = armMmuMemInit;
     pmmuop->MMUOP_pfuncGlobalInit = armMmuGlobalInit;
     
@@ -902,7 +926,7 @@ VOID  armMmuV7Init (LW_MMU_OP *pmmuop, CPCHAR  pcMachineName)
     
     pmmuop->MMUOP_pfuncMakeTrans     = armMmuMakeTrans;
     pmmuop->MMUOP_pfuncMakeCurCtx    = armMmuMakeCurCtx;
-    pmmuop->MMUOP_pfuncInvalidateTLB = armMmuInvalidateTLB;
+    pmmuop->MMUOP_pfuncInvalidateTLB = armMmuInvTLB;
     pmmuop->MMUOP_pfuncSetEnable     = armMmuEnable;
     pmmuop->MMUOP_pfuncSetDisable    = armMmuDisable;
     

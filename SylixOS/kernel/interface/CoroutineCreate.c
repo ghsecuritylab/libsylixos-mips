@@ -25,6 +25,7 @@
 2013.07.18  使用新的获取 TCB 的方法, 确保 SMP 系统安全.
 2013.12.14  使用任务自旋锁确保任务协程链表操作安全性.
 2013.12.17  堆栈大小改为 size_t 类型.
+2016.05.03  进程内的协程使用 vmm 堆栈.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -85,7 +86,7 @@ PVOID   API_CoroutineCreate (PCOROUTINE_START_ROUTINE pCoroutineStartAddr,
     }
 #endif
 
-    pstkLowAddress = (PLW_STACK)__KHEAP_ALLOC(stStackByteSize);         /*  分配内存                    */
+    pstkLowAddress = _StackAllocate(ptcbCur, 0ul, stStackByteSize);     /*  分配内存                    */
     if (!pstkLowAddress) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "kernel low memory.\r\n");
         _ErrorHandle(ERROR_KERNEL_LOW_MEMORY);
@@ -141,6 +142,7 @@ PVOID   API_CoroutineCreate (PCOROUTINE_START_ROUTINE pCoroutineStartAddr,
     
     return  ((PVOID)pcrcbNew);                                          /*  创建成功                    */
 }
+
 #endif                                                                  /*  LW_CFG_COROUTINE_EN > 0     */
 /*********************************************************************************************************
   END

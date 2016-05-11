@@ -41,6 +41,7 @@
 2015.05.14  API_VmmLibSecondaryInit() 不加 VMM 锁.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
+#define  __VMM_MAIN_FILE
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
    
@@ -83,8 +84,6 @@ LW_MMU_OP                   _G_mmuOpLib;                                /*  MMU 
   操作锁
 *********************************************************************************************************/
 LW_OBJECT_HANDLE            _G_ulVmmLock;
-#define __VMM_LOCK()        API_SemaphoreMPend(_G_ulVmmLock, LW_OPTION_WAIT_INFINITE)
-#define __VMM_UNLOCK()      API_SemaphoreMPost(_G_ulVmmLock)
 /*********************************************************************************************************
 ** 函数名称: API_VmmGetLibBlock
 ** 功能描述: 获得系统级 LW_MMU_OP 结构，(用于 BSP 程序初始化 MMU 系统)
@@ -546,8 +545,10 @@ VOID  API_VmmDmaFree (PVOID  pvDmaMem)
     }
 
 #if LW_CFG_CACHE_EN > 0
-    API_CacheClear(DATA_CACHE, (PVOID)pvmpage->PAGE_ulPageAddr,
-                   (size_t)(pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
+    API_CacheClearPage(DATA_CACHE, 
+                       (PVOID)pvmpage->PAGE_ulPageAddr,
+                       (PVOID)pvmpage->PAGE_ulPageAddr,
+                       (size_t)(pvmpage->PAGE_ulCount << LW_CFG_VMM_PAGE_SHIFT));
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
     
     __vmmLibPageMap(pvmpage->PAGE_ulPageAddr,
@@ -763,7 +764,6 @@ ULONG  API_VmmMap (PVOID  pvVirtualAddr,
 LW_API  
 ULONG  API_VmmSetFlag (PVOID  pvVirtualAddr, ULONG  ulFlag)
 {
-             INT            i;
     REGISTER PLW_VMM_PAGE   pvmpageVirtual;
              addr_t         ulVirtualAddr = (addr_t)pvVirtualAddr;
     
@@ -779,11 +779,9 @@ ULONG  API_VmmSetFlag (PVOID  pvVirtualAddr, ULONG  ulFlag)
     __vmmPhysicalPageClearAll(pvmpageVirtual);
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
     
-    for (i = 0; i < pvmpageVirtual->PAGE_ulCount; i++) {                /*  重新映射这些页面            */
-        __vmmLibSetFlag(ulVirtualAddr, ulFlag);
-        ulVirtualAddr += LW_CFG_VMM_PAGE_SIZE;
-    }
-        
+    __vmmLibSetFlag(ulVirtualAddr, 
+                    pvmpageVirtual->PAGE_ulCount, ulFlag);              /*  重新映射这些页面            */
+    
     pvmpageVirtual->PAGE_ulFlags = ulFlag;                              /*  记录新权限信息              */
     
     __vmmPhysicalPageSetFlagAll(pvmpageVirtual, ulFlag);                /*  设置所有物理页面的 flag     */

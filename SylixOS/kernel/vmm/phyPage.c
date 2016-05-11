@@ -38,9 +38,13 @@
 #include "phyPage.h"
 #include "virPage.h"
 /*********************************************************************************************************
+  地址空间冲突检查
+*********************************************************************************************************/
+extern BOOL     __vmmLibVirtualOverlap(addr_t  ulAddr, size_t  stSize);
+/*********************************************************************************************************
   物理 zone 控制块数组
 *********************************************************************************************************/
-LW_VMM_ZONE      _G_vmzonePhysical[LW_CFG_VMM_ZONE_NUM];                /*  物理区域                    */
+LW_VMM_ZONE     _G_vmzonePhysical[LW_CFG_VMM_ZONE_NUM];                 /*  物理区域                    */
 /*********************************************************************************************************
 ** 函数名称: __vmmPhysicalCreate
 ** 功能描述: 创建一个物理分页区域.
@@ -55,6 +59,12 @@ LW_VMM_ZONE      _G_vmzonePhysical[LW_CFG_VMM_ZONE_NUM];                /*  物理
 ULONG  __vmmPhysicalCreate (ULONG  ulZoneIndex, addr_t  ulAddr, size_t  stSize, UINT  uiAttr)
 {
     REGISTER ULONG  ulError;
+
+    if (uiAttr & LW_ZONE_ATTR_DMA) {
+        _BugFormat(__vmmLibVirtualOverlap(ulAddr, stSize), LW_FALSE,
+                   "physical zone paddr 0x%08lx size : 0x%08zx overlap with virtual space.\r\n",
+                   ulAddr, stSize);
+    }
 
     ulError = __pageZoneCreate(&_G_vmzonePhysical[ulZoneIndex], ulAddr, stSize, uiAttr,
                                __VMM_PAGE_TYPE_PHYSICAL);
@@ -228,12 +238,14 @@ PLW_VMM_PAGE  __vmmPhysicalPageClone (PLW_VMM_PAGE  pvmpage)
     KN_COPY_PAGE((PVOID)pvirdesc->ulVirtualSwitch, 
                  (PVOID)pvmpage->PAGE_ulMapPageAddr);                   /*  拷贝页面内容                */
                
-    if (API_CacheLocation(DATA_CACHE) == CACHE_LOCATION_VIVT) {         /*  如果是虚拟地址 cache        */
-        API_CacheClear(DATA_CACHE, (PVOID)pvirdesc->ulVirtualSwitch,
-                       LW_CFG_VMM_PAGE_SIZE);                           /*  将数据写入内存并不再命中    */
+    if (API_CacheAliasProb()) {                                         /*  cache 别名可能              */
+        API_CacheClearPage(DATA_CACHE, 
+                           (PVOID)pvirdesc->ulVirtualSwitch,
+                           (PVOID)pvmpageNew->PAGE_ulPageAddr,
+                           LW_CFG_VMM_PAGE_SIZE);                       /*  将数据写入内存并不再命中    */
     }
     
-    __vmmLibSetFlag(pvirdesc->ulVirtualSwitch, LW_VMM_FLAG_FAIL);       /*  VIRTUAL_SWITCH 不允许访问   */
+    __vmmLibSetFlag(pvirdesc->ulVirtualSwitch, 1, LW_VMM_FLAG_FAIL);    /*  VIRTUAL_SWITCH 不允许访问   */
     
     return  (pvmpageNew);
 }

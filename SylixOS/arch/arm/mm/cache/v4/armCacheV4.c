@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -347,6 +347,42 @@ static INT	armCacheV4TextUpdate (PVOID  pvAdrs, size_t  stBytes)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
+** 函数名称: armCacheV4DataUpdate
+** 功能描述: 回写 D CACHE (仅回写 CPU 独享级 CACHE)
+** 输　入  : pvAdrs                        虚拟地址
+**           stBytes                       长度
+**           bInv                          是否为回写无效
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+** 注  意  : L2 cache 为统一 CACHE 所以 data update 不需要操作 L2 cache.
+*********************************************************************************************************/
+static INT	armCacheV4DataUpdate (PVOID  pvAdrs, size_t  stBytes, BOOL  bInv)
+{
+    addr_t  ulEnd;
+    
+    if (bInv == LW_FALSE) {
+        if (stBytes >= ARMv4_CACHE_LOOP_OP_MAX_SIZE) {
+            armDCacheV4FlushAll();                                      /*  全部回写                    */
+        
+        } else {
+            ARM_CACHE_GET_END(pvAdrs, stBytes, ulEnd, ARMv4_CACHE_LINE_SIZE);
+            armDCacheFlush(pvAdrs, (PVOID)ulEnd, ARMv4_CACHE_LINE_SIZE);/*  部分回写                    */
+        }
+    
+    } else {
+        if (stBytes >= ARMv4_CACHE_LOOP_OP_MAX_SIZE) {
+            armDCacheV4ClearAll();                                      /*  全部回写                    */
+        
+        } else {
+            ARM_CACHE_GET_END(pvAdrs, stBytes, ulEnd, ARMv4_CACHE_LINE_SIZE);
+            armDCacheClear(pvAdrs, (PVOID)ulEnd, ARMv4_CACHE_LINE_SIZE);/*  部分回写                    */
+        }
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
 ** 函数名称: archCacheV4Init
 ** 功能描述: 初始化 CACHE 
 ** 输　入  : pcacheop       CACHE 操作函数集
@@ -364,10 +400,14 @@ VOID  armCacheV4Init (LW_CACHE_OP *pcacheop,
 {
     pcacheop->CACHEOP_ulOption = 0ul;
 
-    pcacheop->CACHEOP_iILoc         = CACHE_LOCATION_VIVT;
-    pcacheop->CACHEOP_iDLoc         = CACHE_LOCATION_VIVT;
-    pcacheop->CACHEOP_iCacheLine    = ARMv4_CACHE_LINE_SIZE;
-    pcacheop->CACHEOP_iCacheWaySize = ((16 * LW_CFG_KB_SIZE) / 64);
+    pcacheop->CACHEOP_iILoc = CACHE_LOCATION_VIVT;
+    pcacheop->CACHEOP_iDLoc = CACHE_LOCATION_VIVT;
+    
+    pcacheop->CACHEOP_iICacheLine = ARMv4_CACHE_LINE_SIZE;
+    pcacheop->CACHEOP_iDCacheLine = ARMv4_CACHE_LINE_SIZE;
+    
+    pcacheop->CACHEOP_iICacheWaySize = ((16 * LW_CFG_KB_SIZE) / 64);
+    pcacheop->CACHEOP_iDCacheWaySize = ((16 * LW_CFG_KB_SIZE) / 64);
     
     pcacheop->CACHEOP_pfuncEnable  = armCacheV4Enable;
     pcacheop->CACHEOP_pfuncDisable = armCacheV4Disable;
@@ -382,6 +422,7 @@ VOID  armCacheV4Init (LW_CACHE_OP *pcacheop,
     pcacheop->CACHEOP_pfuncClear          = armCacheV4Clear;
     pcacheop->CACHEOP_pfuncClearPage      = armCacheV4ClearPage;
     pcacheop->CACHEOP_pfuncTextUpdate     = armCacheV4TextUpdate;
+    pcacheop->CACHEOP_pfuncDataUpdate     = armCacheV4DataUpdate;
     
 #if LW_CFG_VMM_EN > 0
     pcacheop->CACHEOP_pfuncDmaMalloc      = API_VmmDmaAlloc;
@@ -404,7 +445,7 @@ VOID  armCacheV4Reset (CPCHAR  pcMachineName)
     armICacheDisable();
 }
 
-#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

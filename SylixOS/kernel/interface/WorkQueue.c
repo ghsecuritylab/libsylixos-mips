@@ -175,7 +175,7 @@ static VOID  __wqDDelete (PLW_WORK_QUEUE  pwq)
 *********************************************************************************************************/
 static VOID  __wqSFlush (PLW_WORK_QUEUE  pwq)
 {
-    _JobQueueFlush(pwq->q.WQ_sq.SWQ_pjobQ);
+    _jobQueueFlush(pwq->q.WQ_sq.SWQ_pjobQ);
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: __wqDFlush

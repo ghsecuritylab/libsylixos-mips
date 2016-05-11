@@ -41,6 +41,10 @@
 *********************************************************************************************************/
 PVOID  lib_memcpy (PVOID  pvDest, CPVOID   pvSrc, size_t  stCount)
 {
+#ifdef __ARCH_MEMCPY
+    return  (__ARCH_MEMCPY(pvDest, pvSrc, stCount));
+    
+#else
     REGISTER PUCHAR    pucDest;
     REGISTER PUCHAR    pucSrc;
              ULONG     ulTemp;
@@ -105,6 +109,7 @@ PVOID  lib_memcpy (PVOID  pvDest, CPVOID   pvSrc, size_t  stCount)
     }
     
     return  (pvDest);
+#endif                                                                  /*  __ARCH_MEMCPY               */
 }
 /*********************************************************************************************************
   END

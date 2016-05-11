@@ -43,61 +43,82 @@
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static PTPS_BTR_NODE  __tpsFsAllocBtrNode (PTPS_INODE pinode, UINT uiSize, INT iType)
+static PTPS_BTR_NODE  __tpsFsAllocBtrNode (PTPS_INODE pinode, TPS_IBLK blk)
 {
     PTPS_BTR_NODE   pbtrnode  = LW_NULL;
     UINT            uiAlcSize = sizeof(TPS_BTR_NODE);
-    UINT            uiMaxNodeCnt;
+    INT             iRefCnt   = 0;
     INT             i;
-
-    /*
-     *  计算节点子项数目，叶子节点和非叶子节点不一样
-     */
-    if (iType == TPS_BTR_NODE_LEAF) {
-        uiMaxNodeCnt = (uiSize - sizeof(TPS_BTR_NODE)) / sizeof(TPS_BTR_KV);
-
-    } else {
-        uiMaxNodeCnt = (uiSize - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2);
-    }
     
-    uiAlcSize += ((uiSize - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2)) * sizeof(TPS_BTR_KV);
+    uiAlcSize += ((pinode->IND_psb->SB_uiBlkSize - sizeof(TPS_BTR_NODE)) /
+                 (sizeof(TPS_IBLK) * 2)) * sizeof(TPS_BTR_KV);
 
     for (i = 0; i < TPS_BN_POOL_SIZE; i++) {                            /* 先在缓冲池中查找             */
         if (pinode->IND_pBNPool[i] != LW_NULL &&
-            pinode->IND_pBNStatus[i] == TPS_BN_POOL_FREE) {
-            pbtrnode                 = pinode->IND_pBNPool[i];
-            pinode->IND_pBNStatus[i] = TPS_BN_POOL_BUSY;
+            pinode->IND_pBNPool[i]->ND_blkThis == blk) {
+            pbtrnode = pinode->IND_pBNPool[i];
+            pinode->IND_iBNRefCnt[i]++;
+            iRefCnt = pinode->IND_iBNRefCnt[i];
+
             break;
         }
     }
 
-    if (pbtrnode == LW_NULL) {                                          /* 未找到则分配                 */
-        pbtrnode = (PTPS_BTR_NODE)TPS_ALLOC(uiAlcSize);
-        if (pbtrnode == LW_NULL) {
-            return  (pbtrnode);
+    if (pbtrnode != LW_NULL) {                                          /* 将页面移动到最近使用位置     */
+        for (; i > 0; i--) {
+            pinode->IND_pBNPool[i]   = pinode->IND_pBNPool[i - 1];
+            pinode->IND_iBNRefCnt[i] = pinode->IND_iBNRefCnt[i - 1];
         }
+        pinode->IND_pBNPool[0]   = pbtrnode;
+        pinode->IND_iBNRefCnt[0] = iRefCnt;
 
-        for (i = 0; i < TPS_BN_POOL_SIZE; i++) {                        /* 试图加入缓冲池               */
-            if (pinode->IND_pBNPool[i] == LW_NULL) {
-                pinode->IND_pBNPool[i]   = pbtrnode;
-                pinode->IND_pBNStatus[i] = TPS_BN_POOL_BUSY;
+        return  (pbtrnode);
+    }
+
+    for (i = 0; i < TPS_BN_POOL_SIZE; i++) {                            /* 缓冲区未满则分配新块         */
+        if (pinode->IND_pBNPool[i] == LW_NULL) {
+            pbtrnode = (PTPS_BTR_NODE)TPS_ALLOC(uiAlcSize);
+            break;
+        }
+    }
+
+    if (pbtrnode == LW_NULL) {
+        for (i = TPS_BN_POOL_SIZE - 1; i >= 0 ; i--) {                  /* 重新使用引用计数为0的块      */
+            if (pinode->IND_pBNPool[i] != LW_NULL &&
+                pinode->IND_iBNRefCnt[i] <= 0) {
+                pbtrnode = pinode->IND_pBNPool[i];
                 break;
             }
         }
     }
 
+    if (pbtrnode != LW_NULL) {                                          /* 将页面移动到最近使用位置     */
+        for (; i > 0; i--) {
+            pinode->IND_pBNPool[i]   = pinode->IND_pBNPool[i - 1];
+            pinode->IND_iBNRefCnt[i] = pinode->IND_iBNRefCnt[i - 1];
+        }
+        pinode->IND_pBNPool[0]   = pbtrnode;
+        pinode->IND_iBNRefCnt[0] = 1;
+
+    } else {                                                            /* 缓冲区满则分配新块不缓冲     */
+        pbtrnode = (PTPS_BTR_NODE)TPS_ALLOC(uiAlcSize);
+        if (pbtrnode == LW_NULL) {
+            return  (LW_NULL);
+        }
+    }
+
     if (pbtrnode) {
-        pbtrnode->ND_uiMaxCnt       = uiMaxNodeCnt;
-        pbtrnode->ND_iType          = iType;
+        pbtrnode->ND_uiMaxCnt       = 0;
+        pbtrnode->ND_iType          = TPS_BTR_NODE_UNKOWN;
         pbtrnode->ND_uiMagic        = TPS_MAGIC_BTRNODE;
         pbtrnode->ND_blkNext        = 0;
         pbtrnode->ND_blkThis        = 0;
         pbtrnode->ND_blkPrev        = 0;
         pbtrnode->ND_blkParent      = 0;
-        pbtrnode->ND_inumInode      = 0;
+        pbtrnode->ND_inumInode      = pinode->IND_inum;
         pbtrnode->ND_uiEntrys       = 0;
         pbtrnode->ND_uiLevel        = 0;
-        pbtrnode->ND_ui64Generation = 0;
+        pbtrnode->ND_ui64Generation = pinode->IND_ui64Generation;
     }
 
     return  (pbtrnode);
@@ -110,18 +131,29 @@ static PTPS_BTR_NODE  __tpsFsAllocBtrNode (PTPS_INODE pinode, UINT uiSize, INT i
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static VOID  __tpsFsFreeBtrNode (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode)
+static VOID  __tpsFsFreeBtrNode (PTPS_INODE pinode, PTPS_BTR_NODE *ppbtrnode)
 {
     INT i;
 
+    if (LW_NULL == (*ppbtrnode)) {
+        return;
+    }
+
     for (i = 0; i < TPS_BN_POOL_SIZE; i++) {                            /* 如在缓冲池中则修改缓冲区状态 */
-        if (pinode->IND_pBNPool[i] == pbtrnode) {
-            pinode->IND_pBNStatus[i] = TPS_BN_POOL_FREE;
+        if (pinode->IND_pBNPool[i] == (*ppbtrnode)) {
+            pinode->IND_iBNRefCnt[i]--;
+            (*ppbtrnode) = LW_NULL;
+
+            if (pinode->IND_iBNRefCnt[i] < 0) {
+                pinode->IND_iBNRefCnt[i] = 0;
+            }
+
             return;
         }
     }
 
-    TPS_FREE(pbtrnode);
+    TPS_FREE(*ppbtrnode);
+    (*ppbtrnode) = LW_NULL;
 }
 /*********************************************************************************************************
 ** 函数名称: tpsSerialBtrNode
@@ -137,16 +169,20 @@ static VOID  __tpsFsFreeBtrNode (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode)
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-VOID  tpsSerialBtrNode (PTPS_BTR_NODE   pbtrnode,
-                        PUCHAR          pucBuff,
-                        UINT            uiBlkSize,
-                        UINT            uiItemStart,
-                        UINT            uiItemCnt,
-                        UINT           *puiOffStart,
-                        UINT           *puiOffEnd)
+static BOOL  __tpsSerialBtrNode (PTPS_BTR_NODE   pbtrnode,
+                        		 PUCHAR          pucBuff,
+                        		 UINT            uiBlkSize,
+                        		 UINT            uiItemStart,
+                        		 UINT            uiItemCnt,
+                        		 UINT           *puiOffStart,
+                                 UINT           *puiOffEnd)
 {
     PUCHAR pucPos = pucBuff;
     INT    i;
+
+    if (pbtrnode->ND_uiMagic != TPS_MAGIC_BTRNODE) {
+        return  (LW_FALSE);
+    }
 
     TPS_CPU_TO_LE32(pucPos, pbtrnode->ND_uiMagic);
     TPS_CPU_TO_LE32(pucPos, pbtrnode->ND_iType);
@@ -165,6 +201,10 @@ VOID  tpsSerialBtrNode (PTPS_BTR_NODE   pbtrnode,
     TPS_CPU_TO_IBLK(pucPos, pbtrnode->ND_blkNext);
 
     for (i = 0; i < pbtrnode->ND_uiEntrys; i++) {
+        if (pucPos - pucBuff > uiBlkSize) {
+            return  (LW_FALSE);
+        }
+
         if (LW_NULL != puiOffStart && (uiItemStart == i)) {
             (*puiOffStart) = pucPos - pucBuff;
 		}
@@ -189,6 +229,8 @@ VOID  tpsSerialBtrNode (PTPS_BTR_NODE   pbtrnode,
 	if (LW_NULL != puiOffEnd && (uiItemStart + uiItemCnt == i)) {
 		(*puiOffEnd) = pucPos - pucBuff;
 	}
+
+	return  (LW_TRUE);
 }
 /*********************************************************************************************************
 ** 函数名称: tpsUnserialBtrNode
@@ -200,12 +242,16 @@ VOID  tpsSerialBtrNode (PTPS_BTR_NODE   pbtrnode,
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-VOID  tpsUnserialBtrNode (PTPS_BTR_NODE pbtrnode, PUCHAR pucBuff, UINT uiBlkSize)
+static BOOL  __tpsUnserialBtrNode (PTPS_BTR_NODE pbtrnode, PUCHAR pucBuff, UINT uiBlkSize)
 {
     PUCHAR pucPos = pucBuff;
     INT    i;
 
     TPS_LE32_TO_CPU(pucPos, pbtrnode->ND_uiMagic);
+    if (pbtrnode->ND_uiMagic != TPS_MAGIC_BTRNODE) {
+        return  (LW_FALSE);
+    }
+
     TPS_LE32_TO_CPU(pucPos, pbtrnode->ND_iType);
     TPS_LE32_TO_CPU(pucPos, pbtrnode->ND_uiEntrys);
     TPS_LE32_TO_CPU(pucPos, pbtrnode->ND_uiMaxCnt);
@@ -222,6 +268,10 @@ VOID  tpsUnserialBtrNode (PTPS_BTR_NODE pbtrnode, PUCHAR pucBuff, UINT uiBlkSize
     TPS_IBLK_TO_CPU(pucPos, pbtrnode->ND_blkNext);
     
     for (i = 0; i < pbtrnode->ND_uiEntrys; i++) {
+        if (pucPos - pucBuff > uiBlkSize) {
+            return  (LW_FALSE);
+        }
+
         TPS_IBLK_TO_CPU(pucPos, pbtrnode->ND_kvArr[i].KV_blkKey);
         if (pbtrnode->ND_iType == TPS_BTR_NODE_NON_LEAF) {
             TPS_IBLK_TO_CPU(pucPos, pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr);
@@ -231,6 +281,8 @@ VOID  tpsUnserialBtrNode (PTPS_BTR_NODE pbtrnode, PUCHAR pucBuff, UINT uiBlkSize
             TPS_IBLK_TO_CPU(pucPos, pbtrnode->ND_kvArr[i].KV_data.KV_value.KV_blkCnt);
         }
     }
+
+    return  (LW_TRUE);
 }
 /*********************************************************************************************************
 ** 函数名称: __tpsFsBtrAllocNodeBlk
@@ -419,17 +471,29 @@ static INT  __tpsFsBtrSearch (PTPS_BTR_NODE  pbtrnode,
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-static TPS_RESULT  __tpsFsBtrGetNode (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode, TPS_IBLK blkPtr)
+static TPS_RESULT  __tpsFsBtrGetNode (PTPS_INODE pinode, PTPS_BTR_NODE *ppbtrnode, TPS_IBLK blkPtr)
 {
     PUCHAR              pucBuff;
     UINT                uiOff;
     UINT                uiLen;
     PTPS_SUPER_BLOCK    psb = pinode->IND_psb;
 
+    if (*ppbtrnode) {
+        __tpsFsFreeBtrNode(pinode, ppbtrnode);
+    }
+
+    (*ppbtrnode) = __tpsFsAllocBtrNode(pinode, blkPtr);
+    if ((*ppbtrnode) == LW_NULL) {
+        return  (TPS_ERR_ALLOC);
+    }
+
+    if ((*ppbtrnode)->ND_blkThis == blkPtr || blkPtr == 0) {
+        return  (TPS_ERR_NONE);
+    }
+
     if (blkPtr == pinode->IND_inum) {
         uiOff = TPS_INODE_DATASTART;
         uiLen = psb->SB_uiBlkSize - TPS_INODE_DATASTART;
-    
     } else {
         uiOff = 0;
         uiLen = psb->SB_uiBlkSize;
@@ -441,7 +505,9 @@ static TPS_RESULT  __tpsFsBtrGetNode (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode,
         return  (TPS_ERR_BUF_READ);
     }
 
-    tpsUnserialBtrNode(pbtrnode, pucBuff, uiLen);
+    if (!__tpsUnserialBtrNode((*ppbtrnode), pucBuff, uiLen)) {
+        return  (TPS_ERR_BTREE_NODE_MAGIC);
+    }
 
     return  (TPS_ERR_NONE);
 }
@@ -485,9 +551,11 @@ static TPS_RESULT  __tpsFsBtrPutNode (PTPS_TRANS       ptrans,
 
     pucBuff = pinode->IND_pucBuff;
 
-    tpsSerialBtrNode(pbtrnode, pucBuff, uiLen,
-                     uiItemStart, uiItemCnt,
-                     &uiOffStart, &uiOffEnd);                           /* 序列化                       */
+    if (!__tpsSerialBtrNode(pbtrnode, pucBuff, uiLen,
+                            uiItemStart, uiItemCnt,
+                            &uiOffStart, &uiOffEnd)) {                  /* 序列化                       */
+        return  (TPS_ERR_BTREE_NODE_MAGIC);
+    }
 
     /*
      *  计算实际需要写入的数据起始和长度
@@ -501,7 +569,7 @@ static TPS_RESULT  __tpsFsBtrPutNode (PTPS_TRANS       ptrans,
     }
 
     if (bWriteHead) {
-        if (uiOffStart <= psb->SB_uiSectorSize) {                   /* 与节点头相邻则合并成一次写   */
+        if (uiOffStart <= psb->SB_uiSectorSize) {                       /* 与节点头相邻则合并成一次写   */
             uiOffStart = 0;
         } else {
             if (tpsFsTransWrite(ptrans, psb, blkPtr, uiOff,
@@ -518,12 +586,6 @@ static TPS_RESULT  __tpsFsBtrPutNode (PTPS_TRANS       ptrans,
         if (tpsFsTransWrite(ptrans, psb, blkPtr, uiOff, pucBuff + uiOffStart, uiLen) != TPS_ERR_NONE) {
             return  (TPS_ERR_BUF_READ);
         }
-    }
-
-    if (blkPtr == pinode->IND_inum) {                                   /* root节点需根系inode缓存      */
-        lib_memcpy(&pinode->IND_data.IND_btrNode,
-                   pbtrnode,
-                   sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pbtrnode->ND_uiEntrys));
     }
 
     return  (TPS_ERR_NONE);
@@ -547,25 +609,19 @@ static TPS_RESULT  __tpsFsUpdateKey (PTPS_TRANS     ptrans,
                                      TPS_IBLK       blkKeyNew)
 {
     PTPS_BTR_NODE       pndParent = LW_NULL;
-    PTPS_SUPER_BLOCK    psb       = pinode->IND_psb;
     INT                 iParent   = 0;
     BOOL                bEqual;
 
-    pndParent = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-    if (LW_NULL == pndParent) {
-        return  (TPS_ERR_ALLOC);
-    }
-
     while (pbtrnode->ND_blkParent != 0) {                               /* 递归更新父节点键值           */
-        if (__tpsFsBtrGetNode(pinode, pndParent,
+        if (__tpsFsBtrGetNode(pinode, &pndParent,
                               pbtrnode->ND_blkParent) != TPS_ERR_NONE) {
-            __tpsFsFreeBtrNode(pinode, pndParent);
+            __tpsFsFreeBtrNode(pinode, &pndParent);
             return  (TPS_ERR_BTREE_GET_NODE);
         }
 
         iParent =  __tpsFsBtrSearch(pndParent, blkKeyOld, LW_FALSE, &bEqual);
         if (!bEqual) {
-            __tpsFsFreeBtrNode(pinode, pndParent);
+            __tpsFsFreeBtrNode(pinode, &pndParent);
             return  (TPS_ERR_BTREE_KEY_AREADY_EXIT);
         }
 
@@ -575,7 +631,7 @@ static TPS_RESULT  __tpsFsUpdateKey (PTPS_TRANS     ptrans,
                               pndParent,
                               pndParent->ND_blkThis,
                               LW_FALSE, iParent, 1) != TPS_ERR_NONE) {
-            __tpsFsFreeBtrNode(pinode, pndParent);
+            __tpsFsFreeBtrNode(pinode, &pndParent);
             return  (TPS_ERR_BTREE_PUT_NODE);
         }
 
@@ -590,7 +646,7 @@ static TPS_RESULT  __tpsFsUpdateKey (PTPS_TRANS     ptrans,
         }
     }
 
-    __tpsFsFreeBtrNode(pinode, pndParent);
+    __tpsFsFreeBtrNode(pinode, &pndParent);
 
     return  (TPS_ERR_NONE);
 }
@@ -607,7 +663,7 @@ static TPS_RESULT  __tpsFsUpdateKey (PTPS_TRANS     ptrans,
 *********************************************************************************************************/
 static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
                                            PTPS_INODE       pinode,
-                                           PTPS_BTR_NODE    pbtrnode,
+                                           PTPS_BTR_NODE   *ppbtrnode,
                                            TPS_BTR_KV       btrkv)
 {
     UINT                iSplit = 0;
@@ -617,6 +673,8 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
     BOOL                bEqual;
     PTPS_BTR_NODE       pndSplit    = LW_NULL;
     PTPS_BTR_NODE       pndSubNode  = LW_NULL;
+    PTPS_BTR_NODE       pndParent   = LW_NULL;
+    PTPS_BTR_NODE       pbtrnode    = *ppbtrnode;
     PTPS_SUPER_BLOCK    psb         = pinode->IND_psb;
     TPS_IBLK            blkAlloc;
 
@@ -627,13 +685,15 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
 
     if (pbtrnode->ND_uiEntrys == pbtrnode->ND_uiMaxCnt) {               /* 节点已满，分裂节点           */
         iSplit = pbtrnode->ND_uiEntrys / 2;
-        pndSplit = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, pbtrnode->ND_iType);
-        if (LW_NULL == pndSplit) {
+        if (__tpsFsBtrGetNode(pinode, &pndSplit, 0) != TPS_ERR_NONE) {
             return  (TPS_ERR_ALLOC);
         }
 
         pndSplit->ND_iType      = pbtrnode->ND_iType;
         pndSplit->ND_uiLevel    = pbtrnode->ND_uiLevel;
+        pndSplit->ND_uiMaxCnt   = pbtrnode->ND_uiMaxCnt;
+        pndSplit->ND_blkParent  = pbtrnode->ND_blkParent;
+
         pbtrnode->ND_uiEntrys   = iSplit;
 
         if (iInsert < iSplit) {                                         /* 插入前节点                   */
@@ -675,11 +735,11 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
     }
 
     if ((iInsert == 0) && (pbtrnode->ND_blkParent != 0)) {              /* 如果为首元素则更改父节点key  */
-        if (__tpsFsUpdateKey(ptrans, pinode, pbtrnode, 
-                             pbtrnode->ND_kvArr[1].KV_blkKey, 
+        if (__tpsFsUpdateKey(ptrans, pinode, pbtrnode,
+                             pbtrnode->ND_kvArr[1].KV_blkKey,
                              pbtrnode->ND_kvArr[0].KV_blkKey) != TPS_ERR_NONE) {
             if (pndSplit) {
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
             }
             return  (TPS_ERR_BTREE_UPDATE_KEY);
         }
@@ -688,27 +748,20 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
     if (iSplit) {                                                       /* 分裂节点                     */
         blkAlloc = __tpsFsBtrAllocNodeBlk(ptrans, psb, pinode);         /* 分配块保存新节点             */
         if (blkAlloc <= 0) {
-            __tpsFsFreeBtrNode(pinode, pndSplit);
+            __tpsFsFreeBtrNode(pinode, &pndSplit);
             return  (TPS_ERR_BP_ALLOC);
-        }
-
-        pndSubNode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-        if (LW_NULL == pndSubNode) {
-            __tpsFsFreeBtrNode(pinode, pndSplit);
-            return  (TPS_ERR_ALLOC);
         }
 
         pndSplit->ND_blkThis    = blkAlloc;
         pndSplit->ND_blkNext    = pbtrnode->ND_blkNext;
-        pbtrnode->ND_blkNext    = pndSplit->ND_blkThis;
+		pbtrnode->ND_blkNext    = pndSplit->ND_blkThis;
 
         for (i = 0;
-             (i < (pndSplit->ND_uiEntrys - 1)) && (pndSplit->ND_iType != TPS_BTR_NODE_LEAF);
+             (i < (pndSplit->ND_uiEntrys)) && (pndSplit->ND_iType != TPS_BTR_NODE_LEAF);
              i++) {                                                     /* 修改子节点父亲属性           */
-            if (__tpsFsBtrGetNode(pinode, pndSubNode,
+            if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                                   pndSplit->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
 
@@ -718,8 +771,8 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
                                   pndSubNode,
                                   pndSubNode->ND_blkThis,
                                   LW_TRUE, 0, 0) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
         }
@@ -730,8 +783,8 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
         if (pbtrnode->ND_blkParent == 0) {                              /* 节点是根节点，另外申请块保存 */
             blkAlloc = __tpsFsBtrAllocNodeBlk(ptrans, psb, pinode);     /* 分配块保存新节点             */
             if (blkAlloc <= 0) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BP_ALLOC);
             }
 
@@ -740,20 +793,14 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
              */
             pbtrnode->ND_blkParent = pbtrnode->ND_blkThis;
             pbtrnode->ND_blkThis = blkAlloc;
-            if (pbtrnode->ND_iType == TPS_BTR_NODE_LEAF) {
-                pbtrnode->ND_uiMaxCnt = (psb->SB_uiBlkSize - sizeof(TPS_BTR_NODE)) / sizeof(TPS_BTR_KV);
-
-            } else {
-                pbtrnode->ND_uiMaxCnt = (psb->SB_uiBlkSize - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2);
-            }
+            pbtrnode->ND_uiMaxCnt = MAX_NODE_CNT(psb->SB_uiBlkSize, pbtrnode->ND_iType);
 
             for (i = 0;
-                 (i < (pbtrnode->ND_uiEntrys - 1)) && (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF);
+                 (i < (pbtrnode->ND_uiEntrys)) && (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF);
                  i++) {                                                 /* 修改子节点父亲属性           */
-                if (__tpsFsBtrGetNode(pinode, pndSubNode,
-                                      pndSplit->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                    __tpsFsFreeBtrNode(pinode, pndSubNode);
-                    __tpsFsFreeBtrNode(pinode, pndSplit);
+                if (__tpsFsBtrGetNode(pinode, &pndSubNode,
+                                      pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
+                    __tpsFsFreeBtrNode(pinode, &pndSplit);
                     return  (TPS_ERR_BTREE_GET_NODE);
                 }
 
@@ -763,8 +810,8 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
                                       pndSubNode,
                                       pndSubNode->ND_blkThis,
                                       LW_TRUE, 0, 0) != TPS_ERR_NONE) {
-                    __tpsFsFreeBtrNode(pinode, pndSubNode);
-                    __tpsFsFreeBtrNode(pinode, pndSplit);
+                    __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                    __tpsFsFreeBtrNode(pinode, &pndSplit);
                     return  (TPS_ERR_BTREE_PUT_NODE);
                 }
             }
@@ -773,47 +820,56 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
                                   pbtrnode, pbtrnode->ND_blkThis,
                                   LW_TRUE, 0, pbtrnode->ND_uiEntrys) != TPS_ERR_NONE) {
                                                                         /* 保存当前节点到新块           */
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
 
             pndSplit->ND_blkParent = pbtrnode->ND_blkParent;            /* 设置分裂出的节点父亲属性     */
+            pndSplit->ND_uiMaxCnt  = pbtrnode->ND_uiMaxCnt;
             if (__tpsFsBtrPutNode(ptrans, pinode,
                                   pndSplit, pndSplit->ND_blkThis,
                                   LW_TRUE, 0, pndSplit->ND_uiEntrys) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
 
             /*
-             *  将原节点设置为新的root节点
+             *  重新设置root节点
              */
-            pinode->IND_data.IND_btrNode.ND_iType       = TPS_BTR_NODE_NON_LEAF;
-            pinode->IND_data.IND_btrNode.ND_uiLevel++;
-            pinode->IND_data.IND_btrNode.ND_uiEntrys    = 2;
-            pinode->IND_data.IND_btrNode.ND_uiMaxCnt    = (psb->SB_uiBlkSize - TPS_INODE_DATASTART -
-                                                          sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2);
+            if (__tpsFsBtrGetNode(pinode, &pndParent,
+                                  pinode->IND_inum) != TPS_ERR_NONE) {
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
+                return  (TPS_ERR_BTREE_GET_NODE);
+            }
+            pndParent->ND_iType       = TPS_BTR_NODE_NON_LEAF;
+            pndParent->ND_uiLevel++;
+            pndParent->ND_uiEntrys    = 2;
+            pndParent->ND_uiMaxCnt    = MAX_NODE_CNT((psb->SB_uiBlkSize -
+                                                      TPS_INODE_DATASTART),
+                                                      TPS_BTR_NODE_NON_LEAF);
 
-            pinode->IND_data.IND_btrNode.ND_kvArr[0].KV_blkKey          = pbtrnode->ND_kvArr[0].KV_blkKey;
-            pinode->IND_data.IND_btrNode.ND_kvArr[0].KV_data.KP_blkPtr  = pbtrnode->ND_blkThis;
-            pinode->IND_data.IND_btrNode.ND_kvArr[1].KV_blkKey          = pndSplit->ND_kvArr[0].KV_blkKey;
-            pinode->IND_data.IND_btrNode.ND_kvArr[1].KV_data.KP_blkPtr  = pndSplit->ND_blkThis;
-            pinode->IND_data.IND_btrNode.ND_blkThis                     = pinode->IND_inum;
+            pndParent->ND_kvArr[0].KV_blkKey          = pbtrnode->ND_kvArr[0].KV_blkKey;
+            pndParent->ND_kvArr[0].KV_data.KP_blkPtr  = pbtrnode->ND_blkThis;
+            pndParent->ND_kvArr[1].KV_blkKey          = pndSplit->ND_kvArr[0].KV_blkKey;
+            pndParent->ND_kvArr[1].KV_data.KP_blkPtr  = pndSplit->ND_blkThis;
 
             if (__tpsFsBtrPutNode(ptrans, pinode,
-                                  &pinode->IND_data.IND_btrNode,
-                                  pinode->IND_inum,
+                                  pndParent,
+                                  pndParent->ND_blkThis,
                                   LW_TRUE, 0,
-                                  pinode->IND_data.IND_btrNode.ND_uiEntrys) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                                  pndParent->ND_uiEntrys) != TPS_ERR_NONE) {
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndParent);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
 
-            __tpsFsFreeBtrNode(pinode, pndSubNode);
-            __tpsFsFreeBtrNode(pinode, pndSplit);
+            __tpsFsFreeBtrNode(pinode, &pndSubNode);
+            __tpsFsFreeBtrNode(pinode, &pndSplit);
+            __tpsFsFreeBtrNode(pinode, &pndParent);
 
         } else {                                                        /* 非root节点，递归插入新节点   */
             /*
@@ -822,8 +878,8 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
             if (__tpsFsBtrPutNode(ptrans, pinode,
                                   pbtrnode, pbtrnode->ND_blkThis,
                                   LW_TRUE, 0, pbtrnode->ND_uiEntrys) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
 
@@ -831,28 +887,28 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
             if (__tpsFsBtrPutNode(ptrans, pinode,
                                   pndSplit, pndSplit->ND_blkThis,
                                   LW_TRUE, 0, pndSplit->ND_uiEntrys) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
 
-            if (__tpsFsBtrGetNode(pinode, pbtrnode,
+            if (__tpsFsBtrGetNode(pinode, ppbtrnode,
                                   pndSplit->ND_blkParent) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
-                __tpsFsFreeBtrNode(pinode, pndSplit);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSplit);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
 
             btrkv.KV_blkKey         = pndSplit->ND_kvArr[0].KV_blkKey;
             btrkv.KV_data.KP_blkPtr = pndSplit->ND_blkThis;
 
-            __tpsFsFreeBtrNode(pinode, pndSubNode);
-            __tpsFsFreeBtrNode(pinode, pndSplit);
+            __tpsFsFreeBtrNode(pinode, &pndSubNode);
+            __tpsFsFreeBtrNode(pinode, &pndSplit);
 
             /*
              *  递归插入
              */
-            return  (__tpsFsBtreeInsertNode(ptrans, pinode, pbtrnode, btrkv));
+            return  (__tpsFsBtreeInsertNode(ptrans, pinode, ppbtrnode, btrkv));
         }
     } else {                                                            /* 节点未满直接插入             */
         if (__tpsFsBtrPutNode(ptrans, pinode,
@@ -877,48 +933,40 @@ static TPS_RESULT  __tpsFsBtreeInsertNode (PTPS_TRANS       ptrans,
 *********************************************************************************************************/
 static TPS_RESULT  __tpsFsBtreeInsert (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_BTR_KV kvInsert)
 {
-    PTPS_BTR_NODE       pbtrnode;
-    PTPS_SUPER_BLOCK    psb;
+    PTPS_BTR_NODE       pbtrnode = LW_NULL;
     INT                 i;
-    BOOL                bBreak = LW_FALSE;
+    BOOL                bBreak   = LW_FALSE;
 
-    psb = pinode->IND_psb;
-
-    pbtrnode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-    if (LW_NULL == pbtrnode) {
-        return  (TPS_ERR_ALLOC);
+    if (__tpsFsBtrGetNode(pinode, &pbtrnode, pinode->IND_inum)) {
+        return  (TPS_ERR_BTREE_GET_NODE);
     }
-    lib_memcpy(pbtrnode,
-               &pinode->IND_data.IND_btrNode,
-               sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pinode->IND_data.IND_btrNode.ND_uiEntrys));
-																		/* 从inode缓存拷贝根节点        */
+
     while (!bBreak) {
         switch (pbtrnode->ND_iType) {
         
         case TPS_BTR_NODE_NON_LEAF:                                     /* 对于非叶子节点递归查找       */
             i = __tpsFsBtrSearch(pbtrnode, kvInsert.KV_blkKey, LW_FALSE, LW_NULL);
-            if (__tpsFsBtrGetNode(pinode, pbtrnode,
+            if (__tpsFsBtrGetNode(pinode, &pbtrnode,
                                   pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
             break;
 
         case TPS_BTR_NODE_LEAF:
-            if ( __tpsFsBtreeInsertNode(ptrans, pinode, pbtrnode, kvInsert) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
+            if ( __tpsFsBtreeInsertNode(ptrans, pinode, &pbtrnode, kvInsert) != TPS_ERR_NONE) {
+                __tpsFsFreeBtrNode(pinode, &pbtrnode);
                 return  (TPS_ERR_BTREE_INSERT_NODE);
             }
             bBreak = LW_TRUE;
             break;
 
         default:
-            __tpsFsFreeBtrNode(pinode, pbtrnode);
+            __tpsFsFreeBtrNode(pinode, &pbtrnode);
             return  (TPS_ERR_BTREE_NODE_TYPE);
         }
     }
 
-    __tpsFsFreeBtrNode(pinode, pbtrnode);
+    __tpsFsFreeBtrNode(pinode, &pbtrnode);
 
     return  (TPS_ERR_NONE);
 }
@@ -935,7 +983,7 @@ static TPS_RESULT  __tpsFsBtreeInsert (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS
 *********************************************************************************************************/
 static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                                            PTPS_INODE      pinode,
-                                           PTPS_BTR_NODE   pbtrnode,
+                                           PTPS_BTR_NODE  *ppbtrnode,
                                            INT             iRemove)
 {
     TPS_RESULT          tpsresRet   = TPS_ERR_NONE;
@@ -945,46 +993,36 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
     PTPS_BTR_NODE       pndSibling  = LW_NULL;
     PTPS_BTR_NODE       pndSubNode  = LW_NULL;
     PTPS_BTR_NODE       pndParent   = LW_NULL;
+    PTPS_BTR_NODE       pbtrnode    = *ppbtrnode;
     PTPS_SUPER_BLOCK    psb         = pinode->IND_psb;
     BOOL                bEqual;
     UINT                uiMaxCnt    = pbtrnode->ND_uiMaxCnt;
     TPS_IBLK            blkKey      = 0;
 
-    if (pbtrnode->ND_blkParent == pinode->IND_inum &&
-        pinode->IND_data.IND_btrNode.ND_uiEntrys == 2) {                /* root的大小需要特殊处理       */
-        uiMaxCnt = pbtrnode->ND_iType == TPS_BTR_NODE_NON_LEAF ?
-                   (psb->SB_uiBlkSize - TPS_INODE_DATASTART - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2) : 
-                   (psb->SB_uiBlkSize - TPS_INODE_DATASTART - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_BTR_KV));
+
+    if (pbtrnode->ND_blkParent == pinode->IND_inum) {
+        if (__tpsFsBtrGetNode(pinode, &pndParent, pinode->IND_inum) != TPS_ERR_NONE) {
+            tpsresRet = TPS_ERR_BTREE_GET_NODE;
+            goto    error_out;
+        }
+
+        if (pndParent->ND_uiEntrys == 2) {                /* root的大小需要特殊处理       */
+			uiMaxCnt = MAX_NODE_CNT((psb->SB_uiBlkSize - TPS_INODE_DATASTART), pbtrnode->ND_iType);
+        }
+
+        __tpsFsFreeBtrNode(pinode, &pndParent);
     }
 
     if (pbtrnode->ND_uiEntrys <= (uiMaxCnt / 2)) {                      /* 需要合并节点                 */
         if (pbtrnode->ND_blkParent != 0) {
-            pndParent = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-            if (LW_NULL == pndParent) {
-                return  (TPS_ERR_ALLOC);
-            }
-
-            pndSibling = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, pbtrnode->ND_iType);
-            if (LW_NULL == pndParent) {
-                __tpsFsFreeBtrNode(pinode, pndParent);
-                return  (TPS_ERR_ALLOC);
-            }
-
-            pndSubNode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-            if (LW_NULL == pndSubNode) {
-                __tpsFsFreeBtrNode(pinode, pndSibling);
-                __tpsFsFreeBtrNode(pinode, pndParent);
-                return  (TPS_ERR_ALLOC);
-            }
-
-            if (__tpsFsBtrGetNode(pinode, pndParent, pbtrnode->ND_blkParent) != TPS_ERR_NONE) {
+            if (__tpsFsBtrGetNode(pinode, &pndParent, pbtrnode->ND_blkParent) != TPS_ERR_NONE) {
                 tpsresRet = TPS_ERR_BTREE_GET_NODE;
                 goto    error_out;
             }
 
             i = __tpsFsBtrSearch(pndParent, pbtrnode->ND_kvArr[0].KV_blkKey, LW_FALSE, &bEqual);
             if (i == pndParent->ND_uiEntrys - 1) {                      /* 向左合并                     */
-                if (__tpsFsBtrGetNode(pinode, pndSibling,
+                if (__tpsFsBtrGetNode(pinode, &pndSibling,
                                       pndParent->ND_kvArr[i - 1].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
                     tpsresRet = TPS_ERR_BTREE_GET_NODE;
                     goto    error_out;
@@ -999,7 +1037,7 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                     pndSibling->ND_uiEntrys--;
 
                     if (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF) {      /* 更改被借子节点父亲属性       */
-                        if (__tpsFsBtrGetNode(pinode, pndSubNode,
+                        if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                                               pbtrnode->ND_kvArr[0].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
                             tpsresRet = TPS_ERR_BTREE_GET_NODE;
                             goto    error_out;
@@ -1034,7 +1072,11 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                                           LW_FALSE, i, 1) != TPS_ERR_NONE) {
                         tpsresRet = TPS_ERR_BTREE_PUT_NODE;
                         goto    error_out;
-                    }
+					}
+
+					__tpsFsFreeBtrNode(pinode, &pndSubNode);
+					__tpsFsFreeBtrNode(pinode, &pndSibling);
+					__tpsFsFreeBtrNode(pinode, &pndParent);
 
                 } else {                                                /* 与左边节点合并               */
                     for (j = pndSibling->ND_uiEntrys, k = 0; k < pbtrnode->ND_uiEntrys; k++) {
@@ -1043,7 +1085,7 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
 
                             if (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF) {
                                                                         /* 更改被被合并子节点父亲属性   */
-                                if (__tpsFsBtrGetNode(pinode, pndSubNode,
+                                if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                                         pndSibling->ND_kvArr[j].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
                                     tpsresRet = TPS_ERR_BTREE_GET_NODE;
                                     goto    error_out;
@@ -1084,31 +1126,45 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                         goto    error_out;
                     }
 
-                    tpsresRet = __tpsFsBtreeRemoveNode(ptrans, pinode, pndParent, i);
-                    if (tpsresRet != TPS_ERR_NONE) {
+                    if (__tpsFsBtrGetNode(pinode, ppbtrnode, pndParent->ND_blkThis) != TPS_ERR_NONE) {
+                        tpsresRet = TPS_ERR_BTREE_GET_NODE;
                         goto    error_out;
                     }
+
+                    __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                    __tpsFsFreeBtrNode(pinode, &pndSibling);
+                    __tpsFsFreeBtrNode(pinode, &pndParent);
+
+                    return (__tpsFsBtreeRemoveNode(ptrans, pinode, ppbtrnode, i));
                 }
             
             } else {                                                    /* 向右合并                     */
-                if (__tpsFsBtrGetNode(pinode, pndSibling,
+                if (__tpsFsBtrGetNode(pinode, &pndSibling,
                                       pndParent->ND_kvArr[i + 1].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                    __tpsFsFreeBtrNode(pinode, pndSibling);
-                    __tpsFsFreeBtrNode(pinode, pndParent);
-                    return  (TPS_ERR_BTREE_GET_NODE);
+                    tpsresRet = TPS_ERR_BTREE_GET_NODE;
+                    goto    error_out;
                 }
 
-                for (; iRemove < pbtrnode->ND_uiEntrys - 1; iRemove++) {/* 当前节点去空位               */
-                    pbtrnode->ND_kvArr[iRemove] = pbtrnode->ND_kvArr[iRemove + 1];
+                blkKey = pbtrnode->ND_kvArr[0].KV_blkKey;
+                for (j = iRemove; j < pbtrnode->ND_uiEntrys - 1; j++) {/* 当前节点去空位               */
+                    pbtrnode->ND_kvArr[j] = pbtrnode->ND_kvArr[j + 1];
                 }
                 pbtrnode->ND_uiEntrys--;
 
+                if ((iRemove == 0) && (pbtrnode->ND_blkParent != 0)) {  /* 如果为首元素则更改父节点key  */
+                    if (__tpsFsUpdateKey(ptrans, pinode, pbtrnode,
+                                         blkKey,
+                                         pbtrnode->ND_kvArr[0].KV_blkKey) != TPS_ERR_NONE) {
+                        return  (TPS_ERR_BTREE_UPDATE_KEY);
+                    }
+                }
+
                 if (pndSibling->ND_uiEntrys > (uiMaxCnt / 2)) {         /* 从右边借节点                 */
-                    pbtrnode->ND_kvArr[pbtrnode->ND_uiEntrys - 1] = pndSibling->ND_kvArr[0];
+                    pbtrnode->ND_kvArr[pbtrnode->ND_uiEntrys] = pndSibling->ND_kvArr[0];
                     pbtrnode->ND_uiEntrys++;
 
                     if (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF) {      /* 更改被借子节点父亲属性       */
-                        if (__tpsFsBtrGetNode(pinode, pndSubNode,
+                        if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                                 pbtrnode->ND_kvArr[pbtrnode->ND_uiEntrys - 1].
                                 KV_data.KP_blkPtr) != TPS_ERR_NONE) {
                             tpsresRet = TPS_ERR_BTREE_GET_NODE;
@@ -1129,7 +1185,7 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                     for (j = 0; j < pndSibling->ND_uiEntrys - 1; j++) { /* 整理右边节点，去空位         */
                         pndSibling->ND_kvArr[j] = pndSibling->ND_kvArr[j + 1];
                     }
-                    pbtrnode->ND_uiEntrys--;
+                    pndSibling->ND_uiEntrys--;
                     pndParent->ND_kvArr[i + 1].KV_blkKey = pndSibling->ND_kvArr[0].KV_blkKey;
 
                     if (__tpsFsBtrPutNode(ptrans, pinode,
@@ -1152,16 +1208,20 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                                           LW_FALSE, i + 1, 1) != TPS_ERR_NONE) {
                         tpsresRet = TPS_ERR_BTREE_PUT_NODE;
                         goto    error_out;
-                    }
+					}
+
+					__tpsFsFreeBtrNode(pinode, &pndSubNode);
+					__tpsFsFreeBtrNode(pinode, &pndSibling);
+					__tpsFsFreeBtrNode(pinode, &pndParent);
 
                 } else {                                                /* 与右边节点合并               */
-                    for (j = pbtrnode->ND_uiEntrys - 1, k = 0;
+                    for (j = pbtrnode->ND_uiEntrys, k = 0;
                          k < pndSibling->ND_uiEntrys;
                          j++, k++) {
                         pbtrnode->ND_kvArr[j] = pndSibling->ND_kvArr[k];
 
                         if (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF) {  /* 修改被合并子节点父亲属性     */
-                            if (__tpsFsBtrGetNode(pinode, pndSubNode,
+                            if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                                     pbtrnode->ND_kvArr[j].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
                                 tpsresRet = TPS_ERR_BTREE_GET_NODE;
                                 goto    error_out;
@@ -1199,16 +1259,18 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                         goto    error_out;
                     }
 
-                    tpsresRet = __tpsFsBtreeRemoveNode(ptrans, pinode, pndParent, i + 1);
-                    if (tpsresRet != TPS_ERR_NONE) {
+                    if (__tpsFsBtrGetNode(pinode, ppbtrnode, pndParent->ND_blkThis) != TPS_ERR_NONE) {
+                        tpsresRet = TPS_ERR_BTREE_GET_NODE;
                         goto    error_out;
                     }
+
+                    __tpsFsFreeBtrNode(pinode, &pndSubNode);
+                    __tpsFsFreeBtrNode(pinode, &pndSibling);
+                    __tpsFsFreeBtrNode(pinode, &pndParent);
+
+                    return (__tpsFsBtreeRemoveNode(ptrans, pinode, ppbtrnode, i + 1));
                 }
             }
-
-            __tpsFsFreeBtrNode(pinode, pndSubNode);
-            __tpsFsFreeBtrNode(pinode, pndSibling);
-            __tpsFsFreeBtrNode(pinode, pndParent);
 
             return  (TPS_ERR_NONE);
 
@@ -1240,14 +1302,8 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
      *  root节点,当子节点数为1时，需要将子节点设置为root节点，释放当前root节点
      */
     if ((pbtrnode->ND_uiEntrys <= 1) && (pbtrnode->ND_uiLevel > 0)) {
-        pndSubNode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-        if (LW_NULL == pndSubNode) {
-            return  (TPS_ERR_ALLOC);
-        }
-
-        if (__tpsFsBtrGetNode(pinode, pndSubNode,
+        if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                               pbtrnode->ND_kvArr[0].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-            __tpsFsFreeBtrNode(pinode, pndSubNode);
             return  (TPS_ERR_BTREE_GET_NODE);
         }
 
@@ -1256,29 +1312,27 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                                   pinode,
                                   pndSubNode->ND_blkThis) != TPS_ERR_NONE) {
                                                                         /* 释放当前root节点             */
-            __tpsFsFreeBtrNode(pinode, pndSubNode);
+            __tpsFsFreeBtrNode(pinode, &pndSubNode);
             return  (TPS_ERR_BP_FREE);
         }
+
+        lib_memcpy(pbtrnode, pndSubNode,
+                   sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pndSubNode->ND_uiEntrys));
 
         /*
          * 重新设置子节点属性
          */
-        pndSubNode->ND_blkParent = 0;
-        pndSubNode->ND_blkThis   = pinode->IND_inum;
-        pndSubNode->ND_uiMaxCnt  = pndSubNode->ND_iType == TPS_BTR_NODE_NON_LEAF ?
-                                   (psb->SB_uiBlkSize - TPS_INODE_DATASTART - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_IBLK) * 2) : 
-                                   (psb->SB_uiBlkSize - TPS_INODE_DATASTART - sizeof(TPS_BTR_NODE)) / (sizeof(TPS_BTR_KV));
-
-        lib_memcpy(pbtrnode, pndSubNode,
-                   sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pndSubNode->ND_uiEntrys));            
+        pbtrnode->ND_blkParent = 0;
+        pbtrnode->ND_blkThis   = pinode->IND_inum;
+        pbtrnode->ND_uiMaxCnt  = MAX_NODE_CNT((psb->SB_uiBlkSize - TPS_INODE_DATASTART),
+                                                pndSubNode->ND_iType);
 		                                                                /* 拷贝子节点内容到父节点       */
 
         for (i = 0;
-             (i < (pbtrnode->ND_uiEntrys - 1)) && (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF);
+             (i < pbtrnode->ND_uiEntrys) && (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF);
              i++) {                                                     /* 修改子节点父亲属性           */
-            if (__tpsFsBtrGetNode(pinode, pndSubNode,
+            if (__tpsFsBtrGetNode(pinode, &pndSubNode,
                 pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
 
@@ -1288,12 +1342,12 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
                                   pndSubNode,
                                   pndSubNode->ND_blkThis,
                                   LW_TRUE, 0, 0) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pndSubNode);
+                __tpsFsFreeBtrNode(pinode, &pndSubNode);
                 return  (TPS_ERR_BTREE_PUT_NODE);
             }
         }
 
-        __tpsFsFreeBtrNode(pinode, pndSubNode);
+        __tpsFsFreeBtrNode(pinode, &pndSubNode);
 
         if (__tpsFsBtrPutNode(ptrans, pinode,
                               pbtrnode, pbtrnode->ND_blkThis,
@@ -1314,13 +1368,13 @@ static TPS_RESULT  __tpsFsBtreeRemoveNode (PTPS_TRANS      ptrans,
 
 error_out:
     if (pndSubNode) {
-        __tpsFsFreeBtrNode(pinode, pndSubNode);
+        __tpsFsFreeBtrNode(pinode, &pndSubNode);
     }
     if (pndSibling) {
-        __tpsFsFreeBtrNode(pinode, pndSibling);
+        __tpsFsFreeBtrNode(pinode, &pndSibling);
     }
     if (pndParent) {
-        __tpsFsFreeBtrNode(pinode, pndParent);
+        __tpsFsFreeBtrNode(pinode, &pndParent);
     }
 
     return  (tpsresRet);
@@ -1337,43 +1391,34 @@ error_out:
 *********************************************************************************************************/
 static TPS_RESULT  __tpsFsBtreeRemove (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_BTR_KV kvRemove)
 {
-    PTPS_BTR_NODE       pbtrnode;
-    PTPS_SUPER_BLOCK    psb;
+    PTPS_BTR_NODE       pbtrnode = LW_NULL;
     INT                 i;
     BOOL                bEqual;
-    BOOL                bBreak  = LW_FALSE;
+    BOOL                bBreak   = LW_FALSE;
 
-    psb = pinode->IND_psb;
-
-    pbtrnode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-    if (LW_NULL == pbtrnode) {
-        return  (TPS_ERR_ALLOC);
+    if (__tpsFsBtrGetNode(pinode, &pbtrnode, pinode->IND_inum)) {
+        return  (TPS_ERR_BTREE_GET_NODE);
     }
-    lib_memcpy(pbtrnode,
-               &pinode->IND_data.IND_btrNode,
-               sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pinode->IND_data.IND_btrNode.ND_uiEntrys));                
-	                                                                   /* 从inode缓存拷贝根节点        */
 
     while (!bBreak) {
         i = __tpsFsBtrSearch(pbtrnode, kvRemove.KV_blkKey, LW_FALSE, &bEqual);
         switch (pbtrnode->ND_iType) {
         
         case TPS_BTR_NODE_NON_LEAF:                                     /* 对于非叶子节点递归查找       */
-            if (__tpsFsBtrGetNode(pinode, pbtrnode,
+            if (__tpsFsBtrGetNode(pinode, &pbtrnode,
                                   pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
             break;
 
         case TPS_BTR_NODE_LEAF:
             if (!bEqual) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
+                __tpsFsFreeBtrNode(pinode, &pbtrnode);
                 return  (TPS_ERR_BTREE_NODE_NOT_EXIST);
             }
 
-            if ( __tpsFsBtreeRemoveNode(ptrans, pinode, pbtrnode, i) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
+            if ( __tpsFsBtreeRemoveNode(ptrans, pinode, &pbtrnode, i) != TPS_ERR_NONE) {
+                __tpsFsFreeBtrNode(pinode, &pbtrnode);
                 return  (TPS_ERR_BTREE_INSERT_NODE);
             }
 
@@ -1381,12 +1426,12 @@ static TPS_RESULT  __tpsFsBtreeRemove (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS
             break;
 
         default:
-            __tpsFsFreeBtrNode(pinode, pbtrnode);
+            __tpsFsFreeBtrNode(pinode, &pbtrnode);
             return  (TPS_ERR_BTREE_NODE_TYPE);
         }
     }
 
-    __tpsFsFreeBtrNode(pinode, pbtrnode);
+    __tpsFsFreeBtrNode(pinode, &pbtrnode);
 
     return  (TPS_ERR_NONE);
 }
@@ -1403,31 +1448,22 @@ static TPS_RESULT  __tpsFsBtreeRemove (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS
 *********************************************************************************************************/
 static TPS_RESULT  __tpsFsBtreeGet (PTPS_INODE pinode, TPS_IBLK blkKey, PTPS_BTR_KV pkv, BOOL bAfter)
 {
-    PTPS_BTR_NODE       pbtrnode;
-    PTPS_SUPER_BLOCK    psb;
+    PTPS_BTR_NODE       pbtrnode = LW_NULL;
     INT                 i;
     BOOL                bEqual;
-    BOOL                bBreak  = LW_FALSE;
+    BOOL                bBreak   = LW_FALSE;
 
-    psb = pinode->IND_psb;
-
-    pbtrnode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-    if (LW_NULL == pbtrnode) {
-        return  (TPS_ERR_ALLOC);
+    if (__tpsFsBtrGetNode(pinode, &pbtrnode, pinode->IND_inum)) {
+        return  (TPS_ERR_BTREE_GET_NODE);
     }
-    lib_memcpy(pbtrnode,
-               &pinode->IND_data.IND_btrNode,
-               sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pinode->IND_data.IND_btrNode.ND_uiEntrys));                
-	                                                                    /* 从inode缓存拷贝根节点        */
 
     while (!bBreak) {
         i = __tpsFsBtrSearch(pbtrnode, blkKey, LW_FALSE, &bEqual);
         switch (pbtrnode->ND_iType) {
         
         case TPS_BTR_NODE_NON_LEAF:
-            if (__tpsFsBtrGetNode(pinode, pbtrnode,
+            if (__tpsFsBtrGetNode(pinode, &pbtrnode,
                                   pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
             break;
@@ -1453,17 +1489,17 @@ static TPS_RESULT  __tpsFsBtreeGet (PTPS_INODE pinode, TPS_IBLK blkKey, PTPS_BTR
                 pkv->KV_data.KV_value.KV_blkCnt     = 0;
             }
 
-            __tpsFsFreeBtrNode(pinode, pbtrnode);
+            __tpsFsFreeBtrNode(pinode, &pbtrnode);
             bBreak = LW_TRUE;
             return  (TPS_ERR_NONE);
 
         default:
-            __tpsFsFreeBtrNode(pinode, pbtrnode);
+            __tpsFsFreeBtrNode(pinode, &pbtrnode);
             return  (TPS_ERR_BTREE_NODE_TYPE);
         }
     }
     
-    __tpsFsFreeBtrNode(pinode, pbtrnode);
+    __tpsFsFreeBtrNode(pinode, &pbtrnode);
 
     return  (TPS_ERR_NONE);
 }
@@ -1480,38 +1516,29 @@ static TPS_RESULT  __tpsFsBtreeGet (PTPS_INODE pinode, TPS_IBLK blkKey, PTPS_BTR
 *********************************************************************************************************/
 static TPS_RESULT  __tpsFsBtreeSet (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_IBLK blkKey, TPS_BTR_KV kv)
 {
-    PTPS_BTR_NODE       pbtrnode;
-    PTPS_SUPER_BLOCK    psb;
+    PTPS_BTR_NODE       pbtrnode = LW_NULL;
     INT                 i;
     BOOL                bEqual;
-    BOOL                bBreak  = LW_FALSE;
+    BOOL                bBreak   = LW_FALSE;
 
-    psb = pinode->IND_psb;
-
-    pbtrnode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-    if (LW_NULL == pbtrnode) {
-        return  (TPS_ERR_ALLOC);
+    if (__tpsFsBtrGetNode(pinode, &pbtrnode, pinode->IND_inum)) {
+        return  (TPS_ERR_BTREE_GET_NODE);
     }
-    lib_memcpy(pbtrnode,
-               &pinode->IND_data.IND_btrNode,
-               sizeof(TPS_BTR_NODE) + (sizeof(TPS_BTR_KV) * pinode->IND_data.IND_btrNode.ND_uiEntrys));                
-	                                                                       /* 从inode缓存拷贝根节点        */
 
     while (!bBreak) {
         i = __tpsFsBtrSearch(pbtrnode, blkKey, LW_FALSE, &bEqual);
         switch (pbtrnode->ND_iType) {
         
         case TPS_BTR_NODE_NON_LEAF:
-            if (__tpsFsBtrGetNode(pinode, pbtrnode,
+            if (__tpsFsBtrGetNode(pinode, &pbtrnode,
                                   pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
             break;
 
         case TPS_BTR_NODE_LEAF:
             if (!bEqual) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
+                __tpsFsFreeBtrNode(pinode, &pbtrnode);
                 return  (TPS_ERR_BTREE_GET_NODE);
             }
 
@@ -1520,7 +1547,7 @@ static TPS_RESULT  __tpsFsBtreeSet (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_IB
                 if (__tpsFsUpdateKey(ptrans, pinode, pbtrnode, 
                                      blkKey,
                                      kv.KV_blkKey) != TPS_ERR_NONE) {
-                    __tpsFsFreeBtrNode(pinode, pbtrnode);
+                    __tpsFsFreeBtrNode(pinode, &pbtrnode);
                     return  (TPS_ERR_BTREE_UPDATE_KEY);
                 }
             }
@@ -1529,7 +1556,7 @@ static TPS_RESULT  __tpsFsBtreeSet (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_IB
             break;
 
         default:
-            __tpsFsFreeBtrNode(pinode, pbtrnode);
+            __tpsFsFreeBtrNode(pinode, &pbtrnode);
             return  (TPS_ERR_BTREE_NODE_TYPE);
         }
     }
@@ -1537,50 +1564,56 @@ static TPS_RESULT  __tpsFsBtreeSet (PTPS_TRANS ptrans, PTPS_INODE pinode, TPS_IB
     if (__tpsFsBtrPutNode(ptrans, pinode,
                           pbtrnode, pbtrnode->ND_blkThis,
                           LW_FALSE, i, 1) != TPS_ERR_NONE) {
-        __tpsFsFreeBtrNode(pinode, pbtrnode);
+        __tpsFsFreeBtrNode(pinode, &pbtrnode);
         return  (TPS_ERR_BTREE_PUT_NODE);
     }
 
-    __tpsFsFreeBtrNode(pinode, pbtrnode);
+    __tpsFsFreeBtrNode(pinode, &pbtrnode);
 
     return  (TPS_ERR_NONE);
 }
 /*********************************************************************************************************
-** 函数名称: __tpsFsBtrNodeCanCombin
-** 功能描述: 比较两个块区间释放相连
-**           kv1                第一个块区间
-**           kv2                第二个块区间
-**           bOverlap           返回释放覆盖
-** 输　出  : 相邻：TRUE  否则：FALSE
+** 函数名称: tpsFsBtreeInit
+** 功能描述: 初始化b+tree
+**           ptrans             事物
+**           pinode             文件inode指针
+** 输　出  : 成功：0  失败：ERROR
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-BOOL __tpsFsBtrNodeCanCombin (TPS_BTR_KV kv1, TPS_BTR_KV kv2, BOOL *bOverlap)
+TPS_RESULT tpsFsBtreeInit (PTPS_TRANS ptrans, PTPS_INODE pinode)
 {
-    /*
-     *  是否相邻
-     */
-    if (kv1.KV_data.KV_value.KV_blkStart +
-        kv1.KV_data.KV_value.KV_blkCnt == kv2.KV_data.KV_value.KV_blkStart ||
-        kv2.KV_data.KV_value.KV_blkStart +
-        kv2.KV_data.KV_value.KV_blkCnt == kv1.KV_data.KV_value.KV_blkStart) {
-        *bOverlap = LW_FALSE;
-        return  (LW_TRUE);
-    }
+    TPS_BTR_NODE        ndRoot;
+    PTPS_SUPER_BLOCK    psb     = LW_NULL;
 
     /*
-     *  释放覆盖
+     * 不需要判断ptrans，因为函数会在格式化时调用
      */
-    if (max(kv1.KV_data.KV_value.KV_blkStart, kv2.KV_data.KV_value.KV_blkStart) <
-        min((kv1.KV_data.KV_value.KV_blkStart + kv1.KV_data.KV_value.KV_blkCnt),
-                (kv2.KV_data.KV_value.KV_blkStart + kv2.KV_data.KV_value.KV_blkCnt))) {
-        *bOverlap = LW_TRUE;
-        return  (LW_FALSE);
+    if (pinode == LW_NULL) {
+        return  (TPS_ERR_PARAM_NULL);
     }
 
-    *bOverlap = LW_FALSE;
+    psb  = pinode->IND_psb;
 
-    return  (LW_FALSE);
+    ndRoot.ND_uiMaxCnt       = MAX_NODE_CNT((psb->SB_uiBlkSize - TPS_INODE_DATASTART),
+                                            TPS_BTR_NODE_LEAF);
+    ndRoot.ND_iType          = TPS_BTR_NODE_LEAF;
+    ndRoot.ND_uiMagic        = TPS_MAGIC_BTRNODE;
+    ndRoot.ND_blkNext        = 0;
+    ndRoot.ND_blkThis        = pinode->IND_inum;
+    ndRoot.ND_blkPrev        = 0;
+    ndRoot.ND_blkParent      = 0;
+    ndRoot.ND_inumInode      = pinode->IND_inum;
+    ndRoot.ND_uiEntrys       = 0;
+    ndRoot.ND_uiLevel        = 0;
+    ndRoot.ND_ui64Generation = psb->SB_ui64Generation;
+
+    if (__tpsFsBtrPutNode(ptrans, pinode, &ndRoot,
+                          ndRoot.ND_blkThis, LW_TRUE, 0, 0) != TPS_ERR_NONE) {
+        return  (TPS_ERR_BTREE_PUT_NODE);
+    }
+
+    return  (TPS_ERR_NONE);
 }
 /*********************************************************************************************************
 ** 函数名称: tpsFsBtreeFreeBlk
@@ -1605,6 +1638,9 @@ TPS_RESULT  tpsFsBtreeFreeBlk (PTPS_TRANS   ptrans,
     TPS_IBLK    blkSet = 0;
     TPS_RESULT  tpsres;
 
+    /*
+     * 不需要判断ptrans，因为函数可能会在格式化时调用
+     */
     if (pinode == LW_NULL) {
         return  (TPS_ERR_PARAM_NULL);
     }
@@ -1656,8 +1692,6 @@ TPS_RESULT  tpsFsBtreeFreeBlk (PTPS_TRANS   ptrans,
         }
     }
 
-
-
     if (blkSet) {
         tpsres = __tpsFsBtreeSet(ptrans, pinode, blkSet, kvInsert);     /* 存在可合并的节点             */
     
@@ -1691,6 +1725,9 @@ TPS_RESULT  tpsFsBtreeAllocBlk (PTPS_TRANS  ptrans,
     TPS_BTR_KV  kv;
     TPS_IBLK    blkKeyOld;
 
+    /*
+     * 不需要判断ptrans，因为函数可能会在格式化时调用
+     */
     if (pinode == LW_NULL) {
         return  (TPS_ERR_PARAM_NULL);
     }
@@ -1784,7 +1821,7 @@ TPS_RESULT  tpsFsBtreeAppendBlk (PTPS_TRANS ptrans,
 {
     TPS_BTR_KV  kv;
 
-    if ((pinode == LW_NULL) || (pinode == LW_NULL)) {
+    if ((pinode == LW_NULL) || (ptrans == LW_NULL)) {
         return  (TPS_ERR_PARAM_NULL);
     }
 
@@ -1825,9 +1862,10 @@ TPS_RESULT  tpsFsBtreeTrunc (PTPS_TRANS     ptrans,
 {
     TPS_BTR_KV  kv;
 
-    if (pinode == LW_NULL) {
+    if (pinode == LW_NULL || ptrans == LW_NULL) {
         return  (TPS_ERR_PARAM_NULL);
     }
+
     if (__tpsFsBtreeGet(pinode, MAX_BLK_NUM, &kv, LW_FALSE) != TPS_ERR_NONE) {
         return  (TPS_ERR_BTREE_GET_NODE);
     }
@@ -1869,6 +1907,10 @@ TPS_IBLK  tpsFsBtreeBlkCnt (PTPS_INODE pinode)
 {
     TPS_BTR_KV  kv;
 
+    if (pinode == LW_NULL) {
+        return  (TPS_ERR_PARAM_NULL);
+    }
+
     if (__tpsFsBtreeGet(pinode, MAX_BLK_NUM,
                         &kv, LW_FALSE) != TPS_ERR_NONE) {               /* 获取最后一个块区间           */
         return  0;
@@ -1880,17 +1922,16 @@ TPS_IBLK  tpsFsBtreeBlkCnt (PTPS_INODE pinode)
 ** 函数名称: tpsFsBtreeInitBP
 ** 功能描述: 初始化块缓冲区
 **           psb             超级块指针
+**           blkStart        初始化空闲块起始
+**           blkCnt          初始化空闲块数量
 ** 输　出  : 成功：0  失败：ERROR
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-TPS_RESULT  tpsFsBtreeInitBP (PTPS_SUPER_BLOCK psb)
+TPS_RESULT  tpsFsBtreeInitBP (PTPS_SUPER_BLOCK psb, TPS_IBLK blkStart, TPS_IBLK blkCnt)
 {
     PUCHAR      pucBuff;
     PUCHAR      pucPos;
-    TPS_IBLK    blkStart;
-    TPS_IBLK    blkCnt;
-    TPS_IBLK    blkAlloc;
     INT         i;
 
     if (LW_NULL == psb) {
@@ -1913,22 +1954,11 @@ TPS_RESULT  tpsFsBtreeInitBP (PTPS_SUPER_BLOCK psb)
     }
 
     /*
-     *  分配空闲块
+     *  初始化空闲块列表
      */
-    blkAlloc = TPS_ADJUST_BP_BLK;
     pucPos   = pucBuff;
-    while (blkAlloc > 0) {                                              /* 分配缓冲区块                 */
-        if (tpsFsBtreeAllocBlk(LW_NULL, psb->SB_pinodeSpaceMng, 0,
-                               TPS_ADJUST_BP_BLK, &blkStart, &blkCnt) != TPS_ERR_NONE) {
-            TPS_FREE(pucBuff);
-            return  (TPS_ERR_BTREE_ALLOC);
-        }
-
-        for (i = 0; i < blkCnt; i++) {
-            TPS_CPU_TO_IBLK(pucPos, (blkStart + i));
-        }
-
-        blkAlloc -= blkCnt;
+    for (i = 0; i < blkCnt; i++) {
+        TPS_CPU_TO_IBLK(pucPos, (blkStart + i));
     }
 
     if (tpsFsDevBufWrite(psb, psb->SB_ui64BPStartBlk, 0,
@@ -1979,7 +2009,7 @@ TPS_RESULT  tpsFsBtreeAdjustBP (PTPS_TRANS ptrans, PTPS_SUPER_BLOCK psb)
         }
     }
 
-    if (pbp->BP_uiBlkCnt <= TPS_MIN_BP_BLK) {                           /* 空闲块太少                   */
+	if (pbp->BP_uiBlkCnt <= TPS_MIN_BP_BLK) {                           /* 空闲块太少                   */
         while (pbp->BP_uiBlkCnt < TPS_ADJUST_BP_BLK) {
             if (tpsFsBtreeAllocBlk(ptrans, psb->SB_pinodeSpaceMng,
                                    0, 1, &blkStart,
@@ -2108,26 +2138,21 @@ TPS_RESULT  tpsFsBtreeReadBP (PTPS_SUPER_BLOCK psb)
 *********************************************************************************************************/
 static TPS_RESULT  __tpsBtreeGetBlkCnt (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode, TPS_SIZE_T *pszBlkCnt)
 {
-    PTPS_SUPER_BLOCK    psb = pinode->IND_psb;
-    PTPS_BTR_NODE       pbtrSubnode;
+    PTPS_BTR_NODE       pbtrSubnode = LW_NULL;
     INT                 i;
 
     for (i = 0; i < pbtrnode->ND_uiEntrys; i++) {
         if (pbtrnode->ND_iType != TPS_BTR_NODE_LEAF) {
-            pbtrSubnode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-            if (LW_NULL == pbtrSubnode) {
-                return  (TPS_ERR_ALLOC);
-            }
-
-            if (__tpsFsBtrGetNode(pinode, pbtrSubnode,
+            if (__tpsFsBtrGetNode(pinode, &pbtrSubnode,
                 pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                    __tpsFsFreeBtrNode(pinode, pbtrnode);
                     return  (TPS_ERR_BTREE_GET_NODE);
             }
 
+            (*pszBlkCnt) += 1;                                          /* 节点本身所占用的块           */
+
             __tpsBtreeGetBlkCnt(pinode, pbtrSubnode, pszBlkCnt);        /* 非叶子节点递归查找           */
 
-            __tpsFsFreeBtrNode(pinode, pbtrSubnode);
+            __tpsFsFreeBtrNode(pinode, &pbtrSubnode);
         
         } else {
             (*pszBlkCnt) += pbtrnode->ND_kvArr[i].KV_data.KV_value.KV_blkCnt;
@@ -2146,11 +2171,49 @@ static TPS_RESULT  __tpsBtreeGetBlkCnt (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnod
 *********************************************************************************************************/
 TPS_SIZE_T  tpsFsBtreeGetBlkCnt (struct tps_inode *pinode)
 {
-    TPS_SIZE_T  szBlkCnt = 0;
+    TPS_SIZE_T          szBlkCnt     = 0;
+    PTPS_BTR_NODE       pndParent   = LW_NULL;
 
-    __tpsBtreeGetBlkCnt(pinode, &pinode->IND_data.IND_btrNode, &szBlkCnt);
+    if (pinode == LW_NULL) {
+        return  (TPS_ERR_PARAM_NULL);
+    }
+
+    if (__tpsFsBtrGetNode(pinode, &pndParent, pinode->IND_inum) != TPS_ERR_NONE) {
+        return  (0);
+    }
+
+    __tpsBtreeGetBlkCnt(pinode, pndParent, &szBlkCnt);
+
+    __tpsFsFreeBtrNode(pinode, &pndParent);
 
     return  (szBlkCnt);
+}
+/*********************************************************************************************************
+** 函数名称: tpsFsBtreeGetLevel
+** 功能描述: 获取b+tree层数
+**           pinode           inode指针
+** 输　出  : b+tree层数
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+UINT tpsFsBtreeGetLevel (struct tps_inode *pinode)
+{
+    UINT                uiLevenCnt  = 0;
+    PTPS_BTR_NODE       pndRoot   = LW_NULL;
+
+    if (pinode == LW_NULL) {
+        return  (TPS_ERR_PARAM_NULL);
+    }
+
+    if (__tpsFsBtrGetNode(pinode, &pndRoot, pinode->IND_inum) != TPS_ERR_NONE) {
+        return  (0);
+    }
+
+    uiLevenCnt = pndRoot->ND_uiLevel;
+
+    __tpsFsFreeBtrNode(pinode, &pndRoot);
+
+    return  (uiLevenCnt);
 }
 /*********************************************************************************************************
 ** 函数名称: tpsFsBtreeDump
@@ -2163,8 +2226,7 @@ TPS_SIZE_T  tpsFsBtreeGetBlkCnt (struct tps_inode *pinode)
 *********************************************************************************************************/
 TPS_RESULT  tpsFsBtreeDump (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode)
 {
-    PTPS_SUPER_BLOCK    psb = pinode->IND_psb;
-    PTPS_BTR_NODE       pbtrSubnode;
+    PTPS_BTR_NODE       pbtrSubnode = LW_NULL;
     INT                 i;
 
 #ifdef WIN32                                                            /* windows 打印格式             */
@@ -2238,20 +2300,14 @@ TPS_RESULT  tpsFsBtreeDump (PTPS_INODE pinode, PTPS_BTR_NODE pbtrnode)
      *  递归打印子节点信息
      */
     for (i = 0; i < pbtrnode->ND_uiEntrys; i++) {
-        pbtrSubnode = __tpsFsAllocBtrNode(pinode, psb->SB_uiBlkSize, TPS_BTR_NODE_UNKOWN);
-        if (LW_NULL == pbtrSubnode) {
-            return  (TPS_ERR_ALLOC);
-        }
-
-        if (__tpsFsBtrGetNode(pinode, pbtrSubnode,
+        if (__tpsFsBtrGetNode(pinode, &pbtrSubnode,
             pbtrnode->ND_kvArr[i].KV_data.KP_blkPtr) != TPS_ERR_NONE) {
-                __tpsFsFreeBtrNode(pinode, pbtrnode);
                 return  (TPS_ERR_BTREE_GET_NODE);
         }
 
         tpsFsBtreeDump(pinode, pbtrSubnode);
 
-        __tpsFsFreeBtrNode(pinode, pbtrSubnode);
+        __tpsFsFreeBtrNode(pinode, &pbtrSubnode);
     }
 
     return  (TPS_ERR_NONE);

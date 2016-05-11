@@ -31,6 +31,12 @@
 #define MIPS_BREAKPOINT_INS     0x0000000D
 #define MIPS_ABORTPOINT_INS     0x0001000D
 /*********************************************************************************************************
+  SMP
+*********************************************************************************************************/
+#if (LW_CFG_SMP_EN > 0) && (LW_CFG_CACHE_EN > 0) && (LW_CFG_GDB_SMP_TU_LAZY > 0)
+static addr_t   ulLastBpAddr[LW_CFG_MAX_PROCESSORS];
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+/*********************************************************************************************************
 ** 函数名称: archDbgBpInsert
 ** 功能描述: 插入一个断点.
 ** 输　入  : ulAddr         断点地址
@@ -47,6 +53,7 @@ VOID  archDbgBpInsert (addr_t  ulAddr, size_t stSize, ULONG  *pulIns, BOOL  bLoc
 
     lib_memcpy((PCHAR)pulIns, (PCHAR)ulAddr, stSize);                   /*  memcpy 避免对齐问题         */
     lib_memcpy((PCHAR)ulAddr, (PCHAR)&ulIns, stSize);
+    KN_SMP_MB();
 
 #if LW_CFG_CACHE_EN > 0
     if (bLocal) {
@@ -70,6 +77,7 @@ VOID  archDbgAbInsert (addr_t  ulAddr, ULONG  *pulIns)
 {
     *pulIns = *(ULONG *)ulAddr;
     *(ULONG *)ulAddr = MIPS_ABORTPOINT_INS;
+    KN_SMP_MB();
 
 #if LW_CFG_CACHE_EN > 0
     API_CacheTextUpdate((PVOID)ulAddr, sizeof(ULONG));
@@ -89,6 +97,7 @@ VOID  archDbgAbInsert (addr_t  ulAddr, ULONG  *pulIns)
 VOID  archDbgBpRemove (addr_t  ulAddr, size_t stSize, ULONG  ulIns, BOOL  bLocal)
 {
     lib_memcpy((PCHAR)ulAddr, (PCHAR)&ulIns, stSize);
+    KN_SMP_MB();
 
 #if LW_CFG_CACHE_EN > 0
     if (bLocal) {
@@ -124,6 +133,14 @@ VOID  archDbgBpPrefetch (addr_t  ulAddr)
 *********************************************************************************************************/
 UINT  archDbgTrapType (addr_t  ulAddr, PVOID   pvArch)
 {
+#if (LW_CFG_SMP_EN > 0) && (LW_CFG_CACHE_EN > 0) && (LW_CFG_GDB_SMP_TU_LAZY > 0)
+    ULONG   ulCPUId;
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+
+    if (API_DtraceIsValid() == LW_FALSE) {                              /*  不存在调试节点              */
+        return  (LW_TRAP_INVAL);
+    }
+
     switch (*(ULONG *)ulAddr) {
 
     case MIPS_BREAKPOINT_INS:
@@ -133,6 +150,26 @@ UINT  archDbgTrapType (addr_t  ulAddr, PVOID   pvArch)
         return  (LW_TRAP_ABORT);
 
     default:
+        break;
+    }
+
+#if (LW_CFG_SMP_EN > 0) && (LW_CFG_CACHE_EN > 0) && (LW_CFG_GDB_SMP_TU_LAZY > 0)
+    if (API_CacheGetOption() & CACHE_TEXT_UPDATE_MP) {
+        ulCPUId = LW_CPU_GET_CUR_ID();
+        if (ulLastBpAddr[ulCPUId] == ulAddr) {                          /*  不是断点的停止              */
+            ulLastBpAddr[ulCPUId] =  (addr_t)PX_ERROR;                  /*  同一地址连续失效            */
+            return  (LW_TRAP_INVAL);
+
+        } else {
+            ulLastBpAddr[ulCPUId] = ulAddr;
+            API_CacheLocalTextUpdate((PVOID)ulAddr, sizeof(ulAddr));    /*  刷新一次 I CACHE 再去尝试   */
+            return  (LW_TRAP_RETRY);
+        }
+    } else
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+                                                                        /*  LW_CFG_CACHE_EN > 0         */
+                                                                        /*  LW_CFG_GDB_SMP_TU_LAZY > 0  */
+    {
         return  (LW_TRAP_INVAL);
     }
 }
@@ -152,6 +189,7 @@ VOID  archDbgBpAdjust (PVOID  pvDtrace, PVOID  pvtm)
     PLW_DTRACE_MSG  pdtm = (PLW_DTRACE_MSG)pvtm;
 
     API_DtraceGetRegs(pvDtrace, pdtm->DTM_ulThread, &regctx, &regSp);
+
     /*
      * 如果 Cause 寄存器 BD 位置为 1，则说明引发中断的为分支延时槽指令，PC 寄存器值需调整
      */
@@ -159,6 +197,7 @@ VOID  archDbgBpAdjust (PVOID  pvDtrace, PVOID  pvtm)
         pdtm->DTM_ulAddr += sizeof(ULONG);
     }
 }
+
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
 /*********************************************************************************************************
   END

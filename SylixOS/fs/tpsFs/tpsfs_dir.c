@@ -139,6 +139,7 @@ TPS_RESULT  tpsFsEntryRemove (PTPS_TRANS ptrans, PTPS_ENTRY pentry)
     UINT       uiEntryLen   = 0;
     UINT       uiItemCnt    = 0;
     PUCHAR     pucItemBuf   = LW_NULL;
+    PTPS_INODE pinodeDir    = LW_NULL;
 
     if ((ptrans == LW_NULL) || (pentry == LW_NULL)) {
         return  (TPS_ERR_PARAM_NULL);
@@ -156,14 +157,22 @@ TPS_RESULT  tpsFsEntryRemove (PTPS_TRANS ptrans, PTPS_ENTRY pentry)
     }
     lib_bzero(pucItemBuf, TPS_ENTRY_ITEM_SIZE * uiItemCnt);
 
-    if (tpsFsInodeWrite(ptrans, pentry->ENTRY_pinodeDir,
+    pinodeDir = tpsFsOpenInode(pentry->ENTRY_psb, pentry->ENTRY_inumDir);
+    if (LW_NULL == pinodeDir) {
+        TPS_FREE(pucItemBuf);
+        return  (TPS_ERR_INODE_OPEN);
+    }
+
+    if (tpsFsInodeWrite(ptrans, pinodeDir,
                         pentry->ENTRY_offset, pucItemBuf,
                         TPS_ENTRY_ITEM_SIZE * uiItemCnt,
                         LW_TRUE) < (TPS_ENTRY_ITEM_SIZE * uiItemCnt)) {
+        tpsFsCloseInode(pinodeDir);
         TPS_FREE(pucItemBuf);
         return  (TPS_ERR_INODE_WRITE);
     }
-    
+
+    tpsFsCloseInode(pinodeDir);
     TPS_FREE(pucItemBuf);
     return  (TPS_ERR_NONE);
 }
@@ -256,8 +265,9 @@ PTPS_ENTRY  tpsFsFindEntry (PTPS_INODE pinodeDir, CPCHAR pcFileName)
     }
     lib_bzero(pentry, sizeof(TPS_ENTRY) + lib_strlen(pcFileName) + 1);
     
-    pentry->ENTRY_offset = off;
-    pentry->ENTRY_psb    = pinodeDir->IND_psb;
+    pentry->ENTRY_offset    = off;
+    pentry->ENTRY_psb       = pinodeDir->IND_psb;
+    pentry->ENTRY_inumDir   = pinodeDir->IND_inum;
     pucPos = pucItemBuf;
     TPS_LE32_TO_CPU(pucPos, pentry->ENTRY_uiLen);
     TPS_IBLK_TO_CPU(pucPos, pentry->ENTRY_inum);
@@ -271,11 +281,6 @@ PTPS_ENTRY  tpsFsFindEntry (PTPS_INODE pinodeDir, CPCHAR pcFileName)
         return  (LW_NULL);
     }
     
-    pentry->ENTRY_pinodeDir = tpsFsOpenInode(pentry->ENTRY_psb, pinodeDir->IND_inum);
-    if (LW_NULL == pentry->ENTRY_pinodeDir) {
-        TPS_FREE(pentry);
-        return  (LW_NULL);
-    }
 
     return  (pentry);
 }
@@ -362,8 +367,9 @@ PTPS_ENTRY  tpsFsEntryRead (PTPS_INODE pinodeDir, TPS_OFF_T off)
     }
     lib_bzero(pentry, sizeof(TPS_ENTRY) + uiEntryLen);
     
-    pentry->ENTRY_offset = off;
-    pentry->ENTRY_psb    = pinodeDir->IND_psb;
+    pentry->ENTRY_offset    = off;
+    pentry->ENTRY_psb       = pinodeDir->IND_psb;
+    pentry->ENTRY_inumDir   = pinodeDir->IND_inum;
     pucPos = pucItemBuf;
     TPS_LE32_TO_CPU(pucPos, pentry->ENTRY_uiLen);
     TPS_IBLK_TO_CPU(pucPos, pentry->ENTRY_inum);
@@ -373,12 +379,6 @@ PTPS_ENTRY  tpsFsEntryRead (PTPS_INODE pinodeDir, TPS_OFF_T off)
 
     pentry->ENTRY_pinode = tpsFsOpenInode(pentry->ENTRY_psb, pentry->ENTRY_inum);
     if (LW_NULL == pentry->ENTRY_pinode) {
-        TPS_FREE(pentry);
-        return  (LW_NULL);
-    }
-    
-    pentry->ENTRY_pinodeDir = tpsFsOpenInode(pentry->ENTRY_psb, pinodeDir->IND_inum);
-    if (LW_NULL == pentry->ENTRY_pinodeDir) {
         TPS_FREE(pentry);
         return  (LW_NULL);
     }
@@ -397,10 +397,6 @@ TPS_RESULT  tpsFsEntryFree (PTPS_ENTRY pentry)
 {
     if (pentry == LW_NULL) {
         return  (TPS_ERR_PARAM_NULL);
-    }
-
-    if (pentry->ENTRY_pinodeDir) {
-        tpsFsCloseInode(pentry->ENTRY_pinodeDir);
     }
 
     if (pentry->ENTRY_pinode) {

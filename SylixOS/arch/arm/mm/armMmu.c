@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -53,6 +53,7 @@ VOID  archMmuInit (CPCHAR  pcMachineName)
                (lib_strcmp(pcMachineName, ARM_MACHINE_A8)      == 0) ||
                (lib_strcmp(pcMachineName, ARM_MACHINE_A9)      == 0) ||
                (lib_strcmp(pcMachineName, ARM_MACHINE_A15)     == 0) ||
+               (lib_strcmp(pcMachineName, ARM_MACHINE_A17)     == 0) ||
                (lib_strcmp(pcMachineName, ARM_MACHINE_A53)     == 0) ||
                (lib_strcmp(pcMachineName, ARM_MACHINE_A57)     == 0) ||
                (lib_strcmp(pcMachineName, ARM_MACHINE_FT1500A) == 0)) { /* ARMv7/v8 兼容                */

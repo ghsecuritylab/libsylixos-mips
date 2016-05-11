@@ -32,16 +32,52 @@
 2014.01.05  调度器故障跟踪功能不再放在扫描候选表操作中.
 2014.01.10  _SchedSeekThread() 放入 _CandTable.c 中.
 2015.05.17  _SchedGetCand() 会尝试一个发给自己的 IPI 执行被延迟的 IPI CALL.
+2016.04.27  加入 _SchedIsLock() 判断调度器是否已经 lock.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
+** 函数名称: _SchedIsLock
+** 功能描述: 当前 CPU 调度器是否已经锁定
+** 输　入  : ulCurMaxLock      当前 CPU 允许的最多任务锁定层数.
+** 输　出  : 是否已经锁定
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+BOOL  _SchedIsLock (ULONG  ulCurMaxLock)
+{
+    INTREG          iregInterLevel;
+    PLW_CLASS_CPU   pcpuCur;
+    BOOL            bRet;
+    
+    iregInterLevel = KN_INT_DISABLE();
+    
+#if LW_CFG_SMP_EN > 0
+    if (__KERNEL_ISLOCKBYME(LW_TRUE)) {
+        bRet = LW_TRUE;
+    } else 
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+    {
+        pcpuCur = LW_CPU_GET_CUR();
+        if (__COULD_SCHED(pcpuCur, ulCurMaxLock)) {
+            bRet = LW_FALSE;
+        
+        } else {
+            bRet = LW_TRUE;
+        }
+    }
+    
+    KN_INT_ENABLE(iregInterLevel);
+    
+    return  (bRet);
+}
+/*********************************************************************************************************
 ** 函数名称: _SchedGetCand
-** 功能描述: 获的需要运行的线程表 (被调用时已经锁定了调度器 spinlock)
+** 功能描述: 获的需要运行的线程表 (被调用时已经锁定了内核 spinlock)
 ** 输　入  : ptcbRunner        需要运行的 TCB 列表 (大小等于 CPU 数量)
 **           ulCPUIdCur        当前 CPU ID
 **           ulCurMaxLock      当前 CPU 允许的最多任务锁定层数.
-** 输　出  : 
+** 输　出  : 候选表 TCB
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/

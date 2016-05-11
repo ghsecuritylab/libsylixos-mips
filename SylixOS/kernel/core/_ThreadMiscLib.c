@@ -86,17 +86,11 @@ ULONG  _ThreadUserGet (LW_HANDLE  ulId, uid_t  *puid, gid_t  *pgid)
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
-** 注  意  : ptcbDel != current tcb
-             这里等待任务自旋锁是为了确保将要被删除的任务没有在操作自己的协程.
 *********************************************************************************************************/
 VOID  _ThreadDeleteWaitDeath (PLW_CLASS_TCB  ptcbDel)
 {
     __KERNEL_ENTER();
-    
-    LW_SPIN_LOCK(&ptcbDel->TCB_slLock);
     _ThreadStatusChange(ptcbDel, LW_TCB_REQ_WDEATH);
-    LW_SPIN_UNLOCK(&ptcbDel->TCB_slLock);
-    
     __KERNEL_EXIT();                                                    /*  等待对方状态转换完毕        */
 }
 /*********************************************************************************************************
@@ -112,6 +106,68 @@ INT  _ThreadSched (PLW_CLASS_TCB  ptcbCur)
     LW_KERNEL_JOB_EXEC();                                               /*  尝试执行异步工作队列        */
     
     return  (__KERNEL_SCHED());                                         /*  尝试一次调度                */
+}
+/*********************************************************************************************************
+** 函数名称: _ThreadLock
+** 功能描述: 线程锁定当前 CPU 调度
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _ThreadLock (VOID)
+{
+    PLW_CLASS_TCB   ptcbCur;
+    
+    if (!LW_SYS_STATUS_IS_RUNNING()) {                                  /*  系统必须已经启动            */
+        return;
+    }
+    
+    LW_TCB_GET_CUR_SAFE(ptcbCur);
+    
+    if (__THREAD_LOCK_GET(ptcbCur) != __ARCH_ULONG_MAX) {
+        __THREAD_LOCK_INC(ptcbCur);
+    }
+    KN_SMP_MB();
+}
+/*********************************************************************************************************
+** 函数名称: _ThreadUnlock
+** 功能描述: 线程解锁当前 CPU 调度
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _ThreadUnlock (VOID)
+{
+    INTREG          iregInterLevel;
+    PLW_CLASS_CPU   pcpuCur;
+    PLW_CLASS_TCB   ptcbCur;
+    BOOL            bTrySched = LW_FALSE;
+   
+    if (!LW_SYS_STATUS_IS_RUNNING()) {                                  /*  系统必须已经启动            */
+        return;
+    }
+    
+    LW_TCB_GET_CUR_SAFE(ptcbCur);
+    
+    KN_SMP_MB();
+    if (__THREAD_LOCK_GET(ptcbCur)) {
+        __THREAD_LOCK_DEC(ptcbCur);                                     /*  解锁任务                    */
+    }
+    
+    iregInterLevel = KN_INT_DISABLE();                                  /*  关中断, 禁止 CPU 调度       */
+    
+    pcpuCur = LW_CPU_GET_CUR();
+    if (__COULD_SCHED(pcpuCur, 0)) {
+        bTrySched = LW_TRUE;                                            /*  需要尝试调度                */
+    }
+    
+    KN_INT_ENABLE(iregInterLevel);
+
+    if (bTrySched) {
+        _ThreadSched(ptcbCur);                                          /*  尝试调度                    */
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: _ThreadStop
@@ -218,7 +274,7 @@ ULONG  _ThreadMakeMain (LW_HANDLE  ulId, PVOID   pvVProc)
     pvproc->VP_ulMainThread     = ulId;
     
 #if LW_CFG_VMM_EN > 0
-    if (ptcb->TCB_iStkLocation == LW_TCB_STK_MAIN) {
+    if (ptcb->TCB_iStkLocation == LW_TCB_STK_VMM) {
         pvproc->VP_pvMainStack = (PVOID)ptcb->TCB_pstkStackLowAddr;
     }
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */

@@ -1,4 +1,4 @@
-/**********************************************************************************************************
+/*********************************************************************************************************
 **
 **                                    中国软件开源组织
 **
@@ -20,6 +20,7 @@
 **
 ** BUG:
 2015.08.21  修正 Invalidate 操作结束地址计算错误.
+2016.04.29  加入 data update 功能.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "SylixOS.h"
@@ -353,6 +354,42 @@ static INT	armCacheV6TextUpdate (PVOID  pvAdrs, size_t  stBytes)
     return  (ERROR_NONE);
 }
 /*********************************************************************************************************
+** 函数名称: armCacheV6DataUpdate
+** 功能描述: 回写 D CACHE (仅回写 CPU 独享级 CACHE)
+** 输　入  : pvAdrs                        虚拟地址
+**           stBytes                       长度
+**           bInv                          是否为回写无效
+** 输　出  : ERROR or OK
+** 全局变量: 
+** 调用模块: 
+** 注  意  : L2 cache 为统一 CACHE 所以 data update 不需要操作 L2 cache.
+*********************************************************************************************************/
+static INT	armCacheV6DataUpdate (PVOID  pvAdrs, size_t  stBytes, BOOL  bInv)
+{
+    addr_t  ulEnd;
+    
+    if (bInv == LW_FALSE) {
+        if (stBytes >= ARMv6_CACHE_LOOP_OP_MAX_SIZE) {
+            armDCacheV6FlushAll();                                      /*  全部回写                    */
+        
+        } else {
+            ARM_CACHE_GET_END(pvAdrs, stBytes, ulEnd, ARMv6_CACHE_LINE_SIZE);
+            armDCacheFlush(pvAdrs, (PVOID)ulEnd, ARMv6_CACHE_LINE_SIZE);/*  部分回写                    */
+        }
+    
+    } else {
+        if (stBytes >= ARMv6_CACHE_LOOP_OP_MAX_SIZE) {
+            armDCacheV6ClearAll();                                      /*  全部回写                    */
+        
+        } else {
+            ARM_CACHE_GET_END(pvAdrs, stBytes, ulEnd, ARMv6_CACHE_LINE_SIZE);
+            armDCacheClear(pvAdrs, (PVOID)ulEnd, ARMv6_CACHE_LINE_SIZE);/*  部分回写                    */
+        }
+    }
+    
+    return  (ERROR_NONE);
+}
+/*********************************************************************************************************
 ** 函数名称: archCacheV6Init
 ** 功能描述: 初始化 CACHE 
 ** 输　入  : pcacheop       CACHE 操作函数集
@@ -374,10 +411,14 @@ VOID  armCacheV6Init (LW_CACHE_OP *pcacheop,
     pcacheop->CACHEOP_ulOption = 0ul;
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 
-    pcacheop->CACHEOP_iILoc         = CACHE_LOCATION_VIPT;
-    pcacheop->CACHEOP_iDLoc         = CACHE_LOCATION_VIPT;
-    pcacheop->CACHEOP_iCacheLine    = ARMv6_CACHE_LINE_SIZE;
-    pcacheop->CACHEOP_iCacheWaySize = (4 * LW_CFG_KB_SIZE);
+    pcacheop->CACHEOP_iILoc = CACHE_LOCATION_VIPT;
+    pcacheop->CACHEOP_iDLoc = CACHE_LOCATION_VIPT;
+    
+    pcacheop->CACHEOP_iICacheLine = ARMv6_CACHE_LINE_SIZE;
+    pcacheop->CACHEOP_iDCacheLine = ARMv6_CACHE_LINE_SIZE;
+    
+    pcacheop->CACHEOP_iICacheWaySize = (4 * LW_CFG_KB_SIZE);
+    pcacheop->CACHEOP_iDCacheWaySize = (4 * LW_CFG_KB_SIZE);
     
     pcacheop->CACHEOP_pfuncEnable  = armCacheV6Enable;
     pcacheop->CACHEOP_pfuncDisable = armCacheV6Disable;
@@ -392,6 +433,7 @@ VOID  armCacheV6Init (LW_CACHE_OP *pcacheop,
     pcacheop->CACHEOP_pfuncClear          = armCacheV6Clear;
     pcacheop->CACHEOP_pfuncClearPage      = armCacheV6ClearPage;
     pcacheop->CACHEOP_pfuncTextUpdate     = armCacheV6TextUpdate;
+    pcacheop->CACHEOP_pfuncDataUpdate     = armCacheV6DataUpdate;
     
 #if LW_CFG_VMM_EN > 0
     pcacheop->CACHEOP_pfuncDmaMalloc      = API_VmmDmaAlloc;
@@ -415,7 +457,7 @@ VOID  armCacheV6Reset (CPCHAR  pcMachineName)
     armBranchPredictorInvalidate();
 }
 
-#endif                                                                  /*  LW_CFG_VMM_EN > 0           */
+#endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 /*********************************************************************************************************
   END
 *********************************************************************************************************/

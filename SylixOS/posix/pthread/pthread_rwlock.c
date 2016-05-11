@@ -26,6 +26,7 @@
 2013.05.01  If successful, the pthread_rwlockattr_*() and pthread_rwlock_*() functions shall return zero;
             otherwise, an error number shall be returned to indicate the error.
 2016.04.13  加入 GJB7714 相关 API 支持.
+2016.05.09  隐形初始化确保多线程安全.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../include/px_pthread.h"                                      /*  已包含操作系统头文件        */
@@ -46,6 +47,25 @@
 #define __PX_RWLOCK_STATUS_READING      0x0000
 #define __PX_RWLOCK_STATUS_WRITING      0x0001
 /*********************************************************************************************************
+  初始化锁
+*********************************************************************************************************/
+static LW_OBJECT_HANDLE                 _G_ulPRWLockInitLock;
+/*********************************************************************************************************
+** 函数名称: _posixPRWLockInit
+** 功能描述: 初始化 读写锁 环境.
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _posixPRWLockInit (VOID)
+{
+    _G_ulPRWLockInitLock = API_SemaphoreMCreate("prwinit", LW_PRIO_DEF_CEILING, 
+                                                LW_OPTION_INHERIT_PRIORITY | 
+                                                LW_OPTION_WAIT_PRIORITY | 
+                                                LW_OPTION_DELETE_SAFE, LW_NULL);
+}
+/*********************************************************************************************************
 ** 函数名称: __pthread_rwlock_init_invisible
 ** 功能描述: 读写锁隐形创建. (静态初始化)
 ** 输　入  : prwlock        句柄
@@ -55,12 +75,14 @@
 *********************************************************************************************************/
 static void  __pthread_rwlock_init_invisible (pthread_rwlock_t  *prwlock)
 {
-    if (prwlock && 
-        !prwlock->PRWLOCK_ulMutex &&
-        !prwlock->PRWLOCK_ulRSemaphore &&
-        !prwlock->PRWLOCK_ulWSemaphore &&
-        !prwlock->PRWLOCK_ulOwner) {
-        pthread_rwlock_init(prwlock, LW_NULL);
+    if (prwlock) {
+        if (prwlock->PRWLOCK_ulMutex == LW_OBJECT_HANDLE_INVALID) {
+            API_SemaphoreMPend(_G_ulPRWLockInitLock, LW_OPTION_WAIT_INFINITE);
+            if (prwlock->PRWLOCK_ulMutex == LW_OBJECT_HANDLE_INVALID) {
+                pthread_rwlock_init(prwlock, LW_NULL);
+            }
+            API_SemaphoreMPost(_G_ulPRWLockInitLock);
+        }
     }
 }
 /*********************************************************************************************************

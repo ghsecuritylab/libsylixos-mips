@@ -26,9 +26,9 @@
   ARM зда§Ыј
 *********************************************************************************************************/
 
-volatile SPINLOCKTYPE    armSpinLock(volatile SPINLOCKTYPE  *psl);
+VOID                     armSpinLock(volatile SPINLOCKTYPE  *psl);
 volatile SPINLOCKTYPE    armSpinTryLock(volatile SPINLOCKTYPE  *psl);
-volatile SPINLOCKTYPE    armSpinUnlock(volatile SPINLOCKTYPE  *psl);
+VOID                     armSpinUnlock(volatile SPINLOCKTYPE  *psl);
 
 #endif                                                                  /*  __ARMMPCORE_H               */
 /*********************************************************************************************************

@@ -1,4 +1,4 @@
-;/**********************************************************************************************************
+;/*********************************************************************************************************
 ;**
 ;**                                    中国软件开源组织
 ;**
@@ -61,14 +61,14 @@ FUNC_DEF(armCacheRetireRR)
     MCR     p15, 0, R0, c1, c0, 0
     BX      LR
     FUNC_END()
-	
+
 FUNC_DEF(armCacheRetireDefault)
     MRC     p15, 0, R0, c1, c0, 0
     BIC     R0, R0, #P15_R1_RR
     MCR     p15, 0, R0, c1, c0, 0
     BX      LR
     FUNC_END()
-	
+
 ;/*********************************************************************************************************
 ;  使能 CACHE
 ;*********************************************************************************************************/
@@ -79,14 +79,14 @@ FUNC_DEF(armICacheEnable)
     MCR     p15, 0, R0, c1, c0, 0
     BX      LR
     FUNC_END()
-	
+
 FUNC_DEF(armDCacheEnable)
     MRC     p15, 0, R0, c1, c0, 0
     ORR     R0, R0, #P15_R1_C
     MCR     p15, 0, R0, c1, c0, 0
     BX      LR
     FUNC_END()
-	
+
 ;/*********************************************************************************************************
 ;  禁能 ICACHE
 ;*********************************************************************************************************/
@@ -100,11 +100,11 @@ FUNC_DEF(armICacheDisable)
     MRC     p15, 0, R0, c1, c0, 0
     BIC     R0, R0, #P15_R1_I
     MCR     p15, 0, R0, c1, c0, 0
-	
+
 LINE_LABEL(icache_not_en)
     BX      LR
     FUNC_END()
-	
+
 ;/*********************************************************************************************************
 ;  无效整个 ICACHE
 ;*********************************************************************************************************/
@@ -113,13 +113,23 @@ FUNC_DEF(armICacheInvalidateAll)
     ARM_DSB()
     ARM_ISB()
     MOV     R0, #0
-    MCR     p15, 0, R0, c7, c5, 0
+#if LW_CFG_SMP_EN > 0
+    SMP_UP_CHECK(R1)
+    MCRHI   p15, 0, R0, c7, c1, 0                                       ;/* ICIALLUIS SMP                */
+    MCRLS   p15, 0, R0, c7, c5, 0                                       ;/* ICIALLU UP                   */
 #if __SYLIXOS_ARM_ARCH__ >= 6
-    MCR     p15, 0, R0, c7, c5, 6
+    MCRHI   p15, 0, R0, c7, c1, 6                                       ;/* BPIALLIS SMP                 */
+    MCRLS   p15, 0, R0, c7, c5, 6                                       ;/* BPIALL UP                    */
 #endif
-    NOP                                                                 ;/* flush the prefetch unit 3*NOP*/
-    NOP
-    NOP
+#else
+    MCR     p15, 0, R0, c7, c5, 0                                       ;/* ICIALLU UP                   */
+#if __SYLIXOS_ARM_ARCH__ >= 6
+    MCR     p15, 0, R0, c7, c5, 6                                       ;/* BPIALL UP                    */
+#endif
+#endif
+    ARM_NOP(R0)                                                         ;/* 3 * NOP                      */
+    ARM_NOP(R0)
+    ARM_NOP(R0)
     ARM_DSB()
     ARM_ISB()
     BX      LR
@@ -137,13 +147,20 @@ FUNC_DEF(armICacheInvalidate)
     ADD     R0, R0, R2
     CMP     R0, R1
     BCC     1b
+
 #if __SYLIXOS_ARM_ARCH__ >= 6
     MOV     R0, #0
-    MCR     p15, 0, R0, c7, c5, 6
+#if LW_CFG_SMP_EN > 0
+    SMP_UP_CHECK(R1)
+    MCRHI   p15, 0, R0, c7, c1, 6                                       ;/* BPIALLIS SMP                 */
+    MCRLS   p15, 0, R0, c7, c5, 6                                       ;/* BPIALL UP                    */
+#else
+    MCR     p15, 0, R0, c7, c5, 6                                       ;/* BPIALL UP                    */
 #endif
-    NOP                                                                 ;/* flush the prefetch unit 3*NOP*/
-    NOP
-    NOP
+#endif
+    ARM_NOP(R0)                                                         ;/* 3 * NOP                      */
+    ARM_NOP(R0)
+    ARM_NOP(R0)
     ARM_DSB()
     ARM_ISB()
     BX      LR

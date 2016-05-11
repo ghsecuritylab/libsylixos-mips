@@ -1211,15 +1211,17 @@ INT API_MiiPhyInit (PHY_DEV *pPhyDev)
         pPhyDev->PHY_pPhyDrvFunc->PHYF_pfuncWrite == LW_NULL ||
         pPhyDev->PHY_pvMacDrv == LW_NULL) {
         _ErrorHandle(EINVAL);
-        iRet = MII_ERROR;
+        return  (MII_ERROR);
+        
     }
 
     if (API_MiiLibInit() == MII_ERROR) {
-        iRet = MII_ERROR;
+        return  (MII_ERROR);
     }
 
     if (API_MiiPhyScan(pPhyDev) == MII_ERROR) {
-        iRet = MII_ERROR;
+        _DebugHandle(__ERRORMESSAGE_LEVEL, "can not find phy device.\r\n");
+        return  (MII_ERROR);
     }
 
     /*
@@ -1227,11 +1229,12 @@ INT API_MiiPhyInit (PHY_DEV *pPhyDev)
      */
     if (API_MiiPhyAdd(pPhyDev) == MII_ERROR) {
         _DebugHandle(__ERRORMESSAGE_LEVEL, "can not add phy into mii bus list.\r\n");
-        iRet = MII_ERROR;
+        return  (MII_ERROR);
     }
 
     if (API_MiiPhyLinkSet(pPhyDev) == MII_OK) {
         _DebugHandle(__LOGMESSAGE_LEVEL, "mii: found phy.\r\n");
+    
     } else {
         _DebugHandle(__LOGMESSAGE_LEVEL, "mii: found phy, but Link-Down.\r\n");
     }
@@ -1241,6 +1244,7 @@ INT API_MiiPhyInit (PHY_DEV *pPhyDev)
     if (MII_READ(pPhyDev->PHY_ucPhyAddr, MII_STAT_REG, &pPhyDev->PHY_usPhyStatus) != MII_OK) {
         return  (MII_ERROR);
     }
+    
 	if ((pPhyDev->PHY_usPhyStatus & MII_SR_LINK_STATUS) !=
 		(usPhyStatus & MII_SR_LINK_STATUS)) {							/* Check Whether Status Changes */
 		MII_DEBUG_ADDR("mii: link change stat=0x%02x.\r\n",

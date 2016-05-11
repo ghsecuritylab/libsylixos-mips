@@ -342,6 +342,7 @@ static ssize_t  __procFsBspDmaRead (PLW_PROCFS_NODE  p_pfsn,
                                     size_t           stMaxBytes,
                                     off_t            oft)
 {
+#if LW_CFG_DMA_EN > 0
     const CHAR      cDmaInfoHdr[] = 
     "DMA   MAX DATA   MAX NODE CUR NODE\n"
     "--- ------------ -------- --------\n";
@@ -390,6 +391,9 @@ static ssize_t  __procFsBspDmaRead (PLW_PROCFS_NODE  p_pfsn,
     lib_memcpy(pcBuffer, (CPVOID)(pcFileBuffer + oft), (UINT)stCopeBytes);
     
     return  ((ssize_t)stCopeBytes);
+#else
+    return  (0);
+#endif                                                                  /*  LW_CFG_DMA_EN > 0           */
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: __procFsBspInfoInit

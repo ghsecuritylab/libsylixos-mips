@@ -57,12 +57,6 @@
 #define printk
 #endif                                                                  /*  printk                      */
 /*********************************************************************************************************
-  操作锁
-*********************************************************************************************************/
-extern  LW_OBJECT_HANDLE    _G_ulVmmLock;
-#define __VMM_LOCK()        API_SemaphoreMPend(_G_ulVmmLock, LW_OPTION_WAIT_INFINITE)
-#define __VMM_UNLOCK()      API_SemaphoreMPost(_G_ulVmmLock)
-/*********************************************************************************************************
 ** 函数名称: __vmmPCountInAreaHook
 ** 功能描述: API_VmmCounterArea 回调函数
 ** 输　入  : pvmpagePhysical   pvmpageVirtual 内的一个物理页面控制块
@@ -257,8 +251,9 @@ PVOID  API_VmmMallocAlign (size_t  stSize, size_t  stAlign, ULONG  ulFlag)
     }
     
 #if LW_CFG_CACHE_EN > 0
-    if (API_CacheAliasProb() && (stAlign < API_CacheWaySize())) {       /*  有限修正 cache alias        */
-        stAlign = API_CacheWaySize();
+    if (API_CacheAliasProb() && 
+        (stAlign < API_CacheWaySize(DATA_CACHE))) {                     /*  有限修正 cache alias        */
+        stAlign = API_CacheWaySize(DATA_CACHE);
     }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
     
@@ -425,8 +420,9 @@ PVOID  API_VmmMallocAreaAlign (size_t  stSize, size_t  stAlign,
     }
     
 #if LW_CFG_CACHE_EN > 0
-    if (API_CacheAliasProb() && (stAlign < API_CacheWaySize())) {       /*  有限修正 cache alias        */
-        stAlign = API_CacheWaySize();
+    if (API_CacheAliasProb() && 
+        (stAlign < API_CacheWaySize(DATA_CACHE))) {                     /*  有限修正 cache alias        */
+        stAlign = API_CacheWaySize(DATA_CACHE);
     }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
 
@@ -1060,7 +1056,7 @@ ULONG  API_VmmPreallocArea (PVOID       pvVirtualMem,
     for (i = 0; i < ulPageNum; i++) {
         if (__vmmLibGetFlag(ulAddrPage, &ulOldFlag) == ERROR_NONE) {
             if (ulOldFlag != ulFlag) {
-                __vmmLibSetFlag(ulAddrPage, ulFlag);                    /*  存在物理页面仅设置flag即可  */
+                __vmmLibSetFlag(ulAddrPage, 1, ulFlag);                 /*  存在物理页面仅设置flag即可  */
             }
         
         } else {
@@ -1253,7 +1249,7 @@ ULONG  API_VmmShareArea (PVOID      pvVirtualMem1,
             }
             pvmpagePhysical2->PAGE_ulFlags = ulFlag;
             
-            __vmmLibSetFlag(ulAddr2, ulFlag);                           /*  设置最终模式模式            */
+            __vmmLibSetFlag(ulAddr2, 1, ulFlag);                        /*  设置最终模式模式            */
         }
         
         pvmpagePhysical2->PAGE_ulMapPageAddr = ulAddr2;                 /*  保存对应的映射虚拟地址      */

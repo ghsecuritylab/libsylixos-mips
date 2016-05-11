@@ -142,44 +142,58 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     REGISTER UINT    uiBpType;
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
     PLW_CLASS_TCB    ptcbCur;
-    ULONG            ulAbortType;
+    LW_VMM_ABORT     abtInfo;
 
     LW_TCB_GET_CUR(ptcbCur);
 
     switch (uiExcCode) {
+
     case EX_INT:                                                        /*  Interrupt                   */
         bspIntHandle();
         break;
 
 #if LW_CFG_VMM_EN > 0
     case EX_MOD:                                                        /*  TLB modified                */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_WRITE, ptcbCur);
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_PERM;
+        abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_WRITE;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_TLBL:                                                       /*  TLB exc(load or ifetch)     */
     case EX_TLBS:                                                       /*  TLB exception (store)       */
-        ulAbortType = mipsMmuTlbLoadStoreExcHandle(ulAbortAddr);
-        if (ulAbortType) {
-            API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+        abtInfo.VMABT_uiMethod = (uiExcCode == EX_TLBL)
+                               ? LW_VMM_ABORT_METHOD_READ
+                               : LW_VMM_ABORT_METHOD_WRITE;
+        abtInfo.VMABT_uiType   = mipsMmuTlbLoadStoreExcHandle(ulAbortAddr);
+        if (abtInfo.VMABT_uiType) {
+            API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         }
         break;
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
 
     case EX_ADEL:                                                       /*  Address err(load or ifetch) */
     case EX_ADES:                                                       /*  Address error (store)       */
-        ulAbortType = mipsUnalignedHandle((ARCH_REG_CTX *)ptcbCur->TCB_pstkStackNow, ulAbortAddr);
-        if (ulAbortType) {
-            API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+        abtInfo.VMABT_uiMethod = (uiExcCode == EX_ADEL)
+                               ? LW_VMM_ABORT_METHOD_READ
+                               : LW_VMM_ABORT_METHOD_WRITE;
+        abtInfo.VMABT_uiType   = mipsUnalignedHandle((ARCH_REG_CTX *)ptcbCur->TCB_pstkStackNow,
+                                                     ulAbortAddr);
+        if (abtInfo.VMABT_uiType) {
+            API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         }
         break;
 
     case EX_IBE:                                                        /*  Instruction Bus Error       */
     case EX_DBE:                                                        /*  Data Bus Error              */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BUS, ptcbCur);
+        abtInfo.VMABT_uiMethod = 0;
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_BUS;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_SYS:                                                        /*  Syscall                     */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_SYS, ptcbCur);
+        abtInfo.VMABT_uiMethod = 0;
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_SYS;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_BP:                                                         /*  Breakpoint                  */
@@ -192,15 +206,20 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
             }
         }
 #endif                                                                  /*  LW_CFG_GDB_EN > 0           */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_BREAK, ptcbCur);
+        abtInfo.VMABT_uiMethod = 0;
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_BREAK;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_RI:                                                         /*  Reserved instruction        */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
+        abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_EXEC;
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_UNDEF;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_FPE:                                                        /*  floating point exception    */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_FPE, ptcbCur);
+        abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_FPE;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_CPU:                                                        /*  CoProcessor Unusable        */
@@ -209,7 +228,8 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
             break;
         }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+        abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     case EX_OV:                                                         /*  OVerflow                    */
@@ -219,7 +239,8 @@ VOID  archExceptionHandle (addr_t  ulRetAddr)
     case EX_MCHECK:                                                     /*  Machine check exception     */
     case EX_CacheErr:                                                   /*  Cache error caused re-entry */
                                                                         /*  to Debug Mode               */
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+        abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
         break;
 
     default:

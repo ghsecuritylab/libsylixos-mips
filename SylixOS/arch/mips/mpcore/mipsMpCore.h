@@ -26,9 +26,9 @@
   MIPS зда§Ыј
 *********************************************************************************************************/
 
-volatile SPINLOCKTYPE    mipsSpinLock(volatile SPINLOCKTYPE  *psl);
+VOID                     mipsSpinLock(volatile SPINLOCKTYPE  *psl);
 volatile SPINLOCKTYPE    mipsSpinTryLock(volatile SPINLOCKTYPE  *psl);
-volatile SPINLOCKTYPE    mipsSpinUnlock(volatile SPINLOCKTYPE  *psl);
+VOID                     mipsSpinUnlock(volatile SPINLOCKTYPE  *psl);
 
 #endif                                                                  /*  __MIPSMPCORE_H              */
 /*********************************************************************************************************

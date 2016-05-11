@@ -159,7 +159,13 @@ ULONG  API_KernelStartParam (CPCHAR  pcParam)
             pvirdesc->stSize = (size_t)lib_strtoul(&pcTok[6], LW_NULL, 16);
         }
 #endif                                                                  /*  LW_CFG_VMM_EN > 0           */
-        
+          
+#ifdef __ARCH_KERNEL_PARAM
+          else {
+            __ARCH_KERNEL_PARAM(pcTok);                                 /*  体系结构相关参数            */
+        }
+#endif                                                                  /*  __ARCH_KERNEL_PARAM         */
+          
         pcTok = lib_strtok_r(LW_NULL, pcDelim, &pcLast);
     }
     

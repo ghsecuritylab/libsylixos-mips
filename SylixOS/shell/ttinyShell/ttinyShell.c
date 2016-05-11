@@ -191,14 +191,19 @@ VOID  API_TShellInit (VOID)
     if (_G_bIsInstallSysCmd == LW_FALSE) {
         _G_bIsInstallSysCmd =  LW_TRUE;
         __tshellSysVarInit();                                           /*  初始化系统环境变量          */
-        __tshellUserCmdInit();                                          /*  初始化用户管理命令          */
         __tshellSysCmdInit();                                           /*  初始化系统命令              */
+        __tshellFsCmdInit();                                            /*  初始化文件系统命令          */
+        __tshellModemCmdInit();                                         /*  初始化 modem 命令           */
+        
+#if LW_CFG_SHELL_USER_EN > 0
+        __tshellUserCmdInit();                                          /*  初始化用户管理命令          */
+#endif                                                                  /*  LW_CFG_SHELL_USER_EN        */
 #if LW_CFG_SHELL_HEAP_TRACE_EN > 0
         __tshellHeapCmdInit();                                          /*  初始化内存堆命令            */
 #endif                                                                  /*  LW_CFG_SHELL_HEAP_TRACE_EN  */
-        __tshellFsCmdInit();                                            /*  初始化文件系统命令          */
-        __tshellModemCmdInit();                                         /*  初始化 modem 命令           */
+#if LW_CFG_SHELL_TAR_EN > 0
         __tshellTarCmdInit();                                           /*  初始化 tar 命令             */
+#endif                                                                  /*  LW_CFG_SHELL_TAR_EN         */
     }
 }
 /*********************************************************************************************************

@@ -27,6 +27,7 @@
 2012.12.07  加入资源管理器.
 2012.12.13  由于 SylixOS 支持进程资源回收, 这里开始支持静态初始化.
 2013.04.01  加入创建 mode 的保存, 为未来权限操作提供基础.
+2016.05.08  隐形初始化确保多线程安全.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDARG
 #define  __SYLIXOS_KERNEL
@@ -58,6 +59,25 @@ typedef struct {
     __PX_NAME_NODE          PSEM_pxnode;                                /*  名字节点                    */
 } __PX_SEM;
 /*********************************************************************************************************
+  初始化锁
+*********************************************************************************************************/
+static LW_OBJECT_HANDLE     _G_ulPSemInitLock;
+/*********************************************************************************************************
+** 函数名称: _posixPSemInit
+** 功能描述: 初始化 SEM 环境.
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _posixPSemInit (VOID)
+{
+    _G_ulPSemInitLock = API_SemaphoreMCreate("pseminit", LW_PRIO_DEF_CEILING, 
+                                             LW_OPTION_INHERIT_PRIORITY | 
+                                             LW_OPTION_WAIT_PRIORITY | 
+                                             LW_OPTION_DELETE_SAFE, LW_NULL);
+}
+/*********************************************************************************************************
 ** 函数名称: __sem_init_invisible
 ** 功能描述: posix 信号量隐形创建. (静态初始化)
 ** 输　入  : psem          信号量句柄 (返回)
@@ -67,8 +87,14 @@ typedef struct {
 *********************************************************************************************************/
 static void  __sem_init_invisible (sem_t  *psem)
 {
-    if (psem && (psem->SEM_pvPxSem == LW_NULL)) {
-        sem_init(psem, 0, 0);
+    if (psem) {
+        if (psem->SEM_pvPxSem == LW_NULL) {
+            API_SemaphoreMPend(_G_ulPSemInitLock, LW_OPTION_WAIT_INFINITE);
+            if (psem->SEM_pvPxSem == LW_NULL) {
+                sem_init(psem, 0, 0);
+            }
+            API_SemaphoreMPost(_G_ulPSemInitLock);
+        }
     }
 }
 /*********************************************************************************************************

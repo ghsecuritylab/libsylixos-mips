@@ -844,19 +844,50 @@ INT  API_PciDevDrvUpdate (PCI_DEV_HANDLE  hDevHandle, PCI_DRV_HANDLE  hDrvHandle
         return  (PX_ERROR);
     }
 
-    if ((hDevHandle->PDT_pvDevDriver != LW_NULL) &&
-        (hDevHandle->PDT_pvDevDriver != hDrvHandle)) {
-        return  (PX_ERROR);
-    }
-
     if ((hDevHandle->PDT_pvDevDriver == LW_NULL) ||
-        (hDevHandle->PDT_pvDevDriver == hDrvHandle)) {
+        (hDevHandle->PDT_pvDevDriver != hDrvHandle)) {
         __PCI_DEV_LOCK();
         hDevHandle->PDT_pvDevDriver = (PVOID)hDrvHandle;
         __PCI_DEV_UNLOCK();
     }
 
     return  (ERROR_NONE);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciDrvBindEachDev
+** 功能描述: 将一个PCI驱动尝试与总线上的每个设备(未加载驱动)进行绑定
+** 输　入  : hDrvHandle     驱动句柄
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+                                           API 函数
+*********************************************************************************************************/
+LW_API
+VOID  API_PciDrvBindEachDev (PCI_DRV_HANDLE hDrvHandle)
+{
+    PCI_DEV_HANDLE        hDevCurr;
+    PLW_LIST_LINE         plineTemp;
+    PCI_DEVICE_ID_HANDLE  hId;
+
+    __PCI_DEV_LOCK();
+    for (plineTemp  = _GplinePciDevHeader;
+         plineTemp != LW_NULL;
+         plineTemp  = _list_line_get_next(plineTemp)) {
+
+        hDevCurr = _LIST_ENTRY(plineTemp, PCI_DEV_TCB, PDT_lineDevNode);
+
+        if (hDevCurr->PDT_pvDevDriver) {                                /*  已经绑定了驱动              */
+            continue;
+        }
+
+        hId = API_PciDevMatchDrv(hDevCurr, hDrvHandle);
+        if (!hId) {
+            continue;                                                   /*  ID 不匹配                   */
+        }
+
+        API_PciDrvLoad(hDrvHandle, hDevCurr, hId);                      /*  绑定设备驱动                */
+    }
+    __PCI_DEV_UNLOCK();
 }
 /*********************************************************************************************************
 ** 函数名称: __pciDevListCreate
@@ -908,11 +939,13 @@ INT  API_PciDevInit (VOID)
     _GuiPciDevTotalNum  = 0;
     _GulPciDevLock      = LW_OBJECT_HANDLE_INVALID;
     _GplinePciDevHeader = LW_NULL;
-
-    _GulPciDevLock = API_SemaphoreMCreate("pci_dev_lock", LW_PRIO_DEF_CEILING,
-                                          LW_OPTION_INHERIT_PRIORITY |
-                                          LW_OPTION_DELETE_SAFE |
-                                          LW_OPTION_OBJECT_GLOBAL, LW_NULL);
+    _GulPciDevLock = API_SemaphoreMCreate("pci_dev_lock",
+                                          LW_PRIO_DEF_CEILING,
+                                          (LW_OPTION_WAIT_FIFO |
+                                           LW_OPTION_DELETE_SAFE |
+                                           LW_OPTION_INHERIT_PRIORITY |
+                                           LW_OPTION_OBJECT_GLOBAL),
+                                           LW_NULL);
     if (_GulPciDevLock == LW_OBJECT_HANDLE_INVALID) {
         return  (PX_ERROR);
     }

@@ -80,6 +80,7 @@ static UCHAR                _G_ucWIM4Cache;
   外部接口声明
 *********************************************************************************************************/
 extern VOID  ppcMmuInvalidateTLBNr(UINT  uiTlbNr);
+extern VOID  ppcMmuInvalidateTLBEA(UINT32  uiEffectiveAddr);
 extern VOID  ppcMmuEnable(VOID);
 extern VOID  ppcMmuDisable(VOID);
 /*********************************************************************************************************
@@ -687,6 +688,30 @@ static VOID  ppcMmuMakeCurCtx (PLW_MMU_CONTEXT  pmmuctx)
     _G_pMmuContext = pmmuctx;
 }
 /*********************************************************************************************************
+** 函数名称: ppcMmuInvTLB
+** 功能描述: 无效当前 CPU TLB
+** 输　入  : pmmuctx        mmu 上下文
+**           ulPageAddr     页面虚拟地址
+**           ulPageNum      页面个数
+** 输　出  : NONE
+** 全局变量:
+** 调用模块:
+*********************************************************************************************************/
+static VOID  ppcMmuInvTLB (PLW_MMU_CONTEXT  pmmuctx, addr_t  ulPageAddr, ULONG  ulPageNum)
+{
+    ULONG   i;
+
+    if (ulPageNum > (_G_uiTlbNr >> 1)) {
+        ppcMmuInvalidateTLB();                                          /*  全部清除 TLB                */
+
+    } else {
+        for (i = 0; i < ulPageNum; i++) {
+            ppcMmuInvalidateTLBEA((UINT32)ulPageAddr);                  /*  逐个页面清除 TLB            */
+            ulPageAddr += LW_CFG_VMM_PAGE_SIZE;
+        }
+    }
+}
+/*********************************************************************************************************
 ** 函数名称: ppcMmuPteMissHandle
 ** 功能描述: 处理 PTE 匹配失败异常
 ** 输　入  : ulAddr        异常处理
@@ -772,7 +797,7 @@ VOID  ppcMmuInit (LW_MMU_OP *pmmuop, CPCHAR  pcMachineName)
 
     pmmuop->MMUOP_pfuncMakeTrans     = ppcMmuMakeTrans;
     pmmuop->MMUOP_pfuncMakeCurCtx    = ppcMmuMakeCurCtx;
-    pmmuop->MMUOP_pfuncInvalidateTLB = ppcMmuInvalidateTLB;
+    pmmuop->MMUOP_pfuncInvalidateTLB = ppcMmuInvTLB;
     pmmuop->MMUOP_pfuncSetEnable     = ppcMmuEnable;
     pmmuop->MMUOP_pfuncSetDisable    = ppcMmuDisable;
 }

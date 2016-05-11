@@ -273,9 +273,8 @@ INT  API_INetPing (struct in_addr  *pinaddr, INT  iTimes, INT  iDataSize, INT  i
                     : ((__ARCH_ULONG_MAX - ulTime1) + ulTime2 + 1);
             ulTime2 = ((ulTime2 * 1000) / LW_TICK_HZ);                  /*  ×ªÎªºÁÃëÊý                  */
                     
-            printf("Reply from %s: bytes=%d time=%ldms TTL=%d\n", inet_ntoa_r(*pinaddr, 
-                                                                              cInetAddr, 
-                                                                              sizeof(cInetAddr)),
+            printf("Reply from %s: bytes=%d time=%ldms TTL=%d\n", 
+                   inet_ntoa_r(*pinaddr, cInetAddr, sizeof(cInetAddr)),
                    iDataSize, ulTime2, iTTLRecv);
         
             iSuc++;

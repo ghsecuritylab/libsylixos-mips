@@ -225,7 +225,7 @@ int ynorEraseBlock (struct yaffs_dev *dev, int block)
 {
     struct yaffs_devnor *nordev = (struct yaffs_devnor *)dev;
     
-    if ((block < 0) || (block >= nordev->nor.block_per_chip)) {
+    if ((block < dev->param.start_block) || (block > dev->param.end_block)) {
         yaffs_trace(YAFFS_TRACE_ALWAYS,
                     "Attempt to erase non-existant block %d\n",
                     block);

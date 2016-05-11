@@ -26,7 +26,6 @@
 #endif
 
 #include <arch/assembler.h>
-#include <config/mp/mp_cfg.h>
 
 #if LW_CFG_SMP_EN > 0
 

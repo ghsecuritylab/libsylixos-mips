@@ -20,6 +20,7 @@
 **
 ** BUG:
 2015.08.26  支持 PCI_MECHANISM_0 模式.
+2016.04.25  增加 设备驱动匹配 支持函数.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
@@ -70,19 +71,23 @@ PCI_CONFIG      *_G_p_pciConfig;
 #define PCI_VENDOR_ID_IS_INVALIDATE(vendor)     \
         (((vendor) == 0xffff) || ((vendor) == 0x0000))
 /*********************************************************************************************************
+  前置声明
+*********************************************************************************************************/
+static PCI_DEVICE_ID_HANDLE __pciDevMatchId(PCI_DEV_HANDLE hDevHandle, PCI_DEVICE_ID_HANDLE hId);
+/*********************************************************************************************************
 ** 函数名称: API_PciConfigInit
 ** 功能描述: 安装 pci 主控器驱动程序
-** 输　入  : p_pcicfg  pci 主控器驱动程序
+** 输　入  : ppcicfg  pci 主控器驱动程序
 ** 输　出  : ERROR or OK
 ** 全局变量:
 ** 调用模块:
 **                                            API 函数
 *********************************************************************************************************/
 LW_API 
-INT  API_PciConfigInit (PCI_CONFIG *p_pcicfg)
+INT  API_PciConfigInit (PCI_CONFIG *ppcicfg)
 {
     if (_G_p_pciConfig == LW_NULL) {
-        _G_p_pciConfig =  p_pcicfg;
+        _G_p_pciConfig =  ppcicfg;
         
 #if LW_CFG_PROCFS_EN > 0
         __procFsPciInit();
@@ -1064,7 +1069,7 @@ INT  API_PciConfigDev (INT          iBus,
     }
     
 #if LW_CFG_CACHE_EN > 0
-    ucCacheLine = (API_CacheLine() >> 2);
+    ucCacheLine = (API_CacheLine(DATA_CACHE) >> 2);
 #else
     ucCacheLine = (32 >> 2);
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
@@ -1630,7 +1635,66 @@ INT  API_PciIntxMaskSupported (INT iBus, INT iSlot, INT iFunc, INT *piSupported)
 
     return  (ERROR_NONE);
 }
+/*********************************************************************************************************
+** 函数名称: API_PciDevMatchDrv
+** 功能描述: PCI 设备驱动匹配
+** 输　入  : hDevHandle   设备句柄
+**           hDrvHandle   驱动句柄
+** 输　出  : 成功: 返回匹配的一个 PCI ID 信息, 失败: 返回 LW_NULL
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+PCI_DEVICE_ID_HANDLE API_PciDevMatchDrv (PCI_DEV_HANDLE hDevHandle, PCI_DRV_HANDLE hDrvHandle)
+{
+    PCI_DEVICE_ID_HANDLE  hId;
+    INT                   i;
 
+    if (!hDevHandle || !hDrvHandle) {
+        return  (LW_NULL);
+    }
+
+    if (hDevHandle->PDT_phDevHdr.PCIH_ucType != PCI_HEADER_TYPE_NORMAL) {
+        return  (LW_NULL);
+    }
+
+    for (hId = hDrvHandle->PDT_hDrvIdTable, i = 0; i < hDrvHandle->PDT_uiDrvIdTableSize; i++) {
+        if (__pciDevMatchId(hDevHandle, hId)) {
+            return  (hId);
+        }
+        hId++;
+    }
+
+    return  (LW_NULL);
+}
+/*********************************************************************************************************
+** 函数名称: API_PciDevMatchDrv
+** 功能描述: PCI 设备驱动匹配
+** 输　入  : hDevHandle   设备句柄
+**           hId          一个 ID 对象
+** 输　出  : 成功: 返回该 ID对象, 失败: 返回 LW_NULL
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+static PCI_DEVICE_ID_HANDLE __pciDevMatchId (PCI_DEV_HANDLE hDevHandle, PCI_DEVICE_ID_HANDLE hId)
+{
+    PCI_DEV_HDR    *phdr       = &hDevHandle->PDT_phDevHdr.PCIH_pcidHdr;
+    UINT32          uiDevClass = (UINT32)((phdr->PCID_ucClassCode << 16) +
+                                          (phdr->PCID_ucSubClass  <<  8) +
+                                          phdr->PCID_ucProgIf);
+
+    if (((hId->PDIT_uiVendor    == PCI_ANY_ID) || (hId->PDIT_uiVendor    == phdr->PCID_usVendorId))    &&
+        ((hId->PDIT_uiDevice    == PCI_ANY_ID) || (hId->PDIT_uiDevice    == phdr->PCID_usDeviceId))    &&
+        ((hId->PDIT_uiSubVendor == PCI_ANY_ID) || (hId->PDIT_uiSubVendor == phdr->PCID_usSubVendorId)) &&
+        ((hId->PDIT_uiSubDevice == PCI_ANY_ID) || (hId->PDIT_uiSubDevice == phdr->PCID_usSubSystemId)) &&
+        !((hId->PDIT_uiClass ^ uiDevClass) & hId->PDIT_uiClassMask)) {
+        return  (hId);
+    }
+
+    return  (LW_NULL);
+}
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */
                                                                         /*  (LW_CFG_PCI_EN > 0)         */
 /*********************************************************************************************************

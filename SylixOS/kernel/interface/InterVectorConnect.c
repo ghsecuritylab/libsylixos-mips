@@ -242,7 +242,7 @@ ULONG  API_InterVectorDisconnectEx (ULONG             ulVector,
         return  (ERROR_KERNEL_VECTOR_NULL);
     }
     
-    if (pfuncIsr == LW_NULL) {
+    if (!(ulOption & LW_IRQ_DISCONN_ALL) && (pfuncIsr == LW_NULL)) {
         _ErrorHandle(ERROR_KERNEL_VECTOR_NULL);
         return  (ERROR_KERNEL_VECTOR_NULL);
     }

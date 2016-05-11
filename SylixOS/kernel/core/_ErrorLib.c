@@ -123,6 +123,17 @@ VOID  _ErrorHandle (ULONG  ulErrorCode)
     KN_INT_ENABLE(iregInterLevel);
 }
 /*********************************************************************************************************
+  打印锁
+*********************************************************************************************************/
+#if (LW_CFG_SMP_EN > 0) && defined(__SYLIXOS_DEBUG)
+static LW_SPINLOCK_DEFINE(_K_slDebug);
+#define __DEBUG_MESSAGE_LOCK(pintreg)   LW_SPIN_LOCK_RAW(&_K_slDebug, pintreg)
+#define __DEBUG_MESSAGE_UNLOCK(intreg)  LW_SPIN_UNLOCK_RAW(&_K_slDebug, intreg)
+#else
+#define __DEBUG_MESSAGE_LOCK(pintreg)   (VOID)pintreg
+#define __DEBUG_MESSAGE_UNLOCK(intreg)
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+/*********************************************************************************************************
 ** 函数名称: _DebugMessage
 ** 功能描述: 内核打印调试信息
 ** 输　入  : iLevel      等级
@@ -135,6 +146,10 @@ VOID  _ErrorHandle (ULONG  ulErrorCode)
 *********************************************************************************************************/
 VOID  _DebugMessage (INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcString)
 {
+    INTREG    iregInterLevel;
+
+    __DEBUG_MESSAGE_LOCK(&iregInterLevel);
+
 #if LW_CFG_BUGMESSAGE_EN > 0
     if (_K_pfuncKernelDebugError && (iLevel & __BUGMESSAGE_LEVEL)) {
         _K_pfuncKernelDebugError(pcPosition);
@@ -162,6 +177,8 @@ VOID  _DebugMessage (INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcString)
     if (iLevel & __PRINTMESSAGE_LEVEL) {
         bspDebugMsg(pcString);
     }
+    
+    __DEBUG_MESSAGE_UNLOCK(iregInterLevel);
 }
 /*********************************************************************************************************
 ** 函数名称: printFullFmt
@@ -563,7 +580,10 @@ static VOID  _DebugFmtPrint (VOIDFUNCPTR pfuncPrint, CPCHAR  pcFmt, va_list ap)
 *********************************************************************************************************/
 VOID  _DebugFmtMsg (INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcFmt, ...)
 {
-    va_list ap;
+    INTREG    iregInterLevel;
+    va_list   ap;
+
+    __DEBUG_MESSAGE_LOCK(&iregInterLevel);
 
 #if LW_CFG_BUGMESSAGE_EN > 0
     if (_K_pfuncKernelDebugError && (iLevel & __BUGMESSAGE_LEVEL)) {
@@ -600,6 +620,8 @@ VOID  _DebugFmtMsg (INT  iLevel, CPCHAR  pcPosition, CPCHAR  pcFmt, ...)
         _DebugFmtPrint(bspDebugMsg, pcFmt, ap);
         va_end(ap);
     }
+    
+    __DEBUG_MESSAGE_UNLOCK(iregInterLevel);
 }
 /*********************************************************************************************************
   END

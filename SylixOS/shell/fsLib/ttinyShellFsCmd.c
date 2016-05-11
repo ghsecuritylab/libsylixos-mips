@@ -1422,7 +1422,7 @@ static INT  __tshellFsCmdDf (INT  iArgC, PCHAR  ppcArgV[])
     }
     
     if (ullFree > ullTotal) {
-        printf("%-14s %7lu.%02lu%-2s        unknown---%% %-2s %s\n", ppcArgV[1], 
+        printf("%-14s %7lu.%02lu%-2s      unknown ---%% %-2s %s\n", ppcArgV[1], 
                ulTotalDisp, ulTotalPoint, 
                pcTotalUnit, pcRo, pcFsType);
     } else {
@@ -1926,12 +1926,12 @@ __input_active:
 
 __input_type:
         printf("please input the file system type\n");
-        printf("1: FAT   2: TPSFS   3: LINUX\n");
+        printf("1: FAT   2: TPSFS   3: LINUX   4: RESERVED\n");
         do {
             cType = getchar();
         } while ((cType == '\r') || (cType == '\n'));
-        if ((cType < '1') || (cType > '3')) {
-            printf("please use 1 2 or 3\n");
+        if ((cType < '1') || (cType > '4')) {
+            printf("please use 1 2 3 or 4\n");
             goto    __input_type;
         }
 
@@ -1948,7 +1948,11 @@ __input_type:
         case '3':
             fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_NATIVE_LINUX;
             break;
-
+        
+        case '4':
+            fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_RESERVED;
+            break;
+            
         default:
             fdpInfo[i].FDP_ucPartType = LW_DISK_PART_TYPE_TPS;
             break;

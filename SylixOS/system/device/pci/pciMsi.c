@@ -260,7 +260,7 @@ INT  API_PciMsiPendingSet (INT     iBus,
     if (iRet != ERROR_NONE) {
         return  (PX_ERROR);
     }
-    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     if (!iIsMask) {
         return  (PX_ERROR);
     }
@@ -315,7 +315,7 @@ INT  API_PciMsiPendingGet (INT  iBus, INT  iSlot, INT  iFunc, INT  iMsiCapOft, U
     if (!iEnable) {
         return  (PX_ERROR);
     }
-    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     if (!iIsMask) {
         return  (PX_ERROR);
     }
@@ -372,7 +372,7 @@ INT  API_PciMsiPendingPosGet (INT  iBus, INT  iSlot, INT  iFunc, INT  iMsiCapOft
     if (!iEnable) {
         return  (PX_ERROR);
     }
-    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     if (!iIsMask) {
         return  (PX_ERROR);
     }
@@ -429,15 +429,15 @@ INT  API_PciMsiMaskSet (INT     iBus,
     if (!iEnable) {
         return  (PX_ERROR);
     }
-    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     if (!iIsMask) {
         return  (PX_ERROR);
     }
     iIs64 = !!(usControl & PCI_MSI_FLAGS_64BIT);
     if (iIs64) {
-        iMaskPos = iMsiCapOft + PCI_MSI_MASK_64;
+        iMaskPos = iMsiCapOft + PCI_MSI_MASK_BIT_64;
     } else {
-        iMaskPos = iMsiCapOft + PCI_MSI_MASK_32;
+        iMaskPos = iMsiCapOft + PCI_MSI_MASK_BIT_32;
     }
     uiMasked &= ~uiMask;
     uiMasked |= uiFlag;
@@ -484,15 +484,15 @@ INT  API_PciMsiMaskGet (INT  iBus, INT  iSlot, INT  iFunc, INT  iMsiCapOft, UINT
     if (!iEnable) {
         return  (PX_ERROR);
     }
-    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     if (!iIsMask) {
         return  (PX_ERROR);
     }
     iIs64 = !!(usControl & PCI_MSI_FLAGS_64BIT);
     if (iIs64) {
-        iMaskPos = iMsiCapOft + PCI_MSI_MASK_64;
+        iMaskPos = iMsiCapOft + PCI_MSI_MASK_BIT_64;
     } else {
-        iMaskPos = iMsiCapOft + PCI_MSI_MASK_32;
+        iMaskPos = iMsiCapOft + PCI_MSI_MASK_BIT_32;
     }
     iRet = API_PciConfigInDword(iBus, iSlot, iFunc, iMaskPos, &uiMasked);
     if (iRet != ERROR_NONE) {
@@ -539,16 +539,16 @@ INT  API_PciMsiMaskPosGet (INT  iBus, INT  iSlot, INT  iFunc, INT  iMsiCapOft, I
     if (!iEnable) {
         return  (PX_ERROR);
     }
-    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+    iIsMask = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     if (!iIsMask) {
         return  (PX_ERROR);
     }
     if (piMaskPos) {
         iIs64 = !!(usControl & PCI_MSI_FLAGS_64BIT);
         if (iIs64) {
-            *piMaskPos = iMsiCapOft + PCI_MSI_MASK_64;
+            *piMaskPos = iMsiCapOft + PCI_MSI_MASK_BIT_64;
         } else {
-            *piMaskPos = iMsiCapOft + PCI_MSI_MASK_32;
+            *piMaskPos = iMsiCapOft + PCI_MSI_MASK_BIT_32;
         }
     }
 
@@ -741,7 +741,7 @@ INT  API_PciMsiMaskBitGet (INT  iBus, INT  iSlot, INT  iFunc, INT  iMsiCapOft, I
         return  (PX_ERROR);
     }
     if (piMaskBit) {
-        *piMaskBit = !!(usControl & PCI_MSI_FLAGS_MASKBIT);
+        *piMaskBit = !!(usControl & PCI_MSI_FLAGS_MASK_BIT);
     }
 
     return  (ERROR_NONE);
@@ -822,6 +822,44 @@ INT  API_PciMsiEnableGet (INT  iBus, INT  iSlot, INT  iFunc, INT  iMsiCapOft, IN
     return  (ERROR_NONE);
 }
 
+/*********************************************************************************************************
+** 函数名称: API_PciDevMsiEnableGet
+** 功能描述: 获取 MSI 使能控制状态
+** 输　入  : hHandle        设备控制句柄
+**           piEnable       使能与禁能标志
+**                          0  禁能
+**                          1  使能
+** 输　出  : ERROR or OK
+** 全局变量:
+** 调用模块:
+**                                            API 函数
+*********************************************************************************************************/
+LW_API
+INT  API_PciDevMsiEnableGet (PCI_DEV_HANDLE  hHandle, INT *piEnable)
+{
+    INT     iRet = PX_ERROR;
+    UINT8   ucMsiCapOft = 0;
+
+    if (hHandle == LW_NULL) {
+        return  (PX_ERROR);
+    }
+
+    iRet = API_PciCapFind(hHandle->PDT_iDevBus,
+                          hHandle->PDT_iDevDevice,
+                          hHandle->PDT_iDevFunction,
+                          PCI_CAP_ID_MSI,
+                          &ucMsiCapOft);
+    if (iRet != ERROR_NONE) {
+        return  (PX_ERROR);
+    }
+
+    iRet = API_PciMsiEnableGet(hHandle->PDT_iDevBus,
+                               hHandle->PDT_iDevDevice,
+                               hHandle->PDT_iDevFunction,
+                               ucMsiCapOft,
+                               piEnable);
+    return  (iRet);
+}
 #endif                                                                  /*  (LW_CFG_DEVICE_EN > 0) &&   */
                                                                         /*  (LW_CFG_PCI_EN > 0)         */
 /*********************************************************************************************************

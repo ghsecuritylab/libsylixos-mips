@@ -30,8 +30,8 @@
 									<listOptionValue builtIn="false" value="&quot;${SYLIXOS_BASE_PATH}/libsylixos/SylixOS&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${SYLIXOS_BASE_PATH}/libsylixos/SylixOS/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${SYLIXOS_BASE_PATH}/libsylixos/SylixOS/include/inet&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;D:\ZTHSOFT\arm-sylixos-toolchain/arm-sylixos-eabi/include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;D:\ZTHSOFT\arm-sylixos-toolchain/lib/gcc/arm-sylixos-eabi/4.9.3/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${SYLIXOS_ARM_TOOLCHAIN}/arm-sylixos-eabi/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${SYLIXOS_ARM_TOOLCHAIN}/lib/gcc/arm-sylixos-eabi/${SYLIXOS_ARM_TOOLCHAIN_VERSION}/include&quot;"/>
 								</option>
 								<option id="com.sylixos.realcoder.option.armsylixoseabi.DefinedSymbols.582906984" name="Defined symbols(-D)" superClass="com.sylixos.realcoder.option.armsylixoseabi.DefinedSymbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__GNUC__=4"/>

@@ -36,68 +36,6 @@
 *********************************************************************************************************/
 #define LW_KERN_SL      (_K_klKernel.KERN_slLock)
 /*********************************************************************************************************
-** 函数名称: _SmpKernelLock
-** 功能描述: 内核自旋锁加锁操作
-** 输　入  : NONE
-** 输　出  : NONE
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-VOID  _SmpKernelLock (VOID)
-{
-    INTREG          iregInterLevel;
-    PLW_CLASS_CPU   pcpuCur;
-    INT             iRet;
-    
-    for (;;) {
-        iregInterLevel = KN_INT_DISABLE();
-        
-        iRet = __ARCH_SPIN_TRYLOCK(&LW_KERN_SL);
-        if (iRet != LW_SPIN_OK) {
-            _SmpTryProcIpi(LW_CPU_GET_CUR());                           /*  尝试执行 IPI                */
-            KN_INT_ENABLE(iregInterLevel);
-            LW_SPINLOCK_DELAY();
-            
-        } else {
-            pcpuCur = LW_CPU_GET_CUR();
-            if (!pcpuCur->CPU_ulInterNesting) {
-                __THREAD_LOCK_INC(pcpuCur->CPU_ptcbTCBCur);             /*  锁定任务在当前 CPU          */
-            }
-            KN_SMP_MB();
-            
-            KN_INT_ENABLE(iregInterLevel);
-            break;
-        }
-    }
-}
-/*********************************************************************************************************
-** 函数名称: _SmpKernelUnlock
-** 功能描述: 内核自旋锁解锁操作
-** 输　入  : NONE
-** 输　出  : NONE
-** 全局变量: 
-** 调用模块: 
-*********************************************************************************************************/
-VOID  _SmpKernelUnlock (VOID)
-{
-    INTREG          iregInterLevel;
-    PLW_CLASS_CPU   pcpuCur;
-    INT             iRet;
-    
-    iregInterLevel = KN_INT_DISABLE();
-    
-    KN_SMP_MB();
-    iRet = __ARCH_SPIN_UNLOCK(&LW_KERN_SL);
-    _BugFormat((iRet != LW_SPIN_OK), LW_TRUE, "unlock error 0x%p!\r\n", &LW_KERN_SL);
-    
-    pcpuCur = LW_CPU_GET_CUR();
-    if (!pcpuCur->CPU_ulInterNesting) {
-        __THREAD_LOCK_DEC(pcpuCur->CPU_ptcbTCBCur);                     /*  解除任务锁定                */
-    }
-    
-    KN_INT_ENABLE(iregInterLevel);
-}
-/*********************************************************************************************************
 ** 函数名称: _SmpSpinLockIgnIrq
 ** 功能描述: 内核自旋锁加锁操作, 忽略中断锁定 (必须在中断关闭的状态下被调用)
 ** 输　入  : NONE

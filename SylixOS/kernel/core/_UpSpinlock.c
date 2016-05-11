@@ -247,6 +247,47 @@ VOID  _UpSpinUnlockIrqQuick (spinlock_t *psl, INTREG  iregInterLevel)
     
     KN_INT_ENABLE(iregInterLevel);
 }
+/*********************************************************************************************************
+** 函数名称: _UpSpinLockRaw
+** 功能描述: 自旋锁原始加锁操作.
+** 输　入  : psl               自旋锁
+**           piregInterLevel   中断状态
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _UpSpinLockRaw (spinlock_t *psl, INTREG  *piregInterLevel)
+{
+    *piregInterLevel = KN_INT_DISABLE();
+}
+/*********************************************************************************************************
+** 函数名称: _UpSpinTryLockRaw
+** 功能描述: 自旋锁尝试原始加锁操作.
+** 输　入  : psl               自旋锁
+**           piregInterLevel   中断状态
+** 输　出  : LW_TRUE 加锁正常 LW_FALSE 加锁失败
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+BOOL  _UpSpinTryLockRaw (spinlock_t *psl, INTREG  *piregInterLevel)
+{
+    *piregInterLevel = KN_INT_DISABLE();
+    
+    return  (LW_TRUE);
+}
+/*********************************************************************************************************
+** 函数名称: _UpSpinUnlockRaw
+** 功能描述: 自旋锁原始解锁操作.
+** 输　入  : psl               自旋锁
+**           iregInterLevel    中断状态
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _UpSpinUnlockRaw (spinlock_t *psl, INTREG  iregInterLevel)
+{
+    KN_INT_ENABLE(iregInterLevel);
+}
 
 #endif                                                                  /*  LW_CFG_SMP_EN               */
 /*********************************************************************************************************

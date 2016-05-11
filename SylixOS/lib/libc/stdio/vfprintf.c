@@ -271,8 +271,7 @@ __uqtoa(val, endp, base, octzero, xdigs)
 #define	BUF		(MAXEXP+MAXFRACT+1)	/* + decimal point */
 #define	DEFPREC		6
 
-static char *cvt __P((double, int, int, char *, int *, int, int *));
-static int exponent __P((char *, int, int));
+extern int lib_cvtfloat(double  number, int  prec, BOOL  doAlt, int  fmtch, BOOL *pDoSign, char *startp, char *endp);
 
 #else /* no FLOATING_POINT */
 
@@ -318,12 +317,8 @@ vfprintf(fp, fmt0, ap)
 	int prec;		/* precision from format (%.3d), or -1 */
 	char sign;		/* sign prefix (' ', '+', '-', or \0) */
 #ifdef FLOATING_POINT
-	char softsign;		/* temporary negative sign for floats */
+	BOOL  sig = FALSE;	/* temporary negative sign for floats */
 	double _double;		/* double precision arguments %[eEfgG] */
-	int expt;		/* integer value of exponent */
-	int expsize;		/* character count for expstr */
-	int ndig;		/* actual number of digits returned by cvt */
-	char expstr[7];		/* buffer for exponent string */
 #endif
 	u_long	ulval;		/* integer arguments %[diouxX] */
 	u_quad_t uqval;		/* %q integers */
@@ -573,39 +568,32 @@ fp_begin:		_double = va_arg(ap, double);
 				break;
 			}
 			flags |= FPT;
-			cp = cvt(_double, prec, flags, &softsign,
-				&expt, ch, &ndig);
-			if (ch == 'g' || ch == 'G') {
-				if (expt <= -4 || expt > prec)
-					ch = (ch == 'g') ? 'e' : 'E';
-				else
-					ch = 'g';
-			} 
-			if (ch <= 'e') {	/* 'e' or 'E' fmt */
-				--expt;
-				expsize = exponent(expstr, expt, ch);
-				size = expsize + ndig;
-				if (ndig > 1 || flags & ALT)
-					++size;
-			} else if (ch == 'f') {		/* f fmt */
-				if (expt > 0) {
-					size = expt;
-					if (prec || flags & ALT)
-						size += prec + 1;
-				} else	/* "0.X" */
-					size = prec + 2;
-			} else if (expt >= ndig) {	/* fixed g fmt */
-				size = expt;
-				if (flags & ALT)
-					++size;
-			} else
-				size = ndig + (expt > 0 ?
-					1 : 2 - expt);
-
-			if (softsign)
-				sign = '-';
+			
+			/* Start SylixOS new cvt function */
+			{
+			    cp = buf;  /* where to fill in result */
+			    *cp = '\0';  /* EOS terminate just in case */
+			    size = lib_cvtfloat(_double, prec, 
+    			                    (flags & ALT) ? TRUE : FALSE,
+    			                    ch, &sig, cp, buf + sizeof(buf));
+                if ((int)size < 0) {
+                    size = -size;	/* get string length */
+                    flags &= ~ZEROPAD;
+                    
+                } else {
+                    if (*cp == '\0') {
+                        cp++;
+                    }
+                }
+                   
+                if (sig) {
+                    sign = '-';
+                }
+            }
+			/* End SylixOS new cvt function */
 			break;
 #endif /* FLOATING_POINT */
+
 		case 'n':
 			if (flags & QUADINT)
 				*va_arg(ap, quad_t *) = ret;
@@ -774,58 +762,8 @@ number:			if ((dprec = prec) >= 0)
 		PAD(dprec - fieldsz, zeroes);
 
 		/* the string or number proper */
-#ifdef FLOATING_POINT
-		if ((flags & FPT) == 0) {
-			PRINT(cp, size);
-		} else {	/* glue together f_p fragments */
-			if (ch >= 'f') {	/* 'f' or 'g' */
-				if (_double == 0) {
-				/* kludge for __dtoa irregularity */
-					if (prec == 0 ||
-					    (flags & ALT) == 0) {
-						PRINT("0", 1);
-					} else {
-						PRINT("0.", 2);
-						PAD(ndig - 1, zeroes);
-					}
-				} else if (expt <= 0) {
-					PRINT("0.", 2);
-					PAD(-expt, zeroes);
-					PRINT(cp, ndig);
-				} else if (expt >= ndig) {
-					PRINT(cp, ndig);
-					PAD(expt - ndig, zeroes);
-					if (flags & ALT)
-						PRINT(".", 1);
-				} else {
-					PRINT(cp, expt);
-					cp += expt;
-					PRINT(".", 1);
-					PRINT(cp, ndig-expt);
-				}
-			} else {	/* 'e' or 'E' */
-				if (ndig > 1 || flags & ALT) {
-					ox[0] = *cp++;
-					ox[1] = '.';
-					PRINT(ox, 2);
-/**************************** HANHUI ***************************/
-/*
-					if (_double || flags & ALT == 0) {
-*/
-                    if (_double || (flags & ALT) == 0) {
-/**************************** HANHUI ***************************/
-						PRINT(cp, ndig-1);
-					} else	/* 0.[0..] */
-						/* __dtoa irregularity */
-						PAD(ndig - 1, zeroes);
-				} else	/* XeYYY */
-					PRINT(cp, 1);
-				PRINT(expstr, expsize);
-			}
-		}
-#else
 		PRINT(cp, size);
-#endif
+		
 		/* left-adjusting padding (always blank) */
 		if (flags & LADJUST)
 			PAD(width - realsz, blanks);
@@ -841,78 +779,6 @@ error:
 	return (__sferror(fp) ? EOF : ret);
 	/* NOTREACHED */
 }
-
-#ifdef FLOATING_POINT
-
-extern char *__dtoa __P((double, int, int, int *, int *, char **));
-
-static char *
-cvt(value, ndigits, flags, sign, decpt, ch, length)
-	double value;
-	int ndigits, flags, *decpt, ch, *length;
-	char *sign;
-{
-	int mode, dsgn;
-	char *digits, *bp, *rve;
-
-	if (ch == 'f')
-		mode = 3;
-	else {
-		mode = 2;
-	}
-	if (value < 0) {
-		value = -value;
-		*sign = '-';
-	} else
-		*sign = '\000';
-	digits = __dtoa(value, mode, ndigits, decpt, &dsgn, &rve);
-	if (flags & ALT) {	/* Print trailing zeros */
-		bp = digits + ndigits;
-		if (ch == 'f') {
-			if (*digits == '0' && value)
-				*decpt = -ndigits + 1;
-			bp += *decpt;
-		}
-		if (value == 0)	/* kludge for __dtoa irregularity */
-			rve = bp;
-		while (rve < bp)
-			*rve++ = '0';
-	}
-	*length = rve - digits;
-	return (digits);
-}
-
-static int
-exponent(p0, exp, fmtch)
-	char *p0;
-	int exp, fmtch;
-{
-	register char *p, *t;
-	char expbuf[MAXEXP];
-
-	p = p0;
-	*p++ = fmtch;
-	if (exp < 0) {
-		exp = -exp;
-		*p++ = '-';
-	}
-	else
-		*p++ = '+';
-	t = expbuf + MAXEXP;
-	if (exp > 9) {
-		do {
-			*--t = to_char(exp % 10);
-		} while ((exp /= 10) > 9);
-		*--t = to_char(exp);
-		for (; t < expbuf + MAXEXP; *p++ = *t++);
-	}
-	else {
-		*p++ = '0';
-		*p++ = to_char(exp);
-	}
-	return (p - p0);
-}
-#endif /* FLOATING_POINT */
 
 #endif  /*  (LW_CFG_DEVICE_EN > 0)      */
         /*  (LW_CFG_FIO_LIB_EN > 0)     */

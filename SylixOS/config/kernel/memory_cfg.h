@@ -43,6 +43,7 @@
 
 #define LW_CFG_THREAD_IDLE_STK_SIZE                 (4 * LW_CFG_KB_SIZE)/*  系统空闲任务堆栈大小        */
 #define LW_CFG_THREAD_SIG_STK_SIZE                  (4 * LW_CFG_KB_SIZE)/*  系统信号管理任务堆栈大小    */
+#define LW_CFG_THREAD_DEFER_STK_SIZE                (4 * LW_CFG_KB_SIZE)/*  延迟中断管理任务堆栈大小    */
 #define LW_CFG_THREAD_LOG_STK_SIZE                  (4 * LW_CFG_KB_SIZE)/*  系统日志管理任务堆栈大小    */
 #define LW_CFG_THREAD_ITMR_STK_SIZE                 (4 * LW_CFG_KB_SIZE)/*  系统任务定时器服务堆栈大小  */
 #define LW_CFG_THREAD_POWERM_STK_SIZE               (4 * LW_CFG_KB_SIZE)/*  系统功耗管理器线程堆栈大小  */

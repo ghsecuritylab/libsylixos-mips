@@ -73,10 +73,10 @@
 
 #ifndef SYLIXOS
 /* The list of joined groups. */
-struct mld_group* mld_group_list;
+static struct mld_group* mld_group_list;
 #else
 /* The list of joined groups. */
-static struct mld_group* mld_group_list;
+struct mld_group* mld_group_list;
 #endif
 
 

@@ -40,6 +40,11 @@
 /*********************************************************************************************************
   arch 已经提供的接口如下:
 *********************************************************************************************************/
+
+#define __ARCH_KERNEL_PARAM         archKernelParam
+
+VOID    archKernelParam(CPCHAR  pcParam);
+
 /*********************************************************************************************************
   MIPS 处理器断言
 *********************************************************************************************************/
@@ -123,6 +128,7 @@ VOID    archReboot(INT  iRebootType, addr_t  ulStartAddress);
 #define MIPS_MACHINE_24KF   "24kf"
 #define MIPS_MACHINE_LS1X   "loongson1x"
 #define MIPS_MACHINE_LS2X   "loongson2x"
+#define MIPS_MACHINE_LS3X   "loongson3x"
 #define MIPS_MACHINE_JZ47XX "jz47xx"
 
 #if LW_CFG_CACHE_EN > 0

@@ -65,7 +65,7 @@ VOID             _jobQueueDelete(PLW_JOB_QUEUE pjobq);
 ULONG            _jobQueueInit(PLW_JOB_QUEUE pjobq, PLW_JOB_MSG  pjobmsg, 
                                UINT uiQueueSize, BOOL bNonBlock);
 VOID             _jobQueueFinit(PLW_JOB_QUEUE pjobq);
-VOID             _JobQueueFlush(PLW_JOB_QUEUE pjobq);
+VOID             _jobQueueFlush(PLW_JOB_QUEUE pjobq);
 ULONG            _jobQueueAdd(PLW_JOB_QUEUE pjobq,
                               VOIDFUNCPTR   pfunc,
                               PVOID         pvArg0,

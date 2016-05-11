@@ -46,8 +46,9 @@
 *********************************************************************************************************/
 
 #define LW_PRIO_T_EXCPT         (LW_PRIO_EXTREME)                       /*  t_except 线程               */
+#define LW_PRIO_T_ISRDEFER      (LW_PRIO_EXTREME)                       /*  t_isrdefer 线程             */
 #define LW_PRIO_T_TICK          (LW_PRIO_EXTREME + 10)                  /*  t_tick 线程                 */
-#define LW_PRIO_T_TIIMER        (LW_PRIO_EXTREME + 20)                  /*  t_itimer 线程               */
+#define LW_PRIO_T_TTIMER        (LW_PRIO_EXTREME + 20)                  /*  t_itimer 线程               */
 #define LW_PRIO_T_LOG           (LW_PRIO_CRITICAL + 10)                 /*  t_log 线程                  */
 #define LW_PRIO_T_NETPROTO      (LW_PRIO_REALTIME + 10)                 /*  网络系统线程                */
 #define LW_PRIO_T_NETJOB        (LW_PRIO_REALTIME + 10)                 /*  网络接口驱动服务线程        */

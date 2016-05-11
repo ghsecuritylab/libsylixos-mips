@@ -39,20 +39,7 @@
 LW_API
 VOID  API_ThreadLock (VOID)
 {
-    PLW_CLASS_TCB   ptcbCur;
-    
-    if (!LW_SYS_STATUS_IS_RUNNING()) {                                  /*  系统必须已经启动            */
-        _ErrorHandle(ERROR_KERNEL_NOT_RUNNING);
-        return;
-    }
-    
-    LW_TCB_GET_CUR_SAFE(ptcbCur);
-    
-    if (__THREAD_LOCK_GET(ptcbCur) != __ARCH_ULONG_MAX) {
-        __THREAD_LOCK_INC(ptcbCur);
-    }
-    
-    KN_SMP_MB();
+    _ThreadLock();
 }
 /*********************************************************************************************************
   END

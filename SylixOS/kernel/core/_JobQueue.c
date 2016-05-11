@@ -122,14 +122,14 @@ VOID  _jobQueueFinit (PLW_JOB_QUEUE pjobq)
     }
 }
 /*********************************************************************************************************
-** 函数名称: _JobQueueFlush
+** 函数名称: _jobQueueFlush
 ** 功能描述: 清空工作队列
 ** 输　入  : pjobq         工作队列控制块
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-VOID  _JobQueueFlush (PLW_JOB_QUEUE pjobq)
+VOID  _jobQueueFlush (PLW_JOB_QUEUE pjobq)
 {
     INTREG   iregInterLevel;
     

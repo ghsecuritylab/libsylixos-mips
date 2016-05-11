@@ -91,18 +91,12 @@ typedef struct __lw_cpu {
     volatile ULONG           CPU_ulIPIPend;                             /*  核间中断标志码              */
 
 #define LW_IPI_NOP              0                                       /*  测试用核间中断向量          */
-#define LW_IPI_BOOT             1                                       /*  通知其他核本核正在启动      */
-#define LW_IPI_SCHED            2                                       /*  调度请求                    */
-#define LW_IPI_FLUSH_TLB        3                                       /*  更新页表                    */
-#define LW_IPI_FLUSH_CACHE      4                                       /*  回写 CACHE                  */
-#define LW_IPI_DOWN             5                                       /*  CPU 停止工作                */
-#define LW_IPI_CALL             6                                       /*  自定义调用 (有参数可选等待) */
+#define LW_IPI_SCHED            1                                       /*  调度请求                    */
+#define LW_IPI_DOWN             2                                       /*  CPU 停止工作                */
+#define LW_IPI_CALL             3                                       /*  自定义调用 (有参数可选等待) */
 
 #define LW_IPI_NOP_MSK          (1 << LW_IPI_NOP)
-#define LW_IPI_BOOT_MSK         (1 << LW_IPI_BOOT)
 #define LW_IPI_SCHED_MSK        (1 << LW_IPI_SCHED)
-#define LW_IPI_FLUSH_TLB_MSK    (1 << LW_IPI_FLUSH_TLB)
-#define LW_IPI_FLUSH_CACHE_MSK  (1 << LW_IPI_FLUSH_CACHE)
 #define LW_IPI_DOWN_MSK         (1 << LW_IPI_DOWN)
 #define LW_IPI_CALL_MSK         (1 << LW_IPI_CALL)
 

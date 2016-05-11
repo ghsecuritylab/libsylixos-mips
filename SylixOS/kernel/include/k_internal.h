@@ -199,26 +199,36 @@ PVOID _ITimerThread(PVOID  pvArg);
 VOID                __kernelEnter(CPCHAR  pcFunc);
 INT                 __kernelExit(VOID);
 BOOL                __kernelIsEnter(VOID);
+
+#if LW_CFG_SMP_EN > 0
+BOOL                __kernelIsLockByMe(BOOL  bIntLock);
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+
 INTREG              __kernelEnterIrq(CPCHAR  pcFunc);
 INT                 __kernelExitIrq(INTREG  iregInterLevel);
 
 #define __KERNEL_ENTER()                    __kernelEnter(__func__)
 #define __KERNEL_EXIT()                     __kernelExit()
 #define __KERNEL_ISENTER()                  __kernelIsEnter()
+
+#if LW_CFG_SMP_EN > 0
+#define __KERNEL_ISLOCKBYME(bIntLock)       __kernelIsLockByMe(bIntLock)
+#endif                                                                  /*  LW_CFG_SMP_EN > 0           */
+
 #define __KERNEL_ENTER_IRQ()                __kernelEnterIrq(__func__)
 #define __KERNEL_EXIT_IRQ(iregInterLevel)   __kernelExitIrq(iregInterLevel)
 
 LW_OBJECT_HANDLE    __kernelOwner(VOID);
 CPCHAR              __kernelEnterFunc(VOID);
 
-#define __KERNEL_OWNER()                    __kernelOwner()
-#define __KERNEL_ENTERFUNC()                __kernelEnterFunc()
+#define __KERNEL_OWNER()            __kernelOwner()
+#define __KERNEL_ENTERFUNC()        __kernelEnterFunc()
 
-#define __KERNEL_MODE_PROC(code)            do {                            \
-                                                __kernelEnter(__func__);    \
-                                                {   code    }               \
-                                                __kernelExit();             \
-                                            } while (0)
+#define __KERNEL_MODE_PROC(code)    do {                            \
+                                        __kernelEnter(__func__);    \
+                                        {   code    }               \
+                                        __kernelExit();             \
+                                    } while (0)
                                             
 /*********************************************************************************************************
   内核调度
@@ -227,8 +237,8 @@ CPCHAR              __kernelEnterFunc(VOID);
 INT                 __kernelSched(VOID);
 VOID                __kernelSchedInt(PLW_CLASS_CPU  pcpuCur);
 
-#define __KERNEL_SCHED()                    __kernelSched()
-#define __KERNEL_SCHED_INT(pcpu)            __kernelSchedInt(pcpu)
+#define __KERNEL_SCHED()            __kernelSched()
+#define __KERNEL_SCHED_INT(pcpu)    __kernelSchedInt(pcpu)
                                             
 /*********************************************************************************************************
   内核 ticks
@@ -375,6 +385,7 @@ INT            _CpuInactive(PLW_CLASS_CPU   pcpu);
   调度器
 *********************************************************************************************************/
 
+BOOL           _SchedIsLock(ULONG  ulCurMaxLock);                       /*  调度器是否被锁定            */
 PLW_CLASS_TCB  _SchedGetCand(PLW_CLASS_CPU  pcpuCur, ULONG  ulCurMaxLock);
 VOID           _SchedTick(VOID);
 
@@ -398,7 +409,7 @@ VOID           _SchedSetPrio(PLW_CLASS_TCB  ptcb, UINT8  ucPriority);   /*  设置
 *********************************************************************************************************/
 
 #if LW_CFG_SMP_EN > 0
-VOID           _SmpSendIpi(ULONG  ulCPUId, ULONG  ulIPIVec, INT  iWait);
+VOID           _SmpSendIpi(ULONG  ulCPUId, ULONG  ulIPIVec, INT  iWait, BOOL  bIntLock);
 VOID           _SmpSendIpiAllOther(ULONG  ulIPIVec, INT  iWait);
 INT            _SmpCallFunc(ULONG  ulCPUId, FUNCPTR  pfunc, PVOID  pvArg,
                             VOIDFUNCPTR  pfuncAsync, PVOID  pvAsync, INT  iOpt);
@@ -433,6 +444,13 @@ VOID           _ThreadDisjoin(PLW_CLASS_TCB  ptcbDes, PLW_CLASS_TCB  ptcbDisjoin
 VOID           _ThreadDisjoinWakeup(PLW_CLASS_TCB  ptcbDes, PLW_CLASS_TCB  ptcbWakeup, PVOID  pvArg);
 VOID           _ThreadDisjoinWakeupAll(PLW_CLASS_TCB  ptcbDes, PVOID  pvArg);
 VOID           _ThreadDetach(PLW_CLASS_TCB  ptcbDes);
+
+/*********************************************************************************************************
+  线程 CPU 调度器锁定
+*********************************************************************************************************/
+
+VOID            _ThreadLock(VOID);
+VOID            _ThreadUnlock(VOID);
 
 /*********************************************************************************************************
   安全模式函数
@@ -541,10 +559,12 @@ VOID           _TCBCleanupPopExt(PLW_CLASS_TCB  ptcb);
 VOID           _TCBTryRun(PLW_CLASS_TCB  ptcb);
 
 /*********************************************************************************************************
-  堆栈警戒检查
+  堆栈相关
 *********************************************************************************************************/
 
 VOID           _StackCheckGuard(PLW_CLASS_TCB  ptcb);
+PLW_STACK      _StackAllocate(PLW_CLASS_TCB  ptcb, ULONG  ulOption, size_t  stSize);
+VOID           _StackFree(PLW_CLASS_TCB  ptcb, PLW_STACK  pstk, BOOL  bImmed);
 
 /*********************************************************************************************************
   线程私有变量切换
@@ -829,9 +849,9 @@ static LW_INLINE INT  __timespecLeftTime (const struct timespec  *ptv1, const st
             _K_hookKernel.HOOK_ThreadInit(ulId, ptcb);  \
         }
         
-#define __LW_THREAD_IDLE_HOOK() \
+#define __LW_THREAD_IDLE_HOOK(ulCPUId) \
         if (_K_hookKernel.HOOK_ThreadIdle) {    \
-            _K_hookKernel.HOOK_ThreadIdle();    \
+            _K_hookKernel.HOOK_ThreadIdle(ulCPUId); \
         }
         
 #define __LW_KERNEL_INIT_BEGIN_HOOK() \

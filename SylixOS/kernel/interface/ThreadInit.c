@@ -40,12 +40,6 @@
 #define  __SYLIXOS_KERNEL
 #include "../SylixOS/kernel/include/k_kernel.h"
 /*********************************************************************************************************
-  进程相关
-*********************************************************************************************************/
-#if LW_CFG_MODULELOADER_EN > 0
-#include "../SylixOS/loader/include/loader_vppatch.h"
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
-/*********************************************************************************************************
 ** 函数名称: API_ThreadInit
 ** 功能描述: 初始化一个线程
 ** 输　入  : pcName                 线程名
@@ -153,13 +147,9 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
               _LIST_OFFSETOF(LW_CLASS_TCB, TCB_pstkStackTop));          /*  TCB 清零                    */
     
     if (!pthreadattr->THREADATTR_pstkLowAddr) {                         /*  是否从内核堆中开辟堆栈      */
-#if LW_CFG_MODULELOADER_EN > 0
-        pstkLowAddress = (PLW_STACK)vprocStackAlloc(ptcb, 
-                                                    pthreadattr->THREADATTR_ulOption,
-                                                    pthreadattr->THREADATTR_stStackByteSize);
-#else
-        pstkLowAddress = (PLW_STACK)__KHEAP_ALLOC(pthreadattr->THREADATTR_stStackByteSize);
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+        pstkLowAddress = _StackAllocate(ptcb,
+                                        pthreadattr->THREADATTR_ulOption,
+                                        pthreadattr->THREADATTR_stStackByteSize);
         if (!pstkLowAddress) {                                          /*  开辟失败                    */
             iErrLevel = 1;
             _DebugHandle(__ERRORMESSAGE_LEVEL, "kernel low memory.\r\n");
@@ -261,11 +251,7 @@ LW_OBJECT_HANDLE  API_ThreadInit (CPCHAR                   pcName,
 __error_handle:
     if (iErrLevel > 1) {
         if (!pthreadattr->THREADATTR_pstkLowAddr) {
-#if LW_CFG_MODULELOADER_EN > 0
-            vprocStackFree(ptcb, pstkLowAddress, LW_TRUE);
-#else
-            __KHEAP_FREE(pstkLowAddress);                               /*  释放堆栈空间                */
-#endif                                                                  /*  LW_CFG_MODULELOADER_EN > 0  */
+            _StackFree(ptcb, pstkLowAddress, LW_TRUE);                  /*  释放堆栈空间                */
         }
     }
     if (iErrLevel > 0) {

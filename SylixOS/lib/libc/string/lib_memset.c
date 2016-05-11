@@ -45,6 +45,10 @@
 *********************************************************************************************************/
 PVOID  lib_memset (PVOID  pvDest, INT  iC, size_t  stCount)
 {
+#ifdef __ARCH_MEMSET
+    return  (__ARCH_MEMSET(pvDest, pvSrc, stCount));
+    
+#else
     REGISTER INT       i;
     REGISTER INT       iTemp;
     REGISTER PUCHAR    pucDest = (PUCHAR)pvDest;
@@ -75,6 +79,7 @@ PVOID  lib_memset (PVOID  pvDest, INT  iC, size_t  stCount)
     __TLOOP(*pucDest++ = ucC);
     
     return  (pvDest);
+#endif                                                                  /*  __ARCH_MEMSET               */
 }
 /*********************************************************************************************************
 ** º¯ÊýÃû³Æ: lib_bzero
@@ -87,6 +92,10 @@ PVOID  lib_memset (PVOID  pvDest, INT  iC, size_t  stCount)
 *********************************************************************************************************/
 VOID    lib_bzero (PVOID   pvStr, size_t  stCount)
 {
+#ifdef __ARCH_MEMSET
+    __ARCH_MEMSET(pvStr, 0, stCount);
+
+#else
     REGISTER INT       iTemp;
     REGISTER PUCHAR    pucDest = (PUCHAR)pvStr;
     
@@ -104,6 +113,7 @@ VOID    lib_bzero (PVOID   pvStr, size_t  stCount)
     __TLOOP(*(ULONG *)pucDest = 0ul; pucDest += __LONGSIZE);
     iTemp = (INT)(stCount & __LONGMASK);
     __TLOOP(*pucDest++ = 0);
+#endif                                                                  /*  __ARCH_MEMSET               */
 }
 /*********************************************************************************************************
   END

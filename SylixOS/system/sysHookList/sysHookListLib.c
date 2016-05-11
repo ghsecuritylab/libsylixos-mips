@@ -226,14 +226,14 @@ static VOID  _InitHookCall (LW_OBJECT_HANDLE  ulId, PLW_CLASS_TCB  ptcb)
 /*********************************************************************************************************
 ** 函数名称: _IdleHookCall
 ** 功能描述: 空闲线程 HOOK 调用
-** 输　入  : NONE
+** 输　入  : ulCPUId                   CPU ID
 ** 输　出  : NONE
 ** 全局变量: 
 ** 调用模块: 
 *********************************************************************************************************/
-static VOID  _IdleHookCall (VOID)
+static VOID  _IdleHookCall (ULONG  ulCPUId)
 {
-    __HOOK_TEMPLATE(HOOK_T_IDLE, ());
+    __HOOK_TEMPLATE(HOOK_T_IDLE, (ulCPUId));
 }
 /*********************************************************************************************************
 ** 函数名称: _InitBeginHookCall

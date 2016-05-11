@@ -89,16 +89,14 @@ ULONG  API_CpuDown (ULONG  ulCPUId)
         return  (ERROR_NONE);
     }
     
-    LW_SPIN_LOCK_QUICK(&pcpuDst->CPU_slIpi, &iregInterLevel);
+    LW_SPIN_LOCK_QUICK(&pcpu->CPU_slIpi, &iregInterLevel);
     LW_CPU_ADD_IPI_PEND2(pcpu, LW_IPI_DOWN_MSK);
-    LW_SPIN_UNLOCK_QUICK(&pcpuDst->CPU_slIpi, iregInterLevel);
+    LW_SPIN_UNLOCK_QUICK(&pcpu->CPU_slIpi, iregInterLevel);
     
     _ThreadOffAffinity(pcpu);                                           /*  关闭与此 CPU 有关的亲和度   */
     __KERNEL_EXIT();
     
-    iregInterLevel = KN_INT_DISABLE();                                  /*  关闭中断                    */
-    _SmpSendIpi(ulCPUId, LW_IPI_DOWN, 0);                               /*  使用核间中断通知 CPU 停止   */
-    KN_INT_ENABLE(iregInterLevel);                                      /*  打开中断                    */
+    _SmpSendIpi(ulCPUId, LW_IPI_DOWN, 0, LW_FALSE);                     /*  使用核间中断通知 CPU 停止   */
     
     return  (ERROR_NONE);
 }

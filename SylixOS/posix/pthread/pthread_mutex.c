@@ -26,6 +26,7 @@
 2012.12.13  由于 SylixOS 支持进程资源回收, 这里开始支持静态初始化.
 2013.05.01  Upon successful completion, pthread_mutexattr_*() and pthread_mutex_*() shall return zero; 
             otherwise, an error number shall be returned to indicate the error.
+2016.05.08  隐形初始化确保多线程安全.
 *********************************************************************************************************/
 #define  __SYLIXOS_KERNEL
 #include "../include/px_pthread.h"                                      /*  已包含操作系统头文件        */
@@ -48,6 +49,25 @@ static const pthread_mutexattr_t    _G_pmutexattrDefault = {
         (LW_OPTION_INHERIT_PRIORITY | LW_OPTION_WAIT_FIFO)              /*  PTHREAD_PRIO_NONE           */
 };
 /*********************************************************************************************************
+  初始化锁
+*********************************************************************************************************/
+static LW_OBJECT_HANDLE             _G_ulPMutexInitLock;
+/*********************************************************************************************************
+** 函数名称: _posixPMutexInit
+** 功能描述: 初始化 MUTEX 环境.
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _posixPMutexInit (VOID)
+{
+    _G_ulPMutexInitLock = API_SemaphoreMCreate("pmutexinit", LW_PRIO_DEF_CEILING, 
+                                               LW_OPTION_INHERIT_PRIORITY | 
+                                               LW_OPTION_WAIT_PRIORITY | 
+                                               LW_OPTION_DELETE_SAFE, LW_NULL);
+}
+/*********************************************************************************************************
 ** 函数名称: __pthread_mutex_init_invisible
 ** 功能描述: 互斥量隐形创建. (静态初始化) (这里不是 static 因为 pthread cond 要使用)
 ** 输　入  : pmutex         句柄
@@ -57,8 +77,14 @@ static const pthread_mutexattr_t    _G_pmutexattrDefault = {
 *********************************************************************************************************/
 void  __pthread_mutex_init_invisible (pthread_mutex_t  *pmutex)
 {
-    if (pmutex && (pmutex->PMUTEX_ulMutex == LW_OBJECT_HANDLE_INVALID)) {
-        pthread_mutex_init(pmutex, LW_NULL);
+    if (pmutex) {
+        if (pmutex->PMUTEX_ulMutex == LW_OBJECT_HANDLE_INVALID) {
+            API_SemaphoreMPend(_G_ulPMutexInitLock, LW_OPTION_WAIT_INFINITE);
+            if (pmutex->PMUTEX_ulMutex == LW_OBJECT_HANDLE_INVALID) {
+                pthread_mutex_init(pmutex, LW_NULL);
+            }
+            API_SemaphoreMPost(_G_ulPMutexInitLock);
+        }
     }
 }
 /*********************************************************************************************************

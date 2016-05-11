@@ -129,7 +129,6 @@ LW_API int          wdg_show(wdg_t wdg_id);
 #define BUDDY_ALLOCATION        1
 
 LW_API int          heap_mem_init(int flag);
-LW_API int          heap_mem_findmax(void);
 
 struct meminfo {
     ULONG   segment;
@@ -147,6 +146,7 @@ struct partinfo {
 
 typedef LW_OBJECT_HANDLE    mpart_id;
 
+LW_API int          mem_findmax(void);
 LW_API int          mem_getinfo(struct meminfo *info);
 LW_API void         mem_show(void);
 

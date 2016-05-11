@@ -30,7 +30,7 @@ typedef struct {
     PVOID               PAGEFCTX_pvStackRet;                            /*  跳跃返回堆栈的地址          */
     addr_t              PAGEFCTX_ulRetAddr;                             /*  异常返回地址                */
     addr_t              PAGEFCTX_ulAbortAddr;                           /*  内存访问失效地址            */
-    ULONG               PAGEFCTX_ulAbortType;                           /*  异常类型                    */
+    LW_VMM_ABORT        PAGEFCTX_abtInfo;                               /*  异常类型                    */
     LW_OBJECT_HANDLE    PAGEFCTX_ulSelf;                                /*  产生缺页中断的线程          */
     
     errno_t             PAGEFCTX_iLastErrno;                            /*  返回时需要恢复的信息        */
@@ -39,6 +39,9 @@ typedef struct {
 typedef LW_VMM_PAGE_FAIL_CTX    *PLW_VMM_PAGE_FAIL_CTX;
 
 #define __PAGEFAILCTX_SIZE_ALIGN    ROUND_UP(sizeof(LW_VMM_PAGE_FAIL_CTX), sizeof(LW_STACK))
+
+#define __PAGEFAILCTX_ABORT_TYPE(pctx)      (pctx->PAGEFCTX_abtInfo.VMABT_uiType)
+#define __PAGEFAILCTX_ABORT_METHOD(pctx)    (pctx->PAGEFCTX_abtInfo.VMABT_uiMethod)
 
 /*********************************************************************************************************
   加入裁剪支持

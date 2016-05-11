@@ -464,6 +464,9 @@ static CPCHAR  __oemFdiskGetType (UINT8  ucType)
     case 0xb3:  return  ("QNX6.x 3rd part Partition");
     case 0xb7:  return  ("BSDI fs Partition");
     case 0xb8:  return  ("BSDI swap Partition");
+    case 0xbe:  return  ("Solaris boot partition");
+    case 0xbf:  return  ("Reserved partition");
+    case 0xc0:  return  ("DRDOS/Novell DOS secured partition");
     case 0xc1:  return  ("DRDOS/sec (FAT-12) Partition");
     case 0xc4:  return  ("DRDOS/sec (FAT-16, < 32M) Partition");
     case 0xc6:  return  ("DRDOS/sec (FAT-16, >= 32M) Partition");

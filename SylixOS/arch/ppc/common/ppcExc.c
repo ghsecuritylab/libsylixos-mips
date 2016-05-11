@@ -101,10 +101,10 @@ VOID  archDataStorageExceptionHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
     addr_t          ulAbortAddr;
-    ULONG           ulAbortType;
+    LW_VMM_ABORT    abtInfo;
 
-    ulAbortAddr = ppcGetDAR();
-    ulAbortType = LW_VMM_ABORT_TYPE_TERMINAL;
+    ulAbortAddr          = ppcGetDAR();
+    abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
 
     LW_TCB_GET_CUR(ptcbCur);
 
@@ -119,7 +119,8 @@ VOID  archDataStorageExceptionHandle (addr_t  ulRetAddr)
         /*
          * Page fault (no PTE found)
          */
-        ulAbortType = ppcMmuPteMissHandle(ulAbortAddr);
+        abtInfo.VMABT_uiType   = ppcMmuPteMissHandle(ulAbortAddr);
+        abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_READ;
 
     } else if (uiDSISR & (0x1 << (31 - 4))) {
         /*
@@ -129,25 +130,27 @@ VOID  archDataStorageExceptionHandle (addr_t  ulRetAddr)
             /*
              * If the access is a store
              */
-            ulAbortType = LW_VMM_ABORT_TYPE_WRITE;
+            abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_PERM;
+            abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_WRITE;
 
         } else {
             /*
-             * TODO 不允许读
+             * 不允许读
              */
-            ulAbortType = LW_VMM_ABORT_TYPE_WRITE;
+            abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_PERM;
+            abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_READ;
         }
 
     } else {
         /*
          * dcbt/dcbtst Instruction
          */
-        ulAbortType = LW_VMM_ABORT_TYPE_TERMINAL;
+        abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
     }
 #endif
 
-    if (ulAbortType) {
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+    if (abtInfo.VMABT_uiType) {
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
     }
 }
 /*********************************************************************************************************
@@ -163,10 +166,10 @@ VOID  archInstructionStorageExceptionHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
     addr_t          ulAbortAddr;
-    ULONG           ulAbortType;
+    LW_VMM_ABORT    abtInfo;
 
-    ulAbortAddr = ppcGetDAR();
-    ulAbortType = LW_VMM_ABORT_TYPE_TERMINAL;
+    ulAbortAddr          = ppcGetDAR();
+    abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
 
     LW_TCB_GET_CUR(ptcbCur);
 
@@ -181,34 +184,34 @@ VOID  archInstructionStorageExceptionHandle (addr_t  ulRetAddr)
         /*
          * Page fault (no PTE found)
          */
-        ulAbortType = ppcMmuPteMissHandle(ulAbortAddr);
+        abtInfo.VMABT_uiType   = ppcMmuPteMissHandle(ulAbortAddr);
+        abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_READ;
 
     } else if (uiSRR1 & (0x1 << (31 - 4))) {
         /*
          * Page protection violation
+         * 不允许预取
          */
-
-        /*
-         * TODO 不允许预取
-         */
-        ulAbortType = LW_VMM_ABORT_TYPE_WRITE;
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_PERM;
+        abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_READ;
 
     } else if (uiSRR1 & (0x1 << (31 - 3))) {
         /*
          * If the segment is designated as no-execute
          */
-        ulAbortType = LW_VMM_ABORT_TYPE_EXEC;
+        abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_PERM;
+        abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_EXEC;
 
     } else {
         /*
          * dcbt/dcbtst Instruction
          */
-        ulAbortType = LW_VMM_ABORT_TYPE_TERMINAL;
+        abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
     }
 #endif
 
-    if (ulAbortType) {
-        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+    if (abtInfo.VMABT_uiType) {
+        API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
     }
 }
 /*********************************************************************************************************
@@ -224,14 +227,14 @@ VOID  archAlignmentExceptionHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
     addr_t          ulAbortAddr;
-    ULONG           ulAbortType;
+    LW_VMM_ABORT    abtInfo;
 
-    ulAbortAddr = ppcGetDAR();
-    ulAbortType = LW_VMM_ABORT_TYPE_BUS;
+    ulAbortAddr          = ppcGetDAR();
+    abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_BUS;
 
     LW_TCB_GET_CUR(ptcbCur);
 
-    API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+    API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archProgramExceptionHandle
@@ -245,6 +248,7 @@ VOID  archAlignmentExceptionHandle (addr_t  ulRetAddr)
 VOID  archProgramExceptionHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
+    LW_VMM_ABORT    abtInfo;
 
 #if LW_CFG_GDB_EN > 0
     UINT    uiBpType = archDbgTrapType(ulRetAddr, (PVOID)LW_NULL);      /*  断点指令探测                */
@@ -257,7 +261,9 @@ VOID  archProgramExceptionHandle (addr_t  ulRetAddr)
 
     LW_TCB_GET_CUR(ptcbCur);
 
-    API_VmmAbortIsr(ulRetAddr, ulRetAddr, LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
+    abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_UNDEF;
+    abtInfo.VMABT_uiMethod = LW_VMM_ABORT_METHOD_EXEC;
+    API_VmmAbortIsr(ulRetAddr, ulRetAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archFpuUnavailableExceptionHandle
@@ -271,6 +277,7 @@ VOID  archProgramExceptionHandle (addr_t  ulRetAddr)
 VOID  archFpuUnavailableExceptionHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
+    LW_VMM_ABORT    abtInfo;
 
     LW_TCB_GET_CUR(ptcbCur);
 
@@ -280,7 +287,8 @@ VOID  archFpuUnavailableExceptionHandle (addr_t  ulRetAddr)
     }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
 
-    API_VmmAbortIsr(ulRetAddr, ulRetAddr, LW_VMM_ABORT_TYPE_FPE, ptcbCur);
+    abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_FPE;
+    API_VmmAbortIsr(ulRetAddr, ulRetAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archSystemCallHandle
@@ -294,10 +302,12 @@ VOID  archFpuUnavailableExceptionHandle (addr_t  ulRetAddr)
 VOID  archSystemCallHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
+    LW_VMM_ABORT    abtInfo;
 
     LW_TCB_GET_CUR(ptcbCur);
 
-    API_VmmAbortIsr(ulRetAddr, ulRetAddr, LW_VMM_ABORT_TYPE_SYS, ptcbCur);
+    abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_SYS;
+    API_VmmAbortIsr(ulRetAddr, ulRetAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archTraceHandle
@@ -311,10 +321,12 @@ VOID  archSystemCallHandle (addr_t  ulRetAddr)
 VOID  archTraceHandle (addr_t  ulRetAddr)
 {
     PLW_CLASS_TCB   ptcbCur;
+    LW_VMM_ABORT    abtInfo;
 
     LW_TCB_GET_CUR(ptcbCur);
 
-    API_VmmAbortIsr(ulRetAddr, ulRetAddr, LW_VMM_ABORT_TYPE_TERMINAL, ptcbCur);
+    abtInfo.VMABT_uiType = LW_VMM_ABORT_TYPE_TERMINAL;
+    API_VmmAbortIsr(ulRetAddr, ulRetAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archDecrementerInterruptHandle

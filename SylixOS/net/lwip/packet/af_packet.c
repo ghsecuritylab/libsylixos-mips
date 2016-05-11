@@ -372,7 +372,7 @@ static INT  __packetSetRing (AF_PACKET_T *pafpacket, struct tpacket_req  *preq)
     pmmapRx->PKTB_uiFrameMax = pmmapRx->PKTB_uiFramePerBlock * preq->tp_block_nr;
     
 #if LW_CFG_CACHE_EN > 0
-    if (API_CacheLocation(DATA_CACHE) == CACHE_LOCATION_VIVT) {         /*  处理器为虚拟地址 CACHE      */
+    if (API_CacheAliasProb()) {                                         /*  如果有 CACHE 别名可能       */
         ulFlag &= ~(LW_VMM_FLAG_CACHEABLE | LW_VMM_FLAG_BUFFERABLE);    /*  共享内存不允许 CACHE        */
     }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */
@@ -1742,7 +1742,7 @@ INT  packet_mmap (AF_PACKET_T *pafpacket, PLW_DEV_MMAP_AREA  pdmap)
     }
     
 #if LW_CFG_CACHE_EN > 0
-    if (API_CacheLocation(DATA_CACHE) == CACHE_LOCATION_VIVT) {         /*  处理器为虚拟地址 CACHE      */
+    if (API_CacheAliasProb()) {                                         /*  处理器有 CACHE 别名可能     */
         ulFlag &= ~(LW_VMM_FLAG_CACHEABLE | LW_VMM_FLAG_BUFFERABLE);    /*  共享内存不允许 CACHE        */
     }
 #endif                                                                  /*  LW_CFG_CACHE_EN > 0         */

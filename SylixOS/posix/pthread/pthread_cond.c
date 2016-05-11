@@ -24,6 +24,7 @@
             otherwise, an error number shall be returned to indicate the error.
 2014.07.04  加入时钟类型设置与获取.
 2016.04.13  加入 GJB7714 相关 API 支持.
+2016.05.09  隐形初始化确保多线程安全.
 *********************************************************************************************************/
 #define  __SYLIXOS_STDIO
 #define  __SYLIXOS_KERNEL
@@ -33,9 +34,28 @@
 *********************************************************************************************************/
 #if LW_CFG_POSIX_EN > 0
 /*********************************************************************************************************
+  初始化锁
+*********************************************************************************************************/
+static LW_OBJECT_HANDLE     _G_ulPCondInitLock;
+/*********************************************************************************************************
   mutex 隐形创建
 *********************************************************************************************************/
 extern void  __pthread_mutex_init_invisible(pthread_mutex_t  *pmutex);
+/*********************************************************************************************************
+** 函数名称: _posixPCondInit
+** 功能描述: 初始化 PCOND 环境.
+** 输　入  : NONE
+** 输　出  : NONE
+** 全局变量: 
+** 调用模块: 
+*********************************************************************************************************/
+VOID  _posixPCondInit (VOID)
+{
+    _G_ulPCondInitLock = API_SemaphoreMCreate("pcondinit", LW_PRIO_DEF_CEILING, 
+                                              LW_OPTION_INHERIT_PRIORITY | 
+                                              LW_OPTION_WAIT_PRIORITY | 
+                                              LW_OPTION_DELETE_SAFE, LW_NULL);
+}
 /*********************************************************************************************************
 ** 函数名称: __pthread_cond_init_invisible
 ** 功能描述: 条件变量隐形创建. (静态初始化)
@@ -46,8 +66,14 @@ extern void  __pthread_mutex_init_invisible(pthread_mutex_t  *pmutex);
 *********************************************************************************************************/
 static void  __pthread_cond_init_invisible (pthread_cond_t  *pcond)
 {
-    if (pcond && !pcond->TCD_ulSignal) {
-        pthread_cond_init(pcond, LW_NULL);
+    if (pcond) {
+        if (pcond->TCD_ulSignal == LW_OBJECT_HANDLE_INVALID) {
+            API_SemaphoreMPend(_G_ulPCondInitLock, LW_OPTION_WAIT_INFINITE);
+            if (pcond->TCD_ulSignal == LW_OBJECT_HANDLE_INVALID) {
+                pthread_cond_init(pcond, LW_NULL);
+            }
+            API_SemaphoreMPost(_G_ulPCondInitLock);
+        }
     }
 }
 /*********************************************************************************************************
@@ -451,6 +477,21 @@ int  pthread_cond_show (pthread_cond_t  *pcond, int  level)
     if (!pcond) {
         errno = EINVAL;
         return  (EINVAL);
+    }
+    
+    if ((level != 0) && (level != 1)) {
+        errno = EINVAL;
+        return  (EINVAL);
+    }
+    
+    if (LW_CPU_GET_CUR_NESTING()) {
+        errno = ECALLEDINISR;
+        return  (ECALLEDINISR);
+    }
+    
+    if (pcond->TCD_ulSignal == LW_OBJECT_HANDLE_INVALID) {
+        errno = EMNOTINITED;
+        return  (EMNOTINITED);
     }
     
     printf("cond show >>\n\n");

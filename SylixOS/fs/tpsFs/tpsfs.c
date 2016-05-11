@@ -182,10 +182,11 @@ static PTPS_ENTRY  __tpsFsWalkPath (PTPS_SUPER_BLOCK psb, CPCHAR pcPath, PCHAR *
     }
     lib_bzero(pentry, sizeof(TPS_ENTRY) + lib_strlen(PX_STR_DIVIDER) + 1);
     
-    pentry->ENTRY_offset = 0;
-    pentry->ENTRY_psb    = psb;
-    pentry->ENTRY_uiLen  = sizeof(TPS_ENTRY) + lib_strlen(PX_STR_DIVIDER) + 1;
-    pentry->ENTRY_inum   = psb->SB_inumRoot;
+    pentry->ENTRY_offset    = 0;
+    pentry->ENTRY_psb       = psb;
+    pentry->ENTRY_uiLen     = sizeof(TPS_ENTRY) + lib_strlen(PX_STR_DIVIDER) + 1;
+    pentry->ENTRY_inum      = psb->SB_inumRoot;
+    pentry->ENTRY_inumDir   = 0;
     lib_strcpy(pentry->ENTRY_pcName, (PCHAR)PX_STR_DIVIDER);
 
     pentry->ENTRY_pinode = tpsFsOpenInode(pentry->ENTRY_psb, pentry->ENTRY_inum);
@@ -194,7 +195,6 @@ static PTPS_ENTRY  __tpsFsWalkPath (PTPS_SUPER_BLOCK psb, CPCHAR pcPath, PCHAR *
         TPS_FREE(pcPathDup);
         return  (LW_NULL);
     }
-    pentry->ENTRY_pinodeDir = LW_NULL;
 
     /*
      *  目录查找
@@ -1026,6 +1026,9 @@ VOID  tpsFsStat (PTPS_SUPER_BLOCK  psb, PTPS_INODE  pinode, struct stat *pstat)
 *********************************************************************************************************/
 VOID  tpsFsStatfs (PTPS_SUPER_BLOCK  psb, struct statfs *pstatfs)
 {
+    TPS_INUM    inum;
+    PTPS_INODE  pinode;
+
     if ((LW_NULL == psb) || (LW_NULL == pstatfs)) {
         return;
     }
@@ -1034,6 +1037,22 @@ VOID  tpsFsStatfs (PTPS_SUPER_BLOCK  psb, struct statfs *pstatfs)
     pstatfs->f_blocks = (long)psb->SB_ui64DataBlkCnt;
     pstatfs->f_bfree  = (long)tpsFsBtreeGetBlkCnt(psb->SB_pinodeSpaceMng);
     pstatfs->f_bavail = pstatfs->f_bfree;
+
+    /*
+     * 统计已删除节点列表
+     */
+    inum = psb->SB_inumDeleted;
+    while (inum != 0) {
+        pinode = tpsFsOpenInode(psb, inum);
+        if (LW_NULL == pinode) {
+            break;
+        }
+
+        pstatfs->f_bfree += pinode->IND_blkCnt;
+        pstatfs->f_bfree++;                                             /* inode所占用的块              */
+        inum = pinode->IND_inumDeleted;
+        tpsFsClose(pinode);
+    }
 }
 /*********************************************************************************************************
 ** 函数名称: tpsFsGetSize

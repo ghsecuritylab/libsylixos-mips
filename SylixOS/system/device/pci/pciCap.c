@@ -1684,7 +1684,7 @@ static VOID  __pciCapMsiShow (INT iBus, INT iSlot, INT iFunc, INT iWhere, INT iC
            PCI_FLAG(iCap, PCI_MSI_FLAGS_ENABLE),
            1 << ((iCap & PCI_MSI_FLAGS_QSIZE) >> 4),
            1 << ((iCap & PCI_MSI_FLAGS_QMASK) >> 1),
-           PCI_FLAG(iCap, PCI_MSI_FLAGS_MASKBIT),
+           PCI_FLAG(iCap, PCI_MSI_FLAGS_MASK_BIT),
            PCI_FLAG(iCap, PCI_MSI_FLAGS_64BIT));
 
     if (_G_iPciVerbose < 2) {
@@ -1706,20 +1706,20 @@ static VOID  __pciCapMsiShow (INT iBus, INT iSlot, INT iFunc, INT iWhere, INT iC
     }
     API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_ADDRESS_LO), &t);
     printf("%08x  Data: %04x\n", t, w);
-    if (iCap & PCI_MSI_FLAGS_MASKBIT) {
+    if (iCap & PCI_MSI_FLAGS_MASK_BIT) {
       UINT32 mask, pending;
 
       if (iIs64) {
-          if (!API_PciConfigFetch(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_64), 8)) {
+          if (!API_PciConfigFetch(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_BIT_64), 8)) {
               return;
           }
-          API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_64), &mask   );
+          API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_BIT_64), &mask   );
           API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_PENDING_64 ), &pending);
       } else {
-          if (!API_PciConfigFetch(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_32), 8)) {
+          if (!API_PciConfigFetch(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_BIT_32), 8)) {
               return;
           }
-          API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_32), &mask   );
+          API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_MASK_BIT_32), &mask   );
           API_PciConfigInDword(iBus, iSlot, iFunc, (iWhere + PCI_MSI_PENDING_32 ), &pending);
       }
       printf("\t\tMasking: %08x  Pending: %08x\n", mask, pending);
@@ -1877,7 +1877,7 @@ static VOID  __pciCapPmShow (INT iBus, INT iSlot, INT iFunc, INT iWhere, INT iCa
     API_PciConfigInWord(iBus, iSlot, iFunc, (iWhere + PCI_PM_CTRL), (UINT16 *)&t);
     printf("\t\tStatus: D%d NoSoftRst%c PME-Enable%c DSel=%d DScale=%d PME%c\n",
            t & PCI_PM_CTRL_STATE_MASK,
-           PCI_FLAG(t, PCI_PM_CTRL_NO_SOFT_RST),
+           PCI_FLAG(t, PCI_PM_CTRL_NO_SOFT_RESET),
            PCI_FLAG(t, PCI_PM_CTRL_PME_ENABLE),
            (t & PCI_PM_CTRL_DATA_SEL_MASK) >> 9,
            (t & PCI_PM_CTRL_DATA_SCALE_MASK) >> 13,
@@ -2013,7 +2013,7 @@ INT  API_PciCapShow (INT iBus, INT iSlot, INT iFunc)
             printf("CompactPCI central resource control <?>\n");
             break;
 
-        case PCI_CAP_ID_HOTPLUG:
+        case PCI_CAP_ID_SHPC:
             printf("Hot-plug capable\n");
             break;
 
@@ -2025,7 +2025,7 @@ INT  API_PciCapShow (INT iBus, INT iSlot, INT iFunc)
             printf("AGP3 <?>\n");
             break;
 
-        case PCI_CAP_ID_SECURE:
+        case PCI_CAP_ID_SECDEV:
             printf("Secure device <?>\n");
             break;
 

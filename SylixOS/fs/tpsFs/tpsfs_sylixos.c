@@ -457,6 +457,9 @@ INT  API_TpsFsDevCreate (PCHAR   pcName, PLW_BLK_DEV  pblkd)
     __blockIoDevIoctl(iBlkdIndex, FIODISKINIT, 0);                      /*  初始化磁盘                  */
 
     _DebugFormat(__LOGMESSAGE_LEVEL, "disk \"%s\" mount ok.\r\n", pcName);
+    _DebugFormat(__PRINTMESSAGE_LEVEL, "Warning: volume \"%s\" "
+                 "tpsFs is currently in testing stage, use caution please!\r\n",
+                 pcName);                                               /*  tps 警告信息                */
 
     return  (ERROR_NONE);
 

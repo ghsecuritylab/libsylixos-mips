@@ -38,9 +38,10 @@ typedef struct {
     volatile UINT32     SCU_uiConfigure;                /*  SCU Configuration Register.                 */
     volatile UINT32     SCU_uiCpuPowerStatus;           /*  SCU CPU Power Status Register.              */
     volatile UINT32     SCU_uiInvalidateAll;            /*  SCU Invalidate All Registers in Secure State*/
-    volatile UINT32     SCU_uiReserves[12];             /*  Reserves.                                   */
+    volatile UINT32     SCU_uiReserves1[12];            /*  Reserves.                                   */
     volatile UINT32     SCU_uiFilteringStart;           /*  Filtering Start Address Register.           */
     volatile UINT32     SCU_uiFilteringEnd;             /*  Filtering End Address Register.             */
+    volatile UINT32     SCU_uiReserves2[2];
     volatile UINT32     SCU_uiSAC;                      /*  SCU Access Control (SAC) Register.          */
     volatile UINT32     SCU_uiSNSAC;                    /*  SCU Non-secure Access Control (SNSAC) Reg.  */
 } SCU_REGS;
@@ -165,24 +166,24 @@ UINT32  armScuCpuNumber (VOID)
 /*********************************************************************************************************
 ** 函数名称: armScuSecureInvalidateAll
 ** 功能描述: Invalidates the SCU tag RAMs on a per Cortex-A9 processor and per way basis
-** 输　入  : uiCpuId       CPU ID
+** 输　入  : uiCPUId       CPU ID
 **           uiWays        Specifies the ways that must be invalidated for CPU(ID)
 ** 输　出  : NONE
 ** 全局变量:
 ** 调用模块:
 *********************************************************************************************************/
-VOID  armScuSecureInvalidateAll (UINT32  uiCpuId,  UINT32  uiWays)
+VOID  armScuSecureInvalidateAll (UINT32  uiCPUId,  UINT32  uiWays)
 {
     REGISTER SCU_REGS  *pScu = armScuGet();
 
-    switch (uiCpuId) {
+    switch (uiCPUId) {
 
     case 0:
     case 1:
     case 2:
     case 3:
         uiWays &= 0xF;
-        write32(uiWays << (uiCpuId * 4), (addr_t)&pScu->SCU_uiInvalidateAll);
+        write32(uiWays << (uiCPUId * 4), (addr_t)&pScu->SCU_uiInvalidateAll);
         break;
 
     default:

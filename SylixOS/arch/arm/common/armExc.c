@@ -93,21 +93,21 @@ VOID  archAbtHandle (addr_t  ulRetAddr, UINT32  uiArmExcType)
 #define ARM_EXC_TYPE_PRE    4
     
     PLW_CLASS_TCB   ptcbCur;
+    LW_VMM_ABORT    abtInfo;
     addr_t          ulAbortAddr;
-    ULONG           ulAbortType;
     
     if (uiArmExcType == ARM_EXC_TYPE_ABT) {
         ulAbortAddr = armGetAbtAddr();
-        ulAbortType = armGetAbtType();
+        armGetAbtType(&abtInfo);
     
     } else {
         ulAbortAddr = armGetPreAddr(ulRetAddr);
-        ulAbortType = armGetPreType();
+        armGetPreType(&abtInfo);
     }
     
     LW_TCB_GET_CUR(ptcbCur);
 
-    API_VmmAbortIsr(ulRetAddr, ulAbortAddr, ulAbortType, ptcbCur);
+    API_VmmAbortIsr(ulRetAddr, ulAbortAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archUndHandle
@@ -121,10 +121,11 @@ VOID  archAbtHandle (addr_t  ulRetAddr, UINT32  uiArmExcType)
 VOID  archUndHandle (addr_t  ulAddr, UINT32  uiCpsr)
 {
     PLW_CLASS_TCB   ptcbCur;
+    LW_VMM_ABORT    abtInfo;
     
 #if LW_CFG_GDB_EN > 0
     UINT    uiBpType = archDbgTrapType(ulAddr, (PVOID)uiCpsr);          /*  断点指令探测                */
-    if (uiBpType) {                       
+    if (uiBpType) {
         if (API_DtraceBreakTrap(ulAddr, uiBpType) == ERROR_NONE) {      /*  进入调试接口断点处理        */
             return;
         }
@@ -139,7 +140,10 @@ VOID  archUndHandle (addr_t  ulAddr, UINT32  uiCpsr)
     }
 #endif                                                                  /*  LW_CFG_CPU_FPU_EN > 0       */
     
-    API_VmmAbortIsr(ulAddr, ulAddr, LW_VMM_ABORT_TYPE_UNDEF, ptcbCur);
+    abtInfo.VMABT_uiType   = LW_VMM_ABORT_TYPE_UNDEF;
+    abtInfo.VMABT_uiMethod = 0;
+    
+    API_VmmAbortIsr(ulAddr, ulAddr, &abtInfo, ptcbCur);
 }
 /*********************************************************************************************************
 ** 函数名称: archSwiHandle

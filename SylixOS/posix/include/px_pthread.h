@@ -387,6 +387,7 @@ LW_API int          pthread_lock(void);
 LW_API int          pthread_unlock(void);
 LW_API boolean      pthread_is_ready(pthread_t thread);
 LW_API boolean      pthread_is_suspend(pthread_t thread);
+LW_API int          pthread_verifyid(pthread_t thread);
 LW_API int          pthread_cancelforce(pthread_t thread);
 LW_API int          pthread_getinfo(pthread_t thread, pthread_info_t *info);
 LW_API int          pthread_getregs(pthread_t thread, REG_SET *pregs);
